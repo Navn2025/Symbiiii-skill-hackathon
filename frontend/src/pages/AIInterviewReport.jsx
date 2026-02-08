@@ -226,6 +226,11 @@ function AIInterviewReport() {
   const navigate = useNavigate();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [verificationResult, setVerificationResult] = useState(null);
+  const [checkingVerification, setCheckingVerification] = useState(false);
+
+  // Detect if this interview is from verification flow
+  const isFromVerification = sessionStorage.getItem('verificationInterviewComplete') === 'true';
 
   // Determine correct dashboard path based on user role
   const getDashboardPath = () => {
@@ -243,6 +248,36 @@ function AIInterviewReport() {
   useEffect(() => {
     fetchReport();
   }, [sessionId]);
+
+  // After report loads, check verification result if from verification flow
+  useEffect(() => {
+    if (report && isFromVerification && !verificationResult && !checkingVerification) {
+      checkVerificationResult();
+    }
+  }, [report, isFromVerification]);
+
+  const checkVerificationResult = async () => {
+    setCheckingVerification(true);
+    try {
+      const stored = localStorage.getItem('user');
+      if (!stored) return;
+      const u = JSON.parse(stored);
+      const userId = u.id || u._id;
+      const res = await axios.post(`${API_URL}/api/verification/${userId}/verify-interview-result`, { sessionId });
+      setVerificationResult(res.data);
+    } catch (err) {
+      console.error('Failed to check verification result:', err);
+    } finally {
+      setCheckingVerification(false);
+    }
+  };
+
+  const handleBackToVerification = () => {
+    sessionStorage.removeItem('fromVerification');
+    sessionStorage.removeItem('verificationInterviewComplete');
+    sessionStorage.removeItem('verificationSessionId');
+    navigate('/resume-verification');
+  };
 
   const fetchReport = async () => {
     try {
@@ -289,6 +324,47 @@ function AIInterviewReport() {
 
   return (
     <div className="ai-interview-report">
+      {/* ── Verification Result Banner ── */}
+      {isFromVerification && (
+        <div className={`verification-result-banner ${verificationResult?.verified ? 'passed' : verificationResult?.status === 'failed' ? 'failed' : 'checking'}`}>
+          {checkingVerification ? (
+            <div className="vr-banner-content">
+              <span className="vr-banner-icon">⏳</span>
+              <div>
+                <h3>Checking Verification Result...</h3>
+                <p>Evaluating your interview performance against the verification threshold.</p>
+              </div>
+            </div>
+          ) : verificationResult?.verified ? (
+            <div className="vr-banner-content">
+              <span className="vr-banner-icon">✅</span>
+              <div>
+                <h3>Resume Verification Passed!</h3>
+                <p>You scored <strong>{verificationResult.score}/100</strong> (required: {verificationResult.passThreshold}). Your resume skills have been verified.</p>
+              </div>
+              <button className="vr-banner-btn success" onClick={handleBackToVerification}>
+                Back to Verification
+              </button>
+            </div>
+          ) : verificationResult ? (
+            <div className="vr-banner-content">
+              <span className="vr-banner-icon">❌</span>
+              <div>
+                <h3>Verification Failed</h3>
+                <p>You scored <strong>{verificationResult.score}/100</strong> (required: {verificationResult.passThreshold}).{' '}
+                  {verificationResult.remainingAttempts > 0
+                    ? `You have ${verificationResult.remainingAttempts} attempt(s) remaining.`
+                    : 'No more attempts remaining.'}
+                </p>
+              </div>
+              <button className="vr-banner-btn" onClick={handleBackToVerification}>
+                {verificationResult.remainingAttempts > 0 ? 'Try Again' : 'Back to Verification'}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      )}
+
       {/* Header */}
       <div className="report-header">
         <div>

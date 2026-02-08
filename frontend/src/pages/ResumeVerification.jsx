@@ -128,6 +128,8 @@ function ResumeVerification() {
       const res = await axios.post(`${API_URL}/api/verification/${userId}/auto-interview`);
       if (res.data.sessionId) {
         showMsg('AI Interview created! Redirecting...');
+        // Set flag so AIInterviewRoom knows this is from verification
+        sessionStorage.setItem('fromVerification', 'true');
         setTimeout(() => {
           navigate(`/ai-interview/${res.data.sessionId}`);
         }, 1000);
@@ -357,13 +359,66 @@ function ResumeVerification() {
                 <div className="rv-auto-interview-info">
                   <Play size={22} />
                   <div>
-                    <h3>AI-Powered Skill Interview</h3>
-                    <p>Take an AI interview with 5 personalized questions based on your skills, projects, and resume. This will further validate your claimed skills.</p>
+                    <h3>AI-Powered Skill Verification Interview</h3>
+                    <p>Complete a 5-question AI interview to verify your resume skills. You need to score <strong>70% or above</strong> to pass verification.</p>
                   </div>
                 </div>
-                {verification?.autoInterview?.sessionId ? (
-                  <button className="rv-interview-btn resume" onClick={() => navigate(`/ai-interview/${verification.autoInterview.sessionId}`)}>
-                    <Play size={16} /> Continue AI Interview
+
+                {/* ── Status Banner ── */}
+                {verification?.autoInterview?.status === 'passed' && (
+                  <div className="rv-interview-status passed">
+                    <CheckCircle size={18} />
+                    <span>Verification Passed! Score: <strong>{verification.autoInterview.lastScore}/100</strong></span>
+                  </div>
+                )}
+
+                {verification?.autoInterview?.status === 'failed' && (
+                  <div className="rv-interview-status failed">
+                    <XCircle size={18} />
+                    <span>Verification Failed — Score: <strong>{verification.autoInterview.lastScore}/100</strong> (Required: 70)</span>
+                  </div>
+                )}
+
+                {verification?.autoInterview?.status === 'incomplete' && (
+                  <div className="rv-interview-status incomplete">
+                    <AlertCircle size={18} />
+                    <span>Interview was not completed. All 5 questions must be answered.</span>
+                  </div>
+                )}
+
+                {/* ── Attempt Counter ── */}
+                {verification?.autoInterview?.attempts > 0 && (
+                  <div className="rv-attempt-counter">
+                    <Clock size={14} />
+                    <span>
+                      Attempts used: <strong>{verification.autoInterview.attempts}</strong> / {verification.autoInterview.maxAttempts || 5}
+                      {verification.autoInterview.remainingAttempts > 0 && verification.autoInterview.status !== 'passed' && (
+                        <> &middot; <strong>{verification.autoInterview.remainingAttempts}</strong> remaining</>
+                      )}
+                    </span>
+                  </div>
+                )}
+
+                {/* ── Action Buttons ── */}
+                {verification?.autoInterview?.status === 'passed' ? (
+                  <button className="rv-interview-btn passed" disabled>
+                    <CheckCircle size={16} /> Verification Complete
+                  </button>
+                ) : verification?.autoInterview?.remainingAttempts === 0 && verification?.autoInterview?.attempts >= 5 ? (
+                  <div className="rv-interview-status no-attempts">
+                    <XCircle size={18} />
+                    <span>No more attempts remaining. Maximum 5 attempts reached.</span>
+                  </div>
+                ) : verification?.autoInterview?.status === 'in-progress' && verification?.autoInterview?.sessionId ? (
+                  <button className="rv-interview-btn resume" onClick={() => {
+                    sessionStorage.setItem('fromVerification', 'true');
+                    navigate(`/ai-interview/${verification.autoInterview.sessionId}`);
+                  }}>
+                    <Play size={16} /> Continue Interview
+                  </button>
+                ) : verification?.autoInterview?.status === 'failed' || verification?.autoInterview?.status === 'incomplete' ? (
+                  <button className="rv-interview-btn retry" onClick={handleStartAutoInterview} disabled={creatingInterview}>
+                    <Zap size={16} /> {creatingInterview ? 'Creating New Interview...' : 'Try Again'}
                   </button>
                 ) : (
                   <button className="rv-interview-btn" onClick={handleStartAutoInterview} disabled={creatingInterview}>

@@ -658,9 +658,12 @@ function CandidateProfile() {
                       <span className="cp-ats-label">Overall Score</span>
                     </div>
                     <div className={`cp-grade-badge grade-${atsResult.grade}`}>
-                      Grade {atsResult.grade}
+                      <span className="grade-letter">{atsResult.grade}</span>
+                      <span className="grade-label">Grade</span>
                     </div>
-                    <p className="cp-word-count">{atsResult.wordCount} words · {atsResult.charCount} characters</p>
+                    <div className="cp-hero-meta">
+                      <p className="cp-word-count">{atsResult.wordCount} words &middot; {atsResult.charCount} characters</p>
+                    </div>
                   </div>
 
                   {/* Section Scores */}
@@ -673,7 +676,7 @@ function CandidateProfile() {
                           {atsResult.contactAnalysis?.score}%
                         </span>
                       </div>
-                      <div className="cp-score-bar"><div className="cp-score-fill" style={{ width: `${atsResult.contactAnalysis?.score || 0}%` }} /></div>
+                      <div className="cp-score-bar"><div className={`cp-score-fill ${atsResult.contactAnalysis?.score >= 70 ? 'good' : atsResult.contactAnalysis?.score >= 40 ? 'fair' : 'poor'}`} style={{ width: `${atsResult.contactAnalysis?.score || 0}%` }} /></div>
                       {atsResult.contactAnalysis?.present?.length > 0 && (
                         <div className="cp-analyzer-tags">
                           {atsResult.contactAnalysis.present.map((f, i) => (
@@ -698,8 +701,8 @@ function CandidateProfile() {
                           {atsResult.skillsAnalysis?.strength}
                         </span>
                       </div>
-                      <div className="cp-score-bar"><div className="cp-score-fill" style={{ width: `${Math.min(100, atsResult.skillsAnalysis?.score || 0)}%` }} /></div>
-                      <p className="cp-analyzer-stat">{atsResult.skillsAnalysis?.technicalCount} technical · {atsResult.skillsAnalysis?.softCount} soft · {atsResult.skillsAnalysis?.totalUnique} total</p>
+                      <div className="cp-score-bar"><div className={`cp-score-fill ${atsResult.skillsAnalysis?.score >= 70 ? 'good' : atsResult.skillsAnalysis?.score >= 40 ? 'fair' : 'poor'}`} style={{ width: `${Math.min(100, atsResult.skillsAnalysis?.score || 0)}%` }} /></div>
+                      <p className="cp-analyzer-stat">{atsResult.skillsAnalysis?.technicalCount} technical &middot; {atsResult.skillsAnalysis?.softCount} soft &middot; {atsResult.skillsAnalysis?.totalUnique} total</p>
                       {atsResult.skillsAnalysis?.technical?.length > 0 && (
                         <div className="cp-analyzer-tags">
                           {atsResult.skillsAnalysis.technical.slice(0, 15).map((s, i) => (
@@ -727,7 +730,7 @@ function CandidateProfile() {
                           {atsResult.experienceAnalysis?.strength}
                         </span>
                       </div>
-                      <div className="cp-score-bar"><div className="cp-score-fill" style={{ width: `${atsResult.experienceAnalysis?.score || 0}%` }} /></div>
+                      <div className="cp-score-bar"><div className={`cp-score-fill ${atsResult.experienceAnalysis?.score >= 60 ? 'good' : atsResult.experienceAnalysis?.score >= 30 ? 'fair' : 'poor'}`} style={{ width: `${atsResult.experienceAnalysis?.score || 0}%` }} /></div>
                       <p className="cp-analyzer-stat">
                         {atsResult.experienceAnalysis?.years != null ? `${atsResult.experienceAnalysis.years} years` : 'Not detected'}
                         {atsResult.experienceAnalysis?.seniority !== 'Not specified' ? ` · ${atsResult.experienceAnalysis.seniority}` : ''}
@@ -742,7 +745,7 @@ function CandidateProfile() {
                           {atsResult.educationAnalysis?.strength}
                         </span>
                       </div>
-                      <div className="cp-score-bar"><div className="cp-score-fill" style={{ width: `${atsResult.educationAnalysis?.score || 0}%` }} /></div>
+                      <div className="cp-score-bar"><div className={`cp-score-fill ${atsResult.educationAnalysis?.score >= 60 ? 'good' : atsResult.educationAnalysis?.score >= 30 ? 'fair' : 'poor'}`} style={{ width: `${atsResult.educationAnalysis?.score || 0}%` }} /></div>
                       {atsResult.educationAnalysis?.qualifications?.length > 0 && (
                         <div className="cp-analyzer-tags">
                           {atsResult.educationAnalysis.qualifications.map((q, i) => (
@@ -760,7 +763,7 @@ function CandidateProfile() {
                           {atsResult.contentAnalysis?.strength}
                         </span>
                       </div>
-                      <div className="cp-score-bar"><div className="cp-score-fill" style={{ width: `${atsResult.contentAnalysis?.score || 0}%` }} /></div>
+                      <div className="cp-score-bar"><div className={`cp-score-fill ${atsResult.contentAnalysis?.score >= 60 ? 'good' : atsResult.contentAnalysis?.score >= 30 ? 'fair' : 'poor'}`} style={{ width: `${atsResult.contentAnalysis?.score || 0}%` }} /></div>
                       <div className="cp-content-checks">
                         <span className={atsResult.contentAnalysis?.hasQuantifiableResults ? 'check-pass' : 'check-fail'}>
                           {atsResult.contentAnalysis?.hasQuantifiableResults ? <CheckCircle size={12} /> : <AlertCircle size={12} />} Quantifiable results

@@ -829,6 +829,69 @@
 .rv-interview-btn:hover { opacity: 0.9; transform: translateY(-1px); }
 .rv-interview-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .rv-interview-btn.resume { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+.rv-interview-btn.retry { background: linear-gradient(135deg, #f97316, #ea580c); }
+.rv-interview-btn.passed { background: linear-gradient(135deg, #22c55e, #16a34a); opacity: 0.8; }
+
+/* ── Interview Status Banners ── */
+.rv-interview-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-top: 0.75rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rv-interview-status.passed {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.rv-interview-status.failed {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.rv-interview-status.incomplete {
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: #eab308;
+}
+
+.rv-interview-status.no-attempts {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  font-weight: 600;
+}
+
+/* ── Attempt Counter ── */
+.rv-attempt-counter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #94a3b8);
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.rv-attempt-counter strong {
+  color: #667eea;
+}
 
 /* ── Score Cards (Layer 3) ── */
 .rv-score-cards {

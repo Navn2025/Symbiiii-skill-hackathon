@@ -43,6 +43,9 @@ function AIInterviewRoom() {
   const conversationEndRef = useRef(null);
   const initDone = useRef(false);
 
+  // Detect if this interview was started from verification flow
+  const isFromVerification = sessionStorage.getItem('fromVerification') === 'true';
+
   // Check browser support
   useEffect(() => {
     setVoiceSupported(!!window.speechSynthesis);
@@ -192,7 +195,14 @@ function AIInterviewRoom() {
       if (response.data.interviewComplete) {
         setConversation(prev => [...prev, { role: 'assistant', content: response.data.message }]);
         speakText(response.data.message, () => {
-          navigate(`/ai-interview-report/${sessionId}`);
+          if (isFromVerification) {
+            // Completed all questions from verification flow — go to report with verification flag
+            sessionStorage.setItem('verificationInterviewComplete', 'true');
+            sessionStorage.setItem('verificationSessionId', sessionId);
+            navigate(`/ai-interview-report/${sessionId}`);
+          } else {
+            navigate(`/ai-interview-report/${sessionId}`);
+          }
         });
         return;
       }
@@ -226,10 +236,34 @@ function AIInterviewRoom() {
     recognitionRef.current?.stop();
     try {
       await axios.post(`${API_URL}/api/ai-interview/${sessionId}/end`);
-      navigate(`/ai-interview-report/${sessionId}`);
+
+      if (isFromVerification) {
+        // Ended early from verification flow — mark as incomplete, redirect to verification
+        try {
+          const stored = localStorage.getItem('user');
+          if (stored) {
+            const u = JSON.parse(stored);
+            const userId = u.id || u._id;
+            await axios.post(`${API_URL}/api/verification/${userId}/verify-interview-result`, { sessionId });
+          }
+        } catch (e) {
+          console.error('Failed to update verification status:', e);
+        }
+        sessionStorage.removeItem('fromVerification');
+        sessionStorage.removeItem('verificationInterviewComplete');
+        sessionStorage.removeItem('verificationSessionId');
+        navigate('/resume-verification');
+      } else {
+        navigate(`/ai-interview-report/${sessionId}`);
+      }
     } catch (error) {
       console.error('Error ending interview:', error);
-      navigate(`/ai-interview-report/${sessionId}`);
+      if (isFromVerification) {
+        sessionStorage.removeItem('fromVerification');
+        navigate('/resume-verification');
+      } else {
+        navigate(`/ai-interview-report/${sessionId}`);
+      }
     }
   };
 

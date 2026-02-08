@@ -11,7 +11,7 @@ function CodeEditor({code, language, onChange})
     };
 
     return (
-        <div style={{height: '100%', minHeight: '400px'}}>
+        <div style={{height: '100%'}}>
             <Editor
                 height="100%"
                 language={languageMap[language]||'javascript'}

@@ -377,7 +377,84 @@
 
 /* ── Print ── */
 @media print {
-  .report-header, .report-actions, .header-actions { display: none; }
+  .report-header, .report-actions, .header-actions, .verification-result-banner { display: none; }
   .ai-interview-report { background: white; }
   .report-section { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; }
+}
+
+/* ── Verification Result Banner ── */
+.verification-result-banner {
+  padding: 1.25rem 2rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  border: 2px solid;
+  animation: slideDown 0.4s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.verification-result-banner.passed {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(16, 185, 129, 0.05));
+  border-color: #22c55e;
+}
+
+.verification-result-banner.failed {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(248, 113, 113, 0.05));
+  border-color: #ef4444;
+}
+
+.verification-result-banner.checking {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.08), rgba(250, 204, 21, 0.05));
+  border-color: #eab308;
+}
+
+.vr-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.vr-banner-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.vr-banner-content h3 {
+  margin: 0 0 4px 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.vr-banner-content p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #555;
+}
+
+.vr-banner-content div {
+  flex: 1;
+  min-width: 200px;
+}
+
+.vr-banner-btn {
+  padding: 0.6rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.vr-banner-btn:hover { opacity: 0.9; }
+
+.vr-banner-btn.success {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
 }
