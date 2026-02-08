@@ -22,4 +22,10 @@ export default {
     PORT: process.env.PORT||5000,
     FRONTEND_URL: process.env.FRONTEND_URL||'http://localhost:5173',
     GROQ_API_KEY: process.env.GROQ_API_KEY,
+    // AI Calling (Twilio + Python server)
+    TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID || '',
+    TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN || '',
+    TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER || '',
+    NGROK_URL: process.env.NGROK_URL || '',
+    AI_CALLING_URL: process.env.AI_CALLING_URL || 'http://localhost:8000',
 };

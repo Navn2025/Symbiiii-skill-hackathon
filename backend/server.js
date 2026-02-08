@@ -25,6 +25,9 @@ import specAiChatRoutes from './routes/specAiChat.js';
 import authRoutes from './routes/auth.js';
 import jobsRoutes from './routes/jobs.js';
 import scoringRoutes from './routes/scoring.js';
+import profileRoutes from './routes/profile.js';
+import verificationRoutes from './routes/verification.js';
+import aiCallingRoutes from './routes/aiCalling.js';
 import {setupSocketHandlers} from './socket/handlers.js';
 
 const app=express();
@@ -71,6 +74,9 @@ app.use('/api/spec-ai', specAiChatRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobsRoutes);
 app.use('/api/scoring', scoringRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/verification', verificationRoutes);
+app.use('/api/ai-calling', aiCallingRoutes);
 
 // Health check
 app.get('/api/health', (req, res) =>

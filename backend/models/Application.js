@@ -13,7 +13,7 @@ const applicationSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['applied', 'screening', 'interview', 'assessment', 'offered', 'hired', 'rejected', 'withdrawn'],
+    enum: ['applied', 'shortlisted', 'selected', 'screening', 'interview', 'assessment', 'offered', 'hired', 'rejected', 'withdrawn'],
     default: 'applied',
   },
   coverLetter: {
@@ -32,6 +32,15 @@ const applicationSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  statusHistory: [{
+    status: { type: String },
+    changedAt: { type: Date, default: Date.now },
+    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    note: { type: String, default: '' },
+  }],
+  appliedAt: { type: Date, default: Date.now },
+  shortlistedAt: { type: Date },
+  selectedAt: { type: Date },
 }, {
   timestamps: true,
 });

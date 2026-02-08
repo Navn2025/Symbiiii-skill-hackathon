@@ -340,11 +340,13 @@ router.get('/stats/:candidateId', async (req, res) => {
   try {
     const candidateId = req.params.candidateId;
     
-    const [totalApplied, inProgress, pending, totalJobs] = await Promise.all([
+    const [totalApplied, inProgress, pending, totalJobs, shortlisted, selected] = await Promise.all([
       Application.countDocuments({ candidate: candidateId }),
       Application.countDocuments({ candidate: candidateId, status: { $in: ['screening', 'interview', 'assessment'] } }),
       Application.countDocuments({ candidate: candidateId, status: 'applied' }),
       Job.countDocuments({ status: 'active' }),
+      Application.countDocuments({ candidate: candidateId, status: 'shortlisted' }),
+      Application.countDocuments({ candidate: candidateId, status: { $in: ['selected', 'offered', 'hired'] } }),
     ]);
 
     return res.json({
@@ -352,8 +354,141 @@ router.get('/stats/:candidateId', async (req, res) => {
       assessments: inProgress,
       pending,
       availableJobs: totalJobs,
+      shortlisted,
+      selected,
     });
   } catch (err) {
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   KANBAN ROUTES (Candidate-side grouped by status)
+   ═══════════════════════════════════════════════════════════════════ */
+
+// Get Kanban-grouped applications for a candidate
+router.get('/kanban/:candidateId', async (req, res) => {
+  try {
+    const candidateId = req.params.candidateId;
+
+    const applications = await Application.find({ candidate: candidateId })
+      .populate('job', 'title department location type companyName status createdAt skills salary description')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Group applications by Kanban columns
+    const kanban = {
+      applied: [],
+      shortlisted: [],
+      selected: [],
+      rejected: [],
+    };
+
+    applications.forEach(app => {
+      const item = {
+        id: app._id,
+        status: app.status,
+        round: app.round,
+        score: app.score,
+        notes: app.notes,
+        appliedAt: app.appliedAt || app.createdAt,
+        shortlistedAt: app.shortlistedAt,
+        selectedAt: app.selectedAt,
+        statusHistory: app.statusHistory || [],
+        job: app.job ? {
+          id: app.job._id,
+          title: app.job.title,
+          department: app.job.department,
+          location: app.job.location,
+          type: app.job.type,
+          companyName: app.job.companyName,
+          status: app.job.status,
+          skills: app.job.skills || [],
+          salary: app.job.salary,
+          description: app.job.description,
+          createdAt: app.job.createdAt,
+        } : null,
+      };
+
+      if (['applied', 'screening'].includes(app.status)) {
+        kanban.applied.push(item);
+      } else if (['shortlisted', 'interview', 'assessment'].includes(app.status)) {
+        kanban.shortlisted.push(item);
+      } else if (['selected', 'offered', 'hired'].includes(app.status)) {
+        kanban.selected.push(item);
+      } else if (['rejected', 'withdrawn'].includes(app.status)) {
+        kanban.rejected.push(item);
+      } else {
+        kanban.applied.push(item);
+      }
+    });
+
+    return res.json({
+      kanban,
+      counts: {
+        applied: kanban.applied.length,
+        shortlisted: kanban.shortlisted.length,
+        selected: kanban.selected.length,
+        rejected: kanban.rejected.length,
+        total: applications.length,
+      },
+    });
+  } catch (err) {
+    console.error('[JOBS] Kanban error:', err);
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+// Update application status (company-side — for Kanban management)
+router.put('/applications/:applicationId/status', async (req, res) => {
+  try {
+    const { status, note, changedBy } = req.body;
+    if (!status) return res.status(400).json({ message: 'Status is required' });
+
+    const validStatuses = ['applied', 'shortlisted', 'selected', 'screening', 'interview', 'assessment', 'offered', 'hired', 'rejected', 'withdrawn'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    const application = await Application.findById(req.params.applicationId);
+    if (!application) return res.status(404).json({ message: 'Application not found' });
+
+    const oldStatus = application.status;
+    application.status = status;
+
+    // Set timestamps for Kanban columns
+    if (status === 'shortlisted' && !application.shortlistedAt) {
+      application.shortlistedAt = new Date();
+    }
+    if (['selected', 'offered', 'hired'].includes(status) && !application.selectedAt) {
+      application.selectedAt = new Date();
+    }
+
+    // Add to status history
+    if (!application.statusHistory) application.statusHistory = [];
+    application.statusHistory.push({
+      status,
+      changedAt: new Date(),
+      changedBy: changedBy || null,
+      note: note || `Status changed from ${oldStatus} to ${status}`,
+    });
+
+    await application.save();
+
+    console.log(`[JOBS] ✅ Application ${application._id} status: ${oldStatus} → ${status}`);
+
+    return res.json({
+      message: 'Application status updated',
+      application: {
+        id: application._id,
+        status: application.status,
+        shortlistedAt: application.shortlistedAt,
+        selectedAt: application.selectedAt,
+        statusHistory: application.statusHistory,
+      },
+    });
+  } catch (err) {
+    console.error('[JOBS] Status update error:', err);
     return res.status(500).json({ message: `Server error: ${err.message}` });
   }
 });

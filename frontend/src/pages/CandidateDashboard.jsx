@@ -5,7 +5,8 @@ import {
   Dumbbell, Code, Bot, Shield, FileText, ChevronRight,
   BookOpen, Target, Award, Clock, MapPin, Building2, Users,
   BarChart3, ChevronDown, Send, Trash2, Play, Upload,
-  Video, UserCheck, CheckCircle, XCircle, ExternalLink, Trophy
+  Video, UserCheck, CheckCircle, XCircle, ExternalLink, Trophy,
+  Phone, PhoneCall, PhoneOff, Mic, Volume2, Filter, Columns3, List
 } from 'lucide-react';
 import axios from 'axios';
 import CodeEditor from '../components/CodeEditor';
@@ -18,10 +19,13 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
    ═══════════════════════════════════════════════════════════════════ */
 const TABS = [
   { key: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={16} /> },
+  { key: 'jobs', label: 'Jobs', icon: <Briefcase size={16} /> },
+  { key: 'profile', label: 'Profile', icon: <UserCheck size={16} /> },
   { key: 'recruiter', label: 'Recruiter Interview', icon: <Video size={16} /> },
   { key: 'practice', label: 'Practice', icon: <Dumbbell size={16} /> },
   { key: 'coding', label: 'Coding Practice', icon: <Code size={16} /> },
   { key: 'ai-interview', label: 'AI Interview', icon: <Bot size={16} /> },
+  { key: 'ai-calling', label: 'AI Calling', icon: <PhoneCall size={16} /> },
   { key: 'axiom', label: 'Spec AI', icon: <BookOpen size={16} /> },
 ];
 
@@ -57,48 +61,68 @@ function CandidateDashboard() {
 
   return (
     <div className="cd-page">
-      {/* ═══ Dashboard Navbar ═══ */}
-      <nav className="cd-navbar">
-        <div className="cd-navbar-inner">
-          <Link to="/candidate-dashboard" className="cd-logo">HireSpec</Link>
-          <div className="cd-nav-links">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                className={`cd-nav-tab ${activeTab === t.key ? 'active' : ''}`}
-                onClick={() => setActiveTab(t.key)}
-              >
-                {t.icon}
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <div className="cd-nav-right">
-            <div className="cd-search-box">
-              <Search size={16} />
-              <input
-                type="text"
-                placeholder="Search jobs, companies..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <button className="cd-icon-btn" title="Notifications"><Bell size={18} /></button>
-            <button className="cd-icon-btn" title="Logout" onClick={handleLogout}><LogOut size={18} /></button>
-            <div className="cd-avatar" title={user.username}>{initials}</div>
-          </div>
-        </div>
-      </nav>
+      {/* ═══ Left Sidebar ═══ */}
+      <aside className="cd-sidebar">
+        <Link to="/candidate-dashboard" className="cd-logo">HireSpec</Link>
 
-      {/* ═══ Tab Content ═══ */}
-      <main className="cd-main">
+        <div className="cd-sidebar-nav">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              className={`cd-nav-tab ${activeTab === t.key ? 'active' : ''}`}
+              onClick={() => {
+                if (t.key === 'profile') return navigate('/candidate-profile');
+                setActiveTab(t.key);
+              }}
+            >
+              {t.icon}
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="cd-sidebar-footer">
+          <div className="cd-sidebar-user">
+            <div className="cd-avatar" title={user.username}>{initials}</div>
+            <div className="cd-sidebar-user-info">
+              <span className="cd-sidebar-username">{user.username}</span>
+              <span className="cd-sidebar-role">{user.role === 'candidate' ? 'Candidate' : user.role}</span>
+            </div>
+          </div>
+          <button className="cd-icon-btn" title="Logout" onClick={handleLogout}><LogOut size={16} /></button>
+        </div>
+      </aside>
+
+      {/* ═══ Main Area ═══ */}
+      <div className="cd-main-wrapper">
+        {/* Top Bar */}
+        <header className="cd-topbar">
+          <div className="cd-search-box">
+            <Search size={16} />
+            <input
+              type="text"
+              placeholder="Search jobs, companies..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className="cd-topbar-right">
+            <button className="cd-icon-btn" title="Notifications"><Bell size={18} /></button>
+          </div>
+        </header>
+
+        {/* ═══ Tab Content ═══ */}
+        <main className="cd-main">
         {activeTab === 'dashboard' && <DashboardTab user={user} initials={initials} setActiveTab={setActiveTab} />}
+        {activeTab === 'jobs' && <JobsTab user={user} />}
         {activeTab === 'recruiter' && <RecruiterInterviewTab user={user} />}
         {activeTab === 'practice' && <PracticeTab user={user} />}
         {activeTab === 'coding' && <CodingTab />}
         {activeTab === 'ai-interview' && <AIInterviewTab user={user} />}
+        {activeTab === 'ai-calling' && <AICallingTab user={user} />}
         {activeTab === 'axiom' && <AxiomTab user={user} />}
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
@@ -153,10 +177,14 @@ function DashboardTab({ user, initials, setActiveTab }) {
   ];
 
   const quickActions = [
+    { label: 'My Profile', desc: 'Update resume, skills & experience', icon: <UserCheck size={22} />, tab: 'profile', badge: 'PROFILE', link: '/candidate-profile' },
+    { label: 'Browse Jobs', desc: 'Find & apply to available positions', icon: <Briefcase size={22} />, tab: 'jobs', badge: 'JOBS' },
+    { label: 'Resume Verify', desc: '3-layer resume verification system', icon: <Shield size={22} />, tab: 'verify', badge: 'VERIFY', link: '/resume-verification' },
     { label: 'Recruiter Interview', desc: 'Join live interview with recruiter', icon: <Video size={22} />, tab: 'recruiter', badge: 'LIVE' },
     { label: 'Practice Interview', desc: 'AI interviewer with instant feedback', icon: <Dumbbell size={22} />, tab: 'practice', badge: 'PRACTICE' },
     { label: 'Coding Practice', desc: 'LeetCode-style problems with hints', icon: <Code size={22} />, tab: 'coding', badge: 'DSA' },
     { label: 'AI Interview', desc: 'Full AI-powered mock interview', icon: <Bot size={22} />, tab: 'ai-interview', badge: 'AI' },
+    { label: 'AI Calling', desc: 'AI phone interview via Twilio', icon: <PhoneCall size={22} />, tab: 'ai-calling', badge: 'CALL' },
     { label: 'Spec AI', desc: 'AI assistant for interview prep', icon: <BookOpen size={22} />, tab: 'axiom', badge: 'CHAT' },
     { label: 'My Results', desc: 'Scores, rankings & leaderboard', icon: <Trophy size={22} />, tab: 'results', badge: 'SCORES', link: '/candidate-results' },
     { label: 'Analytics', desc: 'Deep visual analytics & insights', icon: <BarChart3 size={22} />, tab: 'analytics', badge: 'NEW', link: '/candidate-analytics' },
@@ -192,7 +220,7 @@ function DashboardTab({ user, initials, setActiveTab }) {
 
       <div className="cd-grid">
         {/* Profile Card */}
-        <div className="cd-card cd-profile-card">
+        <div className="cd-card cd-profile-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/candidate-profile')}>
           <div className="cd-profile-banner">
             <div className="cd-profile-avatar">{initials}</div>
           </div>
@@ -303,6 +331,510 @@ function DashboardTab({ user, initials, setActiveTab }) {
             <Shield size={40} /><h4>No assessments yet</h4><p>When companies assign assessments, they'll appear here</p>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   JOBS TAB — Browse Available Jobs + Kanban Overview
+   ═══════════════════════════════════════════════════════════════════ */
+function JobsTab({ user }) {
+  const [viewMode, setViewMode] = useState('browse'); // 'browse' | 'kanban'
+  const [jobs, setJobs] = useState([]);
+  const [kanban, setKanban] = useState({ applied: [], shortlisted: [], selected: [], rejected: [] });
+  const [counts, setCounts] = useState({ applied: 0, shortlisted: 0, selected: 0, rejected: 0, total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [locationFilter, setLocationFilter] = useState('All');
+  const [typeFilter, setTypeFilter] = useState('All');
+  const [appliedIds, setAppliedIds] = useState(new Set());
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [applyingId, setApplyingId] = useState(null);
+
+  useEffect(() => { fetchAll(); }, []);
+
+  const fetchAll = async () => {
+    setLoading(true);
+    try {
+      const [jobsRes, kanbanRes] = await Promise.all([
+        axios.get(`${API_URL}/api/jobs/browse`).catch(() => ({ data: { jobs: [] } })),
+        axios.get(`${API_URL}/api/jobs/kanban/${user.id}`).catch(() => ({ data: { kanban: { applied: [], shortlisted: [], selected: [], rejected: [] }, counts: {} } })),
+      ]);
+      setJobs(jobsRes.data.jobs || []);
+      setKanban(kanbanRes.data.kanban || { applied: [], shortlisted: [], selected: [], rejected: [] });
+      setCounts(kanbanRes.data.counts || {});
+      // Build set of applied job IDs
+      const allApps = [
+        ...(kanbanRes.data.kanban?.applied || []),
+        ...(kanbanRes.data.kanban?.shortlisted || []),
+        ...(kanbanRes.data.kanban?.selected || []),
+        ...(kanbanRes.data.kanban?.rejected || []),
+      ];
+      setAppliedIds(new Set(allApps.map(a => a.job?.id).filter(Boolean)));
+    } catch (err) {
+      console.error('Jobs fetch error:', err);
+    } finally { setLoading(false); }
+  };
+
+  const handleApply = async (jobId) => {
+    setApplyingId(jobId);
+    try {
+      await axios.post(`${API_URL}/api/jobs/${jobId}/apply`, { candidateId: user.id });
+      await fetchAll();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to apply');
+    } finally { setApplyingId(null); }
+  };
+
+  const filteredJobs = jobs.filter(j => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!j.title?.toLowerCase().includes(q) && !j.companyName?.toLowerCase().includes(q) && !j.department?.toLowerCase().includes(q)) return false;
+    }
+    if (locationFilter !== 'All' && j.location !== locationFilter) return false;
+    if (typeFilter !== 'All' && j.type !== typeFilter) return false;
+    return true;
+  });
+
+  const timeAgo = (dateStr) => {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return `${days}d ago`;
+    return `${Math.floor(days / 7)}w ago`;
+  };
+
+  const getStatusColor = (status) => {
+    const colors = { applied: '#3b82f6', shortlisted: '#f59e0b', selected: '#22c55e', rejected: '#ef4444' };
+    return colors[status] || '#6b7280';
+  };
+
+  return (
+    <div className="cd-container cd-tab-content">
+      <div className="cd-welcome">
+        <h1>Available Jobs & Applications</h1>
+        <p>Browse jobs, apply, and track your application status</p>
+      </div>
+
+      {/* Stats Strip */}
+      <div className="jt-stats-strip">
+        <div className="jt-stat" style={{ borderColor: '#3b82f6' }}>
+          <span className="jt-stat-num">{counts.applied || 0}</span>
+          <span className="jt-stat-label">Applied</span>
+        </div>
+        <div className="jt-stat" style={{ borderColor: '#f59e0b' }}>
+          <span className="jt-stat-num">{counts.shortlisted || 0}</span>
+          <span className="jt-stat-label">Shortlisted</span>
+        </div>
+        <div className="jt-stat" style={{ borderColor: '#22c55e' }}>
+          <span className="jt-stat-num">{counts.selected || 0}</span>
+          <span className="jt-stat-label">Selected</span>
+        </div>
+        <div className="jt-stat" style={{ borderColor: '#ef4444' }}>
+          <span className="jt-stat-num">{counts.rejected || 0}</span>
+          <span className="jt-stat-label">Rejected</span>
+        </div>
+      </div>
+
+      {/* View Toggle */}
+      <div className="jt-toolbar">
+        <div className="jt-view-toggle">
+          <button className={viewMode === 'browse' ? 'active' : ''} onClick={() => setViewMode('browse')}>
+            <List size={16} /> Browse Jobs
+          </button>
+          <button className={viewMode === 'kanban' ? 'active' : ''} onClick={() => setViewMode('kanban')}>
+            <Columns3 size={16} /> Kanban Board
+          </button>
+        </div>
+        {viewMode === 'browse' && (
+          <div className="jt-filters">
+            <div className="jt-search-box">
+              <Search size={14} />
+              <input placeholder="Search jobs..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            </div>
+            <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)}>
+              <option value="All">All Locations</option>
+              <option value="Remote">Remote</option>
+              <option value="On-site">On-site</option>
+              <option value="Hybrid">Hybrid</option>
+            </select>
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+              <option value="All">All Types</option>
+              <option value="Full-Time">Full-Time</option>
+              <option value="Part-Time">Part-Time</option>
+              <option value="Contract">Contract</option>
+              <option value="Internship">Internship</option>
+            </select>
+          </div>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="cd-empty-state"><p>Loading...</p></div>
+      ) : viewMode === 'browse' ? (
+        /* ── Browse View ── */
+        <div className="jt-browse-layout">
+          <div className="jt-jobs-list-full">
+            {filteredJobs.length === 0 ? (
+              <div className="cd-empty-state">
+                <Briefcase size={40} /><h4>No jobs found</h4><p>Try adjusting your search filters</p>
+              </div>
+            ) : (
+              filteredJobs.map(job => (
+                <div className={`jt-job-card ${selectedJob?.id === job.id ? 'active' : ''}`} key={job.id} onClick={() => setSelectedJob(job)}>
+                  <div className="jt-job-card-header">
+                    <div>
+                      <h3>{job.title}</h3>
+                      <div className="jt-job-meta">
+                        <span><Building2 size={13} /> {job.companyName}</span>
+                        <span><MapPin size={13} /> {job.location}</span>
+                        <span><Clock size={13} /> {timeAgo(job.createdAt)}</span>
+                      </div>
+                    </div>
+                    <div className="jt-job-card-actions">
+                      <span className="jt-type-badge">{job.type}</span>
+                      {job.skills?.length > 0 && (
+                        <div className="jt-skills-row">
+                          {job.skills.slice(0, 3).map((s, i) => <span key={i} className="jt-skill-chip">{s}</span>)}
+                          {job.skills.length > 3 && <span className="jt-skill-chip more">+{job.skills.length - 3}</span>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {job.description && <p className="jt-job-desc">{job.description.slice(0, 150)}{job.description.length > 150 ? '...' : ''}</p>}
+                  <div className="jt-job-card-footer">
+                    <span className="jt-applicants"><Users size={13} /> {job.applicantCount || 0} applicants</span>
+                    {appliedIds.has(job.id) ? (
+                      <span className="jt-applied-badge"><CheckCircle size={14} /> Applied</span>
+                    ) : (
+                      <button className="jt-apply-btn" disabled={applyingId === job.id} onClick={(e) => { e.stopPropagation(); handleApply(job.id); }}>
+                        {applyingId === job.id ? 'Applying...' : 'Apply Now'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      ) : (
+        /* ── Kanban View ── */
+        <div className="jt-kanban-board">
+          {[
+            { key: 'applied', label: 'Applied', color: '#3b82f6', icon: <FileText size={16} /> },
+            { key: 'shortlisted', label: 'Shortlisted', color: '#f59e0b', icon: <Star size={16} /> },
+            { key: 'selected', label: 'Selected', color: '#22c55e', icon: <CheckCircle size={16} /> },
+            { key: 'rejected', label: 'Rejected', color: '#ef4444', icon: <XCircle size={16} /> },
+          ].map(col => (
+            <div className="jt-kanban-column" key={col.key}>
+              <div className="jt-kanban-col-header" style={{ borderTopColor: col.color }}>
+                <div className="jt-kanban-col-title">
+                  {col.icon}
+                  <span>{col.label}</span>
+                  <span className="jt-kanban-count" style={{ background: col.color }}>{kanban[col.key]?.length || 0}</span>
+                </div>
+              </div>
+              <div className="jt-kanban-col-body">
+                {(kanban[col.key] || []).length === 0 ? (
+                  <div className="jt-kanban-empty">No applications</div>
+                ) : (
+                  (kanban[col.key] || []).map(app => (
+                    <div className="jt-kanban-card" key={app.id}>
+                      <h4>{app.job?.title || 'Unknown Job'}</h4>
+                      <div className="jt-kanban-card-meta">
+                        <span><Building2 size={12} /> {app.job?.companyName}</span>
+                        <span><MapPin size={12} /> {app.job?.location}</span>
+                      </div>
+                      {app.job?.skills?.length > 0 && (
+                        <div className="jt-kanban-skills">
+                          {app.job.skills.slice(0, 3).map((s, i) => <span key={i} className="jt-skill-chip small">{s}</span>)}
+                        </div>
+                      )}
+                      <div className="jt-kanban-card-footer">
+                        <span className="jt-kanban-date">{timeAgo(app.appliedAt)}</span>
+                        <span className="jt-kanban-status" style={{ color: col.color }}>{app.status}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   AI CALLING TAB — Phone-based AI Interview via Twilio
+   ═══════════════════════════════════════════════════════════════════ */
+function AICallingTab({ user }) {
+  const [serverStatus, setServerStatus] = useState('checking');
+  const [candidates, setCandidates] = useState({});
+  const [selectedCandidate, setSelectedCandidate] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [ngrokUrl, setNgrokUrl] = useState('');
+  const [callState, setCallState] = useState('idle'); // idle | calling | active | ended
+  const [callInfo, setCallInfo] = useState(null);
+  const [callLogs, setCallLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    checkServerStatus();
+    fetchCandidates();
+    fetchLogs();
+  }, []);
+
+  const checkServerStatus = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/ai-calling/health`);
+      setServerStatus(res.data.status === 'online' ? 'online' : 'offline');
+    } catch { setServerStatus('offline'); }
+  };
+
+  const fetchCandidates = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/ai-calling/candidates`);
+      setCandidates(res.data.candidates || res.data || {});
+    } catch { /* keep empty */ }
+  };
+
+  const fetchLogs = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/ai-calling/logs`);
+      setCallLogs(res.data.logs || []);
+    } catch { /* keep empty */ }
+  };
+
+  const handleInitiateCall = async () => {
+    if (!phoneNumber.trim()) return alert('Please enter a phone number');
+    setLoading(true);
+    setCallState('calling');
+    try {
+      const res = await axios.post(`${API_URL}/api/ai-calling/initiate-call`, {
+        phoneNumber: phoneNumber.trim(),
+        candidateKey: selectedCandidate || undefined,
+        ngrokUrl: ngrokUrl.trim() || undefined,
+      });
+      setCallInfo(res.data);
+      setCallState('active');
+      // Poll call status
+      if (res.data.callSid) {
+        pollCallStatus(res.data.callSid);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to initiate call');
+      setCallState('idle');
+    } finally { setLoading(false); }
+  };
+
+  const pollCallStatus = (callSid) => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/ai-calling/call-status/${callSid}`);
+        setCallInfo(prev => ({ ...prev, ...res.data }));
+        if (['completed', 'failed', 'canceled', 'no-answer', 'busy'].includes(res.data.status)) {
+          setCallState('ended');
+          clearInterval(interval);
+          fetchLogs(); // Refresh logs after call ends
+        }
+      } catch { /* keep polling */ }
+    }, 5000);
+    // Stop polling after 10 minutes
+    setTimeout(() => clearInterval(interval), 600000);
+  };
+
+  const resetCall = () => {
+    setCallState('idle');
+    setCallInfo(null);
+    setPhoneNumber('');
+    setSelectedCandidate('');
+  };
+
+  const candidateEntries = Object.entries(candidates);
+
+  return (
+    <div className="cd-container cd-tab-content">
+      <div className="cd-welcome">
+        <h1>AI Phone Interview</h1>
+        <p>Initiate AI-powered phone interviews using voice calling technology</p>
+      </div>
+
+      {/* Server Status Banner */}
+      <div className={`aic-status-banner ${serverStatus}`}>
+        <div className="aic-status-dot" />
+        <span>
+          {serverStatus === 'online' ? 'AI Calling Server Online' :
+           serverStatus === 'offline' ? 'AI Calling Server Offline — Start the Python server (python server.py)' :
+           'Checking server status...'}
+        </span>
+        <button className="aic-refresh-btn" onClick={checkServerStatus}>Refresh</button>
+      </div>
+
+      <div className="aic-grid">
+        {/* Call Setup Card */}
+        <div className="cd-card aic-setup-card">
+          <div className="cd-card-header">
+            <h3><Phone size={18} /> Initiate Call</h3>
+          </div>
+
+          {callState === 'idle' && (
+            <div className="aic-form">
+              <div className="aic-form-group">
+                <label>Phone Number</label>
+                <input
+                  type="tel"
+                  placeholder="+91 XXXXX XXXXX"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="aic-input"
+                />
+              </div>
+
+              <div className="aic-form-group">
+                <label>Select Candidate Profile</label>
+                <select value={selectedCandidate} onChange={(e) => setSelectedCandidate(e.target.value)} className="aic-select">
+                  <option value="">-- Select candidate --</option>
+                  {candidateEntries.map(([key, c]) => (
+                    <option key={key} value={key}>{c.name || key} — {c.position}</option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedCandidate && candidates[selectedCandidate] && (
+                <div className="aic-candidate-preview">
+                  <h4>{candidates[selectedCandidate].name}</h4>
+                  <p>{candidates[selectedCandidate].position}</p>
+                  <div className="aic-candidate-details">
+                    <div><strong>Score:</strong> {candidates[selectedCandidate].assessment_score}%</div>
+                    <div><strong>Skills:</strong> {candidates[selectedCandidate].priority_skills?.join(', ')}</div>
+                    <div><strong>Weak Areas:</strong> {candidates[selectedCandidate].weak_areas?.join(', ')}</div>
+                  </div>
+                </div>
+              )}
+
+              <div className="aic-form-group">
+                <label>Ngrok URL <span className="aic-optional">(optional — override .env)</span></label>
+                <input
+                  type="url"
+                  placeholder="https://xxxx.ngrok-free.app"
+                  value={ngrokUrl}
+                  onChange={(e) => setNgrokUrl(e.target.value)}
+                  className="aic-input"
+                />
+              </div>
+
+              <button className="aic-call-btn" onClick={handleInitiateCall} disabled={loading || !phoneNumber.trim()}>
+                <PhoneCall size={18} /> {loading ? 'Initiating...' : 'Start AI Call'}
+              </button>
+            </div>
+          )}
+
+          {callState === 'calling' && (
+            <div className="aic-calling-state">
+              <div className="aic-calling-anim">
+                <PhoneCall size={48} className="aic-pulse" />
+              </div>
+              <h3>Calling...</h3>
+              <p>Initiating AI interview call to {phoneNumber}</p>
+            </div>
+          )}
+
+          {callState === 'active' && (
+            <div className="aic-active-state">
+              <div className="aic-active-icon">
+                <Mic size={48} />
+              </div>
+              <h3>Call In Progress</h3>
+              <p>AI is conducting the phone interview</p>
+              {callInfo && (
+                <div className="aic-call-details">
+                  <div><strong>Call SID:</strong> {callInfo.callSid?.slice(0, 20)}...</div>
+                  <div><strong>Status:</strong> <span className="aic-call-status active">{callInfo.status}</span></div>
+                  <div><strong>To:</strong> {callInfo.to}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {callState === 'ended' && (
+            <div className="aic-ended-state">
+              <div className="aic-ended-icon">
+                <PhoneOff size={48} />
+              </div>
+              <h3>Call Ended</h3>
+              {callInfo && (
+                <div className="aic-call-details">
+                  <div><strong>Duration:</strong> {callInfo.duration || 0}s</div>
+                  <div><strong>Status:</strong> <span className="aic-call-status ended">{callInfo.status}</span></div>
+                </div>
+              )}
+              <button className="aic-call-btn" onClick={resetCall}>
+                <Phone size={16} /> New Call
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* How It Works Card */}
+        <div className="cd-card aic-info-card">
+          <div className="cd-card-header">
+            <h3><Volume2 size={18} /> How It Works</h3>
+          </div>
+          <div className="aic-steps">
+            {[
+              { step: 1, title: 'Setup', desc: 'Start the Python AI server, ngrok tunnel, and Ollama LLM', icon: '⚙️' },
+              { step: 2, title: 'Select Candidate', desc: 'Choose a candidate profile for tailored interview questions', icon: '👤' },
+              { step: 3, title: 'Initiate Call', desc: 'Enter phone number and trigger the AI call via Twilio', icon: '📞' },
+              { step: 4, title: 'AI Interview', desc: 'AI agent conducts voice interview with real-time speech recognition', icon: '🤖' },
+              { step: 5, title: 'Review Logs', desc: 'View call transcripts, responses, and assessment results', icon: '📋' },
+            ].map(s => (
+              <div className="aic-step" key={s.step}>
+                <div className="aic-step-num">{s.icon}</div>
+                <div>
+                  <h4>Step {s.step}: {s.title}</h4>
+                  <p>{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="aic-prereqs">
+            <h4>Prerequisites</h4>
+            <ul>
+              <li><code>ollama run llama3.1:8b</code> — Run Ollama LLM locally</li>
+              <li><code>ngrok http 8000</code> — Tunnel for Twilio webhook</li>
+              <li><code>python server.py</code> — Start AI Calling server on port 8000</li>
+              <li>Set <code>TWILIO_ACCOUNT_SID</code>, <code>TWILIO_AUTH_TOKEN</code>, <code>TWILIO_PHONE_NUMBER</code>, <code>NGROK_URL</code> in backend <code>.env</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Call Logs */}
+      <div className="cd-card aic-logs-card">
+        <div className="cd-card-header">
+          <h3><FileText size={18} /> Call Logs</h3>
+          <button className="aic-refresh-btn" onClick={fetchLogs}>Refresh</button>
+        </div>
+        {callLogs.length === 0 ? (
+          <div className="cd-empty-state">
+            <Phone size={40} /><h4>No call logs yet</h4><p>Initiate an AI call to see logs here</p>
+          </div>
+        ) : (
+          <div className="aic-logs-list">
+            {callLogs.slice(0, 20).map((log, i) => (
+              <div className="aic-log-item" key={i}>
+                <div className="aic-log-time">{new Date(log.timestamp || log.time).toLocaleString()}</div>
+                <div className="aic-log-msg">{log.message || log.event || JSON.stringify(log)}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

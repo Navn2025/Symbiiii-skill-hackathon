@@ -22,10 +22,12 @@ import CompanyDashboard from './pages/CompanyDashboard'
 import AdminScoring from './pages/AdminScoring'
 import CandidateResults from './pages/CandidateResults'
 import CandidateAnalytics from './pages/CandidateAnalytics'
+import CandidateProfile from './pages/CandidateProfile'
+import ResumeVerification from './pages/ResumeVerification'
 import './App.css'
 
 // Pages that render their own navbar (dashboards)
-const HIDE_NAVBAR_PATHS = ['/candidate-dashboard', '/company-dashboard', '/admin-scoring', '/candidate-results', '/candidate-analytics'];
+const HIDE_NAVBAR_PATHS = ['/candidate-dashboard', '/company-dashboard', '/admin-scoring', '/candidate-results', '/candidate-analytics', '/candidate-profile', '/resume-verification'];
 
 function AppLayout()
 {
@@ -59,6 +61,8 @@ function AppLayout()
                 <Route path="/admin-scoring" element={<AdminScoring />} />
                 <Route path="/candidate-results" element={<CandidateResults />} />
                 <Route path="/candidate-analytics" element={<CandidateAnalytics />} />
+                <Route path="/candidate-profile" element={<CandidateProfile />} />
+                <Route path="/resume-verification" element={<ResumeVerification />} />
             </Routes>
             </div>
         </div>
