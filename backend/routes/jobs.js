@@ -1,0 +1,388 @@
+import express from 'express';
+import Job from '../models/Job.js';
+import Application from '../models/Application.js';
+import User from '../models/User.js';
+
+const router = express.Router();
+
+/* ═══════════════════════════════════════════════════════════════════
+   JOB ROUTES (Company-side)
+   ═══════════════════════════════════════════════════════════════════ */
+
+// Create a new job posting
+router.post('/', async (req, res) => {
+  try {
+    const { title, department, location, type, description, requirements, skills, userId, companyName } = req.body;
+
+    if (!title || !department) {
+      return res.status(400).json({ message: 'Title and department are required' });
+    }
+
+    if (!userId) {
+      return res.status(401).json({ message: 'User ID is required' });
+    }
+
+    // Verify the user is a company role
+    const user = await User.findById(userId);
+    if (!user || !['company_admin', 'company_hr', 'recruiter'].includes(user.role)) {
+      return res.status(403).json({ message: 'Only company users can post jobs' });
+    }
+
+    const job = await Job.create({
+      title,
+      department,
+      location: location || 'Remote',
+      type: type || 'Full-Time',
+      description: description || '',
+      requirements: requirements || '',
+      skills: skills || [],
+      postedBy: userId,
+      companyName: companyName || user.companyName || user.username,
+      status: 'active',
+    });
+
+    console.log(`[JOBS] ✅ Job posted: "${title}" by ${user.username}`);
+
+    return res.status(201).json({
+      message: 'Job posted successfully',
+      job: {
+        id: job._id,
+        title: job.title,
+        department: job.department,
+        location: job.location,
+        type: job.type,
+        description: job.description,
+        requirements: job.requirements,
+        skills: job.skills,
+        companyName: job.companyName,
+        status: job.status,
+        applicantCount: 0,
+        createdAt: job.createdAt,
+      },
+    });
+  } catch (err) {
+    console.error('[JOBS] Post error:', err);
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+// Get all jobs for a company (by userId)
+router.get('/company/:userId', async (req, res) => {
+  try {
+    const jobs = await Job.find({ postedBy: req.params.userId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const jobsWithApplicants = await Promise.all(
+      jobs.map(async (job) => {
+        const applicantCount = await Application.countDocuments({ job: job._id });
+        return {
+          id: job._id,
+          title: job.title,
+          department: job.department,
+          location: job.location,
+          type: job.type,
+          description: job.description,
+          requirements: job.requirements,
+          skills: job.skills,
+          companyName: job.companyName,
+          status: job.status,
+          applicantCount,
+          createdAt: job.createdAt,
+        };
+      })
+    );
+
+    return res.json({ jobs: jobsWithApplicants });
+  } catch (err) {
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+// Get all active jobs (for candidates to browse)
+router.get('/browse', async (req, res) => {
+  try {
+    const { search, location, type, department } = req.query;
+    const filter = { status: 'active' };
+
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { companyName: { $regex: search, $options: 'i' } },
+        { department: { $regex: search, $options: 'i' } },
+      ];
+    }
+    if (location && location !== 'All') filter.location = location;
+    if (type && type !== 'All') filter.type = type;
+    if (department) filter.department = { $regex: department, $options: 'i' };
+
+    const jobs = await Job.find(filter)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const jobsWithApplicants = jobs.map((job) => ({
+      id: job._id,
+      title: job.title,
+      department: job.department,
+      location: job.location,
+      type: job.type,
+      description: job.description,
+      requirements: job.requirements,
+      skills: job.skills,
+      companyName: job.companyName,
+      status: job.status,
+      applicantCount: job.applicantCount || 0,
+      createdAt: job.createdAt,
+    }));
+
+    return res.json({ jobs: jobsWithApplicants });
+  } catch (err) {
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+// Get single job details
+router.get('/:jobId', async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.jobId).lean();
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    const applicantCount = await Application.countDocuments({ job: job._id });
+
+    return res.json({
+      id: job._id,
+      title: job.title,
+      department: job.department,
+      location: job.location,
+      type: job.type,
+      description: job.description,
+      requirements: job.requirements,
+      skills: job.skills,
+      companyName: job.companyName,
+      status: job.status,
+      applicantCount,
+      createdAt: job.createdAt,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+// Update job status
+router.put('/:jobId', async (req, res) => {
+  try {
+    const { status, title, department, location, type, description, requirements } = req.body;
+    const update = {};
+    if (status) update.status = status;
+    if (title) update.title = title;
+    if (department) update.department = department;
+    if (location) update.location = location;
+    if (type) update.type = type;
+    if (description !== undefined) update.description = description;
+    if (requirements !== undefined) update.requirements = requirements;
+
+    const job = await Job.findByIdAndUpdate(req.params.jobId, update, { new: true });
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    return res.json({ message: 'Job updated', job });
+  } catch (err) {
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+// Delete job
+router.delete('/:jobId', async (req, res) => {
+  try {
+    await Job.findByIdAndDelete(req.params.jobId);
+    await Application.deleteMany({ job: req.params.jobId });
+    return res.json({ message: 'Job deleted' });
+  } catch (err) {
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   APPLICATION ROUTES (Candidate-side)
+   ═══════════════════════════════════════════════════════════════════ */
+
+// Apply to a job
+router.post('/:jobId/apply', async (req, res) => {
+  try {
+    const { candidateId, coverLetter } = req.body;
+    const { jobId } = req.params;
+
+    if (!candidateId) {
+      return res.status(401).json({ message: 'Candidate ID is required' });
+    }
+
+    const job = await Job.findById(jobId);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+    if (job.status !== 'active') return res.status(400).json({ message: 'This job is no longer accepting applications' });
+
+    // Check for duplicate application
+    const existing = await Application.findOne({ job: jobId, candidate: candidateId });
+    if (existing) {
+      return res.status(400).json({ message: 'You have already applied to this job' });
+    }
+
+    const application = await Application.create({
+      job: jobId,
+      candidate: candidateId,
+      coverLetter: coverLetter || '',
+      status: 'applied',
+      round: 'Applied',
+    });
+
+    // Increment applicant count
+    await Job.findByIdAndUpdate(jobId, { $inc: { applicantCount: 1 } });
+
+    console.log(`[JOBS] ✅ Application submitted for job "${job.title}" by candidate ${candidateId}`);
+
+    return res.status(201).json({
+      message: 'Application submitted successfully',
+      application: {
+        id: application._id,
+        jobId: application.job,
+        status: application.status,
+        createdAt: application.createdAt,
+      },
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(400).json({ message: 'You have already applied to this job' });
+    }
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+// Get candidate's applications
+router.get('/applications/:candidateId', async (req, res) => {
+  try {
+    const applications = await Application.find({ candidate: req.params.candidateId })
+      .populate('job', 'title department location type companyName status createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const result = applications.map((app) => ({
+      id: app._id,
+      status: app.status,
+      round: app.round,
+      score: app.score,
+      appliedAt: app.createdAt,
+      job: app.job ? {
+        id: app.job._id,
+        title: app.job.title,
+        department: app.job.department,
+        location: app.job.location,
+        type: app.job.type,
+        companyName: app.job.companyName,
+        status: app.job.status,
+      } : null,
+    }));
+
+    return res.json({ applications: result });
+  } catch (err) {
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+// Get applicants for a job (company-side)
+router.get('/:jobId/applicants', async (req, res) => {
+  try {
+    const applications = await Application.find({ job: req.params.jobId })
+      .populate('candidate', 'username email skills bio createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const result = applications.map((app) => ({
+      id: app._id,
+      status: app.status,
+      round: app.round,
+      score: app.score,
+      appliedAt: app.createdAt,
+      candidate: app.candidate ? {
+        id: app.candidate._id,
+        name: app.candidate.username,
+        email: app.candidate.email,
+        skills: app.candidate.skills,
+        bio: app.candidate.bio,
+      } : null,
+    }));
+
+    return res.json({ applicants: result });
+  } catch (err) {
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+// Update application status (company-side)
+router.put('/applications/:applicationId', async (req, res) => {
+  try {
+    const { status, round, score, notes } = req.body;
+    const update = {};
+    if (status) update.status = status;
+    if (round) update.round = round;
+    if (score !== undefined) update.score = score;
+    if (notes !== undefined) update.notes = notes;
+
+    const application = await Application.findByIdAndUpdate(req.params.applicationId, update, { new: true });
+    if (!application) return res.status(404).json({ message: 'Application not found' });
+
+    return res.json({ message: 'Application updated', application });
+  } catch (err) {
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+// Get candidate dashboard stats
+router.get('/stats/:candidateId', async (req, res) => {
+  try {
+    const candidateId = req.params.candidateId;
+    
+    const [totalApplied, inProgress, pending, totalJobs] = await Promise.all([
+      Application.countDocuments({ candidate: candidateId }),
+      Application.countDocuments({ candidate: candidateId, status: { $in: ['screening', 'interview', 'assessment'] } }),
+      Application.countDocuments({ candidate: candidateId, status: 'applied' }),
+      Job.countDocuments({ status: 'active' }),
+    ]);
+
+    return res.json({
+      applied: totalApplied,
+      assessments: inProgress,
+      pending,
+      availableJobs: totalJobs,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+// Get company dashboard stats
+router.get('/company-stats/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    
+    const jobs = await Job.find({ postedBy: userId }).lean();
+    const jobIds = jobs.map(j => j._id);
+
+    const [totalApplicants, inInterview, offered, hired] = await Promise.all([
+      Application.countDocuments({ job: { $in: jobIds } }),
+      Application.countDocuments({ job: { $in: jobIds }, status: 'interview' }),
+      Application.countDocuments({ job: { $in: jobIds }, status: 'offered' }),
+      Application.countDocuments({ job: { $in: jobIds }, status: 'hired' }),
+    ]);
+
+    return res.json({
+      activeJobs: jobs.filter(j => j.status === 'active').length,
+      totalApplicants,
+      inInterview,
+      offered,
+      hired,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: `Server error: ${err.message}` });
+  }
+});
+
+export default router;

@@ -1,0 +1,746 @@
+/* ── Company Dashboard ────────────────────────────────────────────── */
+.cmpd-page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* ── Navbar ──────────────────────────────────────────────────────── */
+.cmpd-navbar {
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--border-primary);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.cmpd-navbar-inner {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 0.7rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.cmpd-logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.cmpd-nav-tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.cmpd-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.55rem 0.9rem;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  transition: all var(--transition-base);
+  font-family: inherit;
+}
+
+.cmpd-tab:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.cmpd-tab.active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cmpd-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.cmpd-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: 0.45rem 0.9rem;
+  min-width: 160px;
+}
+
+.cmpd-search-box svg { color: var(--text-tertiary); flex-shrink: 0; }
+.cmpd-search-box input {
+  background: none; border: none; outline: none;
+  color: var(--text-primary); font-size: 0.82rem; width: 100%; font-family: inherit;
+}
+.cmpd-search-box input::placeholder { color: var(--text-muted); }
+
+.cmpd-icon-btn {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-primary);
+  background: transparent; color: var(--text-secondary);
+  cursor: pointer; transition: all var(--transition-base);
+}
+.cmpd-icon-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); border-color: var(--border-secondary); }
+
+.cmpd-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 0.85rem; color: #fff;
+  border: 2px solid rgba(102,126,234,0.3);
+}
+
+/* ── Main ────────────────────────────────────────────────────────── */
+.cmpd-main { padding: 2rem 0 4rem; }
+.cmpd-container { max-width: 1500px; margin: 0 auto; padding: 0 2rem; }
+
+.cmpd-welcome {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;
+}
+.cmpd-welcome h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 0.25rem; }
+.cmpd-welcome p { color: var(--text-secondary); font-size: 0.9rem; }
+
+/* ── Buttons ─────────────────────────────────────────────────────── */
+.cmpd-btn-primary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0.6rem 1.25rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff; border: none; border-radius: var(--radius-md);
+  font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  transition: all var(--transition-base); font-family: inherit;
+}
+.cmpd-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(102,126,234,0.35); }
+
+.cmpd-btn-secondary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0.6rem 1.25rem;
+  background: transparent; color: var(--text-primary);
+  border: 1px solid var(--border-secondary); border-radius: var(--radius-md);
+  font-size: 0.85rem; font-weight: 500; cursor: pointer;
+  transition: all var(--transition-base); font-family: inherit;
+}
+.cmpd-btn-secondary:hover { background: rgba(255,255,255,0.05); }
+
+.cmpd-btn-sm { padding: 0.4rem 0.9rem; font-size: 0.8rem; }
+
+.cmpd-link-btn {
+  background: none; border: none; color: var(--text-tertiary);
+  cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;
+  transition: color var(--transition-base); font-family: inherit;
+}
+.cmpd-link-btn:hover { color: var(--text-primary); }
+
+/* ── Stats Row ───────────────────────────────────────────────────── */
+.cmpd-stats-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1rem; margin-bottom: 1.75rem;
+}
+@media (max-width: 900px) { .cmpd-stats-row { grid-template-columns: repeat(2, 1fr); } }
+
+.cmpd-stat-card {
+  display: flex; align-items: center; gap: 1rem;
+  background: var(--bg-card); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: 1.1rem 1.25rem;
+  transition: all var(--transition-base);
+}
+.cmpd-stat-card:hover { border-color: var(--border-secondary); transform: translateY(-2px); }
+
+.cmpd-stat-icon {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.cmpd-stat-info { display: flex; flex-direction: column; }
+.cmpd-stat-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.5px; color: var(--text-tertiary); text-transform: uppercase; }
+.cmpd-stat-value { font-size: 1.4rem; font-weight: 700; }
+.cmpd-stat-change { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Cards ────────────────────────────────────────────────────────── */
+.cmpd-card {
+  background: var(--bg-card); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.cmpd-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.1rem 1.35rem; border-bottom: 1px solid var(--border-primary);
+}
+.cmpd-card-header h3 { font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.cmpd-card-body { padding: 0.5rem 0; }
+
+/* ── Overview Grid ───────────────────────────────────────────────── */
+.cmpd-overview-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.25rem;
+}
+@media (max-width: 1100px) { .cmpd-overview-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 700px) { .cmpd-overview-grid { grid-template-columns: 1fr; } }
+
+/* ── List Items ──────────────────────────────────────────────────── */
+.cmpd-list-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.9rem 1.35rem; border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background var(--transition-base);
+}
+.cmpd-list-item:last-child { border-bottom: none; }
+.cmpd-list-item:hover { background: rgba(255,255,255,0.02); }
+.cmpd-list-info { display: flex; flex-direction: column; gap: 3px; }
+.cmpd-list-info strong { font-size: 0.88rem; font-weight: 600; }
+.cmpd-list-info span { font-size: 0.78rem; color: var(--text-muted); }
+.cmpd-list-meta { display: flex; align-items: center; gap: 0.75rem; }
+.cmpd-applicant-count { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text-tertiary); }
+
+/* ── Status Dots/Pills ───────────────────────────────────────────── */
+.cmpd-status-dot, .cmpd-status-pill {
+  font-size: 0.7rem; font-weight: 600; text-transform: capitalize;
+  padding: 3px 10px; border-radius: 100px;
+}
+.cmpd-status-pill.active, .cmpd-status-dot.active { background: rgba(34,197,94,0.12); color: #22c55e; }
+.cmpd-status-pill.draft, .cmpd-status-dot.draft { background: rgba(234,179,8,0.12); color: #eab308; }
+.cmpd-status-pill.passed { background: rgba(34,197,94,0.12); color: #22c55e; }
+.cmpd-status-pill.in-progress { background: rgba(59,130,246,0.12); color: #3b82f6; }
+.cmpd-status-pill.pending { background: rgba(168,85,247,0.12); color: #a855f7; }
+.cmpd-status-pill.completed { background: rgba(34,197,94,0.12); color: #22c55e; }
+.cmpd-status-pill.scheduled { background: rgba(59,130,246,0.12); color: #3b82f6; }
+
+/* ── Pipeline ────────────────────────────────────────────────────── */
+.cmpd-pipeline { padding: 0.75rem 1.35rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.cmpd-pipeline-stage { display: flex; flex-direction: column; gap: 4px; }
+.cmpd-pipeline-stage span { font-size: 0.8rem; color: var(--text-secondary); display: flex; justify-content: space-between; }
+.cmpd-pipeline-stage strong { color: var(--text-primary); }
+.cmpd-pipeline-bar { height: 6px; border-radius: 10px; transition: width 0.6s ease; }
+
+/* ── Schedule Items ──────────────────────────────────────────────── */
+.cmpd-schedule-item {
+  padding: 0.9rem 1.35rem; border-bottom: 1px solid rgba(255,255,255,0.04);
+  display: flex; flex-direction: column; gap: 3px;
+}
+.cmpd-schedule-item:last-child { border-bottom: none; }
+.cmpd-schedule-time { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; }
+.cmpd-schedule-item strong { font-size: 0.88rem; }
+.cmpd-schedule-item > span { font-size: 0.78rem; color: var(--text-tertiary); }
+
+/* ── Jobs Grid ───────────────────────────────────────────────────── */
+.cmpd-jobs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+@media (max-width: 1000px) { .cmpd-jobs-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 650px) { .cmpd-jobs-grid { grid-template-columns: 1fr; } }
+
+.cmpd-job-card {
+  background: var(--bg-card); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: 1.25rem;
+  transition: all var(--transition-base);
+}
+.cmpd-job-card:hover { border-color: var(--border-secondary); transform: translateY(-3px); }
+.cmpd-job-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.cmpd-job-icon {
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md); color: var(--text-primary);
+}
+.cmpd-job-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.6rem; }
+.cmpd-job-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+.cmpd-job-tags span {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 0.75rem; color: var(--text-tertiary);
+  background: rgba(255,255,255,0.03); padding: 3px 8px; border-radius: var(--radius-sm);
+}
+.cmpd-job-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.8rem; color: var(--text-tertiary);
+}
+.cmpd-job-footer span { display: flex; align-items: center; gap: 4px; }
+.cmpd-job-date { color: var(--text-muted); }
+
+/* ── Table ────────────────────────────────────────────────────────── */
+.cmpd-table-card {
+  background: var(--bg-card); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.cmpd-table { width: 100%; border-collapse: collapse; }
+.cmpd-table th {
+  text-align: left; padding: 0.85rem 1.25rem;
+  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text-muted);
+  background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border-primary);
+}
+.cmpd-table td {
+  padding: 0.85rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.88rem;
+}
+.cmpd-table tr:last-child td { border-bottom: none; }
+.cmpd-table tr:hover td { background: rgba(255,255,255,0.015); }
+
+.cmpd-cand-name { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+.cmpd-cand-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 0.75rem; color: #fff; flex-shrink: 0;
+}
+
+.cmpd-score { font-weight: 600; padding: 2px 8px; border-radius: 6px; font-size: 0.82rem; }
+.cmpd-score.high { background: rgba(34,197,94,0.12); color: #22c55e; }
+.cmpd-score.mid  { background: rgba(234,179,8,0.12); color: #eab308; }
+.cmpd-score.low  { background: rgba(239,68,68,0.12); color: #ef4444; }
+
+.cmpd-action-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 0.35rem 0.75rem; border: 1px solid var(--border-primary);
+  background: transparent; color: var(--text-secondary); border-radius: var(--radius-sm);
+  font-size: 0.78rem; cursor: pointer; transition: all var(--transition-base); font-family: inherit;
+}
+.cmpd-action-btn:hover { border-color: var(--border-secondary); color: var(--text-primary); background: rgba(255,255,255,0.03); }
+
+/* ── Filter Row ──────────────────────────────────────────────────── */
+.cmpd-filter-row { display: flex; gap: 0.4rem; }
+.cmpd-filter-btn {
+  padding: 0.4rem 0.9rem; border: 1px solid var(--border-primary);
+  background: transparent; color: var(--text-secondary);
+  border-radius: var(--radius-sm); font-size: 0.8rem; cursor: pointer;
+  transition: all var(--transition-base); font-family: inherit;
+}
+.cmpd-filter-btn.active, .cmpd-filter-btn:hover {
+  background: rgba(255,255,255,0.06); color: var(--text-primary); border-color: var(--border-secondary);
+}
+
+/* ── Quiz Grid ───────────────────────────────────────────────────── */
+.cmpd-quiz-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+@media (max-width: 1000px) { .cmpd-quiz-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 650px) { .cmpd-quiz-grid { grid-template-columns: 1fr; } }
+
+.cmpd-quiz-card {
+  background: var(--bg-card); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: 1.25rem;
+  transition: all var(--transition-base);
+}
+.cmpd-quiz-card:hover { border-color: var(--border-secondary); }
+.cmpd-quiz-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.cmpd-quiz-icon {
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  background: rgba(234,179,8,0.1); border-radius: var(--radius-md); color: #eab308;
+}
+.cmpd-quiz-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.35rem; }
+.cmpd-quiz-round { font-size: 0.78rem; color: var(--text-tertiary); display: block; margin-bottom: 1rem; }
+.cmpd-quiz-meta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+.cmpd-quiz-meta span { display: flex; align-items: center; gap: 4px; font-size: 0.78rem; color: var(--text-muted); }
+.cmpd-quiz-actions { padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.04); }
+
+/* ── Interview Grid ──────────────────────────────────────────────── */
+.cmpd-interview-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.25rem; }
+@media (max-width: 800px) { .cmpd-interview-grid { grid-template-columns: 1fr; } }
+
+.cmpd-tool-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0.9rem 1.35rem; border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer; transition: background var(--transition-base);
+  color: var(--text-secondary); font-size: 0.88rem;
+}
+.cmpd-tool-item:last-child { border-bottom: none; }
+.cmpd-tool-item:hover { background: rgba(255,255,255,0.03); color: var(--text-primary); }
+.cmpd-tool-item span { flex: 1; }
+
+/* ── Reports Grid ────────────────────────────────────────────────── */
+.cmpd-reports-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+@media (max-width: 900px) { .cmpd-reports-grid { grid-template-columns: 1fr; } }
+
+.cmpd-report-card {
+  background: var(--bg-card); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg); padding: 1.5rem;
+  transition: all var(--transition-base);
+}
+.cmpd-report-card:hover { border-color: var(--border-secondary); transform: translateY(-2px); }
+.cmpd-report-icon {
+  width: 56px; height: 56px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;
+}
+.cmpd-report-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.3rem; }
+.cmpd-report-card > p { font-size: 0.82rem; color: var(--text-tertiary); margin-bottom: 1.25rem; }
+.cmpd-report-preview { display: flex; gap: 1.5rem; }
+.cmpd-mini-stat { display: flex; flex-direction: column; }
+.cmpd-mini-stat strong { font-size: 1.1rem; font-weight: 700; }
+.cmpd-mini-stat span { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
+
+/* ── Modal ────────────────────────────────────────────────────────── */
+.cmpd-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 2rem;
+}
+.cmpd-modal {
+  background: var(--bg-card); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl); padding: 2rem; width: 100%; max-width: 560px;
+  max-height: 90vh; overflow-y: auto;
+}
+.cmpd-modal h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem; }
+.cmpd-modal-sub { color: var(--text-tertiary); font-size: 0.85rem; margin-bottom: 1.5rem; }
+
+.cmpd-form-group { margin-bottom: 1.1rem; }
+.cmpd-form-group label { display: block; font-size: 0.82rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
+.cmpd-form-group input,
+.cmpd-form-group select,
+.cmpd-form-group textarea {
+  width: 100%; padding: 0.65rem 0.9rem;
+  background: var(--bg-input); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md); color: var(--text-primary);
+  font-size: 0.88rem; font-family: inherit;
+  transition: border-color var(--transition-base);
+}
+.cmpd-form-group input:focus,
+.cmpd-form-group select:focus,
+.cmpd-form-group textarea:focus { outline: none; border-color: var(--border-secondary); }
+.cmpd-form-group select { cursor: pointer; }
+.cmpd-form-group textarea { resize: vertical; min-height: 60px; }
+
+.cmpd-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+.cmpd-modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-primary); }
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .cmpd-navbar-inner { padding: 0.6rem 1rem; gap: 0.75rem; }
+  .cmpd-nav-tabs { overflow-x: auto; scrollbar-width: none; }
+  .cmpd-nav-tabs::-webkit-scrollbar { display: none; }
+  .cmpd-search-box { display: none; }
+  .cmpd-container { padding: 0 1rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ANALYTICS & CHARTS
+   ═══════════════════════════════════════════════════════════════════ */
+
+.cmpd-analytics-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+@media (max-width: 900px) {
+  .cmpd-analytics-row { grid-template-columns: 1fr; }
+}
+
+.cmpd-analytics-card {
+  min-height: 280px;
+}
+
+/* ── Bar Chart ──────────────────────────────────────────────────── */
+.cmpd-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  height: 200px;
+  padding-bottom: 8px;
+}
+
+.cmpd-bar-chart-sm {
+  height: 160px;
+}
+
+.cmpd-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+}
+
+.cmpd-bar-value {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.cmpd-bar-track {
+  flex: 1;
+  width: 100%;
+  max-width: 40px;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 6px 6px 0 0;
+  overflow: hidden;
+}
+
+.cmpd-bar-fill {
+  width: 100%;
+  border-radius: 6px 6px 0 0;
+  transition: height 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  min-height: 4px;
+  position: relative;
+}
+.cmpd-bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.15), transparent);
+  border-radius: inherit;
+}
+
+.cmpd-bar-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.cmpd-chart-footer {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 1rem;
+  margin-top: 0.75rem;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+.cmpd-chart-footer strong { color: var(--text-primary); }
+
+/* ── Funnel Chart ───────────────────────────────────────────────── */
+.cmpd-funnel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cmpd-funnel-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 40px 45px;
+  align-items: center;
+  gap: 10px;
+}
+
+.cmpd-funnel-label {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.cmpd-funnel-track {
+  height: 24px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.cmpd-funnel-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+}
+.cmpd-funnel-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.12), transparent);
+  border-radius: inherit;
+}
+
+.cmpd-funnel-count {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.cmpd-funnel-pct {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* ── Donut Chart ────────────────────────────────────────────────── */
+.cmpd-donut-container {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.cmpd-donut {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  flex-shrink: 0;
+}
+
+.cmpd-donut svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.cmpd-donut circle {
+  transition: stroke-dasharray 1s ease, stroke-dashoffset 1s ease;
+}
+
+.cmpd-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.cmpd-donut-center strong {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.cmpd-donut-center span {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cmpd-donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.cmpd-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cmpd-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.cmpd-legend-label {
+  flex: 1;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.cmpd-legend-value {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ── Horizontal Bar Chart ───────────────────────────────────────── */
+.cmpd-horizontal-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 1.25rem;
+}
+
+.cmpd-h-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cmpd-h-bar-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cmpd-h-bar-label {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.cmpd-h-bar-value {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cmpd-h-bar-track {
+  height: 10px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cmpd-h-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+}
+.cmpd-h-bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0.1), transparent);
+  border-radius: inherit;
+}
+
+.cmpd-source-summary {
+  display: flex;
+  gap: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+
+/* ── Skill Assessment Bars ─────────────────────────────────────── */
+.cmpd-skill-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cmpd-skill-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cmpd-skill-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.cmpd-skill-track {
+  height: 8px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cmpd-skill-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@media (max-width: 700px) {
+  .cmpd-donut-container { flex-direction: column; align-items: center; }
+  .cmpd-funnel-row { grid-template-columns: 60px 1fr 35px 40px; }
+}
+
