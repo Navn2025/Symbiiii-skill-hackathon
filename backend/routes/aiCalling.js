@@ -20,6 +20,17 @@ router.get('/health', async (req, res) => {
   }
 });
 
+// Get config info (ngrok URL from env)
+router.get('/config', (req, res) => {
+  const ngrokUrl = process.env.NGROK_URL || '';
+  const hasTwilio = !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER);
+  return res.json({
+    ngrokUrl: ngrokUrl ? `${ngrokUrl}` : '',
+    hasTwilio,
+    twilioPhone: process.env.TWILIO_PHONE_NUMBER || '',
+  });
+});
+
 // Get available demo candidates
 router.get('/candidates', async (req, res) => {
   try {
@@ -28,36 +39,12 @@ router.get('/candidates', async (req, res) => {
   } catch (err) {
     // Return built-in demo candidates if server is offline
     return res.json({
-      candidates: {
-        backend_developer: {
-          name: 'Ravi Kumar',
-          position: 'Backend Developer',
-          assessment_score: 78,
-          priority_skills: ['Python', 'Django', 'REST APIs'],
-          weak_areas: ['System Design', 'Microservices'],
-        },
-        frontend_developer: {
-          name: 'Priya Sharma',
-          position: 'Frontend Developer',
-          assessment_score: 82,
-          priority_skills: ['React', 'JavaScript', 'CSS'],
-          weak_areas: ['Testing', 'Performance Optimization'],
-        },
-        fullstack_developer: {
-          name: 'Amit Patel',
-          position: 'Full Stack Developer',
-          assessment_score: 75,
-          priority_skills: ['Node.js', 'React', 'MongoDB'],
-          weak_areas: ['DevOps', 'Security'],
-        },
-        data_analyst: {
-          name: 'Sneha Reddy',
-          position: 'Data Analyst',
-          assessment_score: 85,
-          priority_skills: ['Python', 'SQL', 'Tableau'],
-          weak_areas: ['Machine Learning', 'Statistical Modeling'],
-        },
-      },
+      demos: [
+        { id: 'demo1', name: 'Rahul Sharma', position: 'Backend Developer' },
+        { id: 'demo2', name: 'Priya Patel', position: 'Frontend Developer' },
+        { id: 'demo3', name: 'Amit Kumar', position: 'Full Stack Developer' },
+        { id: 'demo4', name: 'Sneha Reddy', position: 'Data Analyst' },
+      ],
     });
   }
 });
@@ -65,12 +52,12 @@ router.get('/candidates', async (req, res) => {
 // Set active demo candidate
 router.post('/set-candidate', async (req, res) => {
   try {
-    const { candidateKey } = req.body;
-    if (!candidateKey) {
-      return res.status(400).json({ message: 'candidateKey is required' });
+    const { candidateId } = req.body;
+    if (!candidateId) {
+      return res.status(400).json({ message: 'candidateId is required' });
     }
 
-    const resp = await axios.post(`${AI_CALLING_URL}/demo`, { candidate_key: candidateKey }, { timeout: 5000 });
+    const resp = await axios.post(`${AI_CALLING_URL}/demo`, { id: candidateId }, { timeout: 5000 });
     return res.json(resp.data);
   } catch (err) {
     console.error('[AI-CALLING] Set candidate error:', err.message);
@@ -78,19 +65,19 @@ router.post('/set-candidate', async (req, res) => {
   }
 });
 
-// Initiate a call via Twilio
+// Initiate a call via Twilio (ngrok URL is read from .env automatically)
 router.post('/initiate-call', async (req, res) => {
   try {
-    const { phoneNumber, candidateKey, ngrokUrl } = req.body;
+    const { phoneNumber, candidateId } = req.body;
 
     if (!phoneNumber) {
       return res.status(400).json({ message: 'Phone number is required' });
     }
 
-    // First, set the active candidate if provided
-    if (candidateKey) {
+    // Set the active candidate if provided
+    if (candidateId) {
       try {
-        await axios.post(`${AI_CALLING_URL}/demo`, { candidate_key: candidateKey }, { timeout: 5000 });
+        await axios.post(`${AI_CALLING_URL}/demo`, { id: candidateId }, { timeout: 5000 });
       } catch (e) {
         console.warn('[AI-CALLING] Could not set candidate:', e.message);
       }
@@ -100,14 +87,14 @@ router.post('/initiate-call', async (req, res) => {
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
-    const webhookUrl = ngrokUrl || process.env.NGROK_URL;
+    const webhookUrl = process.env.NGROK_URL;
 
     if (!accountSid || !authToken || !twilioPhone) {
-      return res.status(500).json({ message: 'Twilio credentials not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER in .env' });
+      return res.status(500).json({ message: 'Twilio credentials not configured in .env' });
     }
 
     if (!webhookUrl) {
-      return res.status(500).json({ message: 'NGROK_URL not configured. Start ngrok and set the URL in .env' });
+      return res.status(500).json({ message: 'NGROK_URL not configured in .env' });
     }
 
     // Make Twilio API call directly
@@ -117,6 +104,8 @@ router.post('/initiate-call', async (req, res) => {
     formData.append('To', phoneNumber);
     formData.append('From', twilioPhone);
     formData.append('Url', `${webhookUrl}/answer`);
+    formData.append('StatusCallback', `${webhookUrl}/status`);
+    formData.append('StatusCallbackEvent', 'initiated ringing answered completed');
 
     const twilioResp = await axios.post(twilioUrl, formData.toString(), {
       auth: { username: accountSid, password: authToken },
@@ -138,6 +127,25 @@ router.post('/initiate-call', async (req, res) => {
     return res.status(500).json({
       message: `Failed to initiate call: ${err.response?.data?.message || err.message}`,
     });
+  }
+});
+
+// Get call conversation logs from the Python server
+router.get('/conversation', async (req, res) => {
+  try {
+    const resp = await axios.get(`${AI_CALLING_URL}/logs`, { timeout: 5000 });
+    const logs = resp.data.logs || [];
+    // Get the latest call's conversation log
+    if (logs.length > 0) {
+      const latest = logs[logs.length - 1];
+      return res.json({
+        candidate: latest.candidate || '',
+        log: latest.log || [],
+      });
+    }
+    return res.json({ candidate: '', log: [] });
+  } catch (err) {
+    return res.json({ candidate: '', log: [] });
   }
 });
 

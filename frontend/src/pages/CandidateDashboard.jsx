@@ -570,24 +570,46 @@ function JobsTab({ user }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   AI CALLING TAB — Phone-based AI Interview via Twilio
+   AI CALLING TAB — Live AI Phone Interview
    ═══════════════════════════════════════════════════════════════════ */
 function AICallingTab({ user }) {
   const [serverStatus, setServerStatus] = useState('checking');
-  const [candidates, setCandidates] = useState({});
+  const [candidates, setCandidates] = useState([]);
   const [selectedCandidate, setSelectedCandidate] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [ngrokUrl, setNgrokUrl] = useState('');
-  const [callState, setCallState] = useState('idle'); // idle | calling | active | ended
+  const [callState, setCallState] = useState('idle'); // idle | calling | ringing | active | ended
   const [callInfo, setCallInfo] = useState(null);
-  const [callLogs, setCallLogs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [transcript, setTranscript] = useState([]);
+  const [callDuration, setCallDuration] = useState(0);
+  const [config, setConfig] = useState({ ngrokUrl: '', hasTwilio: false, twilioPhone: '' });
+  const transcriptRef = useRef(null);
+  const timerRef = useRef(null);
+  const pollRef = useRef(null);
 
   useEffect(() => {
     checkServerStatus();
     fetchCandidates();
-    fetchLogs();
+    fetchConfig();
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, []);
+
+  // Auto-scroll transcript
+  useEffect(() => {
+    if (transcriptRef.current) {
+      transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
+    }
+  }, [transcript]);
+
+  const fetchConfig = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/ai-calling/config`);
+      setConfig(res.data);
+    } catch { /* ignore */ }
+  };
 
   const checkServerStatus = async () => {
     try {
@@ -599,32 +621,71 @@ function AICallingTab({ user }) {
   const fetchCandidates = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/ai-calling/candidates`);
-      setCandidates(res.data.candidates || res.data || {});
+      setCandidates(res.data.demos || []);
     } catch { /* keep empty */ }
   };
 
-  const fetchLogs = async () => {
+  const fetchTranscript = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/ai-calling/logs`);
-      setCallLogs(res.data.logs || []);
-    } catch { /* keep empty */ }
+      const res = await axios.get(`${API_URL}/api/ai-calling/conversation`);
+      if (res.data.log && res.data.log.length > 0) {
+        setTranscript(res.data.log);
+      }
+    } catch { /* ignore */ }
   };
 
   const handleInitiateCall = async () => {
     if (!phoneNumber.trim()) return alert('Please enter a phone number');
     setLoading(true);
     setCallState('calling');
+    setTranscript([]);
+    setCallDuration(0);
+
     try {
       const res = await axios.post(`${API_URL}/api/ai-calling/initiate-call`, {
         phoneNumber: phoneNumber.trim(),
-        candidateKey: selectedCandidate || undefined,
-        ngrokUrl: ngrokUrl.trim() || undefined,
+        candidateId: selectedCandidate || undefined,
       });
       setCallInfo(res.data);
-      setCallState('active');
-      // Poll call status
+      setCallState('ringing');
+
+      // Add call initiated to transcript
+      setTranscript([{ speaker: 'system', text: `Call initiated to ${phoneNumber}`, timestamp: new Date().toISOString() }]);
+
+      // Start polling call status + transcript
       if (res.data.callSid) {
-        pollCallStatus(res.data.callSid);
+        pollRef.current = setInterval(async () => {
+          try {
+            const statusRes = await axios.get(`${API_URL}/api/ai-calling/call-status/${res.data.callSid}`);
+            setCallInfo(prev => ({ ...prev, ...statusRes.data }));
+
+            if (statusRes.data.status === 'in-progress' || statusRes.data.status === 'ringing') {
+              if (statusRes.data.status === 'in-progress') {
+                setCallState(prev => {
+                  if (prev !== 'active') {
+                    // Start timer only on first transition to active
+                    timerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
+                  }
+                  return 'active';
+                });
+              }
+              // Fetch live transcript
+              fetchTranscript();
+            }
+
+            if (['completed', 'failed', 'canceled', 'no-answer', 'busy'].includes(statusRes.data.status)) {
+              setCallState('ended');
+              clearInterval(pollRef.current);
+              if (timerRef.current) clearInterval(timerRef.current);
+              // Final transcript fetch
+              fetchTranscript();
+              setTranscript(prev => [...prev, { speaker: 'system', text: `Call ${statusRes.data.status}. Duration: ${statusRes.data.duration || 0}s`, timestamp: new Date().toISOString() }]);
+            }
+          } catch { /* keep polling */ }
+        }, 3000);
+
+        // Stop polling after 10 minutes
+        setTimeout(() => { if (pollRef.current) clearInterval(pollRef.current); }, 600000);
       }
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to initiate call');
@@ -632,209 +693,192 @@ function AICallingTab({ user }) {
     } finally { setLoading(false); }
   };
 
-  const pollCallStatus = (callSid) => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await axios.get(`${API_URL}/api/ai-calling/call-status/${callSid}`);
-        setCallInfo(prev => ({ ...prev, ...res.data }));
-        if (['completed', 'failed', 'canceled', 'no-answer', 'busy'].includes(res.data.status)) {
-          setCallState('ended');
-          clearInterval(interval);
-          fetchLogs(); // Refresh logs after call ends
-        }
-      } catch { /* keep polling */ }
-    }, 5000);
-    // Stop polling after 10 minutes
-    setTimeout(() => clearInterval(interval), 600000);
-  };
-
   const resetCall = () => {
     setCallState('idle');
     setCallInfo(null);
+    setTranscript([]);
+    setCallDuration(0);
     setPhoneNumber('');
     setSelectedCandidate('');
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (pollRef.current) clearInterval(pollRef.current);
   };
 
-  const candidateEntries = Object.entries(candidates);
+  const formatDuration = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  const selectedCandidateData = candidates.find(c => c.id === selectedCandidate);
 
   return (
     <div className="cd-container cd-tab-content">
       <div className="cd-welcome">
         <h1>AI Phone Interview</h1>
-        <p>Initiate AI-powered phone interviews using voice calling technology</p>
+        <p>Live AI-powered voice interviews via Twilio — automated and real-time</p>
       </div>
 
-      {/* Server Status Banner */}
-      <div className={`aic-status-banner ${serverStatus}`}>
-        <div className="aic-status-dot" />
-        <span>
-          {serverStatus === 'online' ? 'AI Calling Server Online' :
-           serverStatus === 'offline' ? 'AI Calling Server Offline — Start the Python server (python server.py)' :
-           'Checking server status...'}
-        </span>
-        <button className="aic-refresh-btn" onClick={checkServerStatus}>Refresh</button>
-      </div>
-
-      <div className="aic-grid">
-        {/* Call Setup Card */}
-        <div className="cd-card aic-setup-card">
-          <div className="cd-card-header">
-            <h3><Phone size={18} /> Initiate Call</h3>
+      {/* Status Indicators */}
+      <div className="aic-status-row">
+        <div className={`aic-status-chip ${serverStatus}`}>
+          <div className="aic-status-dot" />
+          {serverStatus === 'online' ? 'AI Server Online' : serverStatus === 'offline' ? 'AI Server Offline' : 'Checking...'}
+        </div>
+        <div className={`aic-status-chip ${config.hasTwilio ? 'online' : 'offline'}`}>
+          <div className="aic-status-dot" />
+          {config.hasTwilio ? 'Twilio Connected' : 'Twilio Not Configured'}
+        </div>
+        {config.ngrokUrl && (
+          <div className="aic-status-chip online">
+            <div className="aic-status-dot" />
+            Tunnel Active
           </div>
+        )}
+        <button className="aic-refresh-btn" onClick={() => { checkServerStatus(); fetchConfig(); }}>
+          Refresh
+        </button>
+      </div>
 
+      <div className="aic-live-layout">
+        {/* Left: Call Controls */}
+        <div className="cd-card aic-controls-card">
           {callState === 'idle' && (
-            <div className="aic-form">
-              <div className="aic-form-group">
-                <label>Phone Number</label>
-                <input
-                  type="tel"
-                  placeholder="+91 XXXXX XXXXX"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="aic-input"
-                />
+            <>
+              <div className="aic-controls-header">
+                <Phone size={20} />
+                <h3>Start AI Call</h3>
               </div>
-
-              <div className="aic-form-group">
-                <label>Select Candidate Profile</label>
-                <select value={selectedCandidate} onChange={(e) => setSelectedCandidate(e.target.value)} className="aic-select">
-                  <option value="">-- Select candidate --</option>
-                  {candidateEntries.map(([key, c]) => (
-                    <option key={key} value={key}>{c.name || key} — {c.position}</option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedCandidate && candidates[selectedCandidate] && (
-                <div className="aic-candidate-preview">
-                  <h4>{candidates[selectedCandidate].name}</h4>
-                  <p>{candidates[selectedCandidate].position}</p>
-                  <div className="aic-candidate-details">
-                    <div><strong>Score:</strong> {candidates[selectedCandidate].assessment_score}%</div>
-                    <div><strong>Skills:</strong> {candidates[selectedCandidate].priority_skills?.join(', ')}</div>
-                    <div><strong>Weak Areas:</strong> {candidates[selectedCandidate].weak_areas?.join(', ')}</div>
-                  </div>
+              <div className="aic-form">
+                <div className="aic-form-group">
+                  <label>Phone Number</label>
+                  <input
+                    type="tel"
+                    placeholder="+91 XXXXX XXXXX"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="aic-input"
+                  />
                 </div>
-              )}
+                <div className="aic-form-group">
+                  <label>Candidate Profile</label>
+                  <select value={selectedCandidate} onChange={(e) => setSelectedCandidate(e.target.value)} className="aic-select">
+                    <option value="">-- Auto Select --</option>
+                    {candidates.map(c => (
+                      <option key={c.id} value={c.id}>{c.name} — {c.position}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="aic-form-group">
-                <label>Ngrok URL <span className="aic-optional">(optional — override .env)</span></label>
-                <input
-                  type="url"
-                  placeholder="https://xxxx.ngrok-free.app"
-                  value={ngrokUrl}
-                  onChange={(e) => setNgrokUrl(e.target.value)}
-                  className="aic-input"
-                />
+                {selectedCandidateData && (
+                  <div className="aic-candidate-preview">
+                    <h4>{selectedCandidateData.name}</h4>
+                    <p>{selectedCandidateData.position}</p>
+                  </div>
+                )}
+
+                <button className="aic-call-btn" onClick={handleInitiateCall} disabled={loading || !phoneNumber.trim()}>
+                  <PhoneCall size={18} /> {loading ? 'Initiating...' : 'Start AI Call'}
+                </button>
               </div>
-
-              <button className="aic-call-btn" onClick={handleInitiateCall} disabled={loading || !phoneNumber.trim()}>
-                <PhoneCall size={18} /> {loading ? 'Initiating...' : 'Start AI Call'}
-              </button>
-            </div>
+            </>
           )}
 
-          {callState === 'calling' && (
-            <div className="aic-calling-state">
-              <div className="aic-calling-anim">
-                <PhoneCall size={48} className="aic-pulse" />
+          {(callState === 'calling' || callState === 'ringing') && (
+            <div className="aic-live-status">
+              <div className="aic-live-ring">
+                <div className="aic-ring-circle" />
+                <div className="aic-ring-circle delay" />
+                <PhoneCall size={32} className="aic-ring-icon" />
               </div>
-              <h3>Calling...</h3>
-              <p>Initiating AI interview call to {phoneNumber}</p>
+              <h3>{callState === 'calling' ? 'Connecting...' : 'Ringing...'}</h3>
+              <p className="aic-live-phone">{phoneNumber}</p>
+              {selectedCandidateData && <p className="aic-live-candidate">{selectedCandidateData.name} — {selectedCandidateData.position}</p>}
             </div>
           )}
 
           {callState === 'active' && (
-            <div className="aic-active-state">
-              <div className="aic-active-icon">
-                <Mic size={48} />
+            <div className="aic-live-status active">
+              <div className="aic-live-active-icon">
+                <Mic size={28} />
               </div>
               <h3>Call In Progress</h3>
-              <p>AI is conducting the phone interview</p>
-              {callInfo && (
-                <div className="aic-call-details">
-                  <div><strong>Call SID:</strong> {callInfo.callSid?.slice(0, 20)}...</div>
-                  <div><strong>Status:</strong> <span className="aic-call-status active">{callInfo.status}</span></div>
-                  <div><strong>To:</strong> {callInfo.to}</div>
-                </div>
+              <div className="aic-live-timer">{formatDuration(callDuration)}</div>
+              <p className="aic-live-phone">{callInfo?.to}</p>
+              {callInfo?.status && (
+                <span className="aic-live-badge active">{callInfo.status}</span>
               )}
             </div>
           )}
 
           {callState === 'ended' && (
-            <div className="aic-ended-state">
-              <div className="aic-ended-icon">
-                <PhoneOff size={48} />
+            <div className="aic-live-status ended">
+              <div className="aic-live-ended-icon">
+                <PhoneOff size={28} />
               </div>
               <h3>Call Ended</h3>
               {callInfo && (
-                <div className="aic-call-details">
-                  <div><strong>Duration:</strong> {callInfo.duration || 0}s</div>
-                  <div><strong>Status:</strong> <span className="aic-call-status ended">{callInfo.status}</span></div>
+                <div className="aic-ended-details">
+                  <span>Duration: {callInfo.duration || callDuration}s</span>
+                  <span className="aic-live-badge ended">{callInfo.status}</span>
                 </div>
               )}
-              <button className="aic-call-btn" onClick={resetCall}>
+              <button className="aic-call-btn" onClick={resetCall} style={{ marginTop: 16 }}>
                 <Phone size={16} /> New Call
               </button>
             </div>
           )}
         </div>
 
-        {/* How It Works Card */}
-        <div className="cd-card aic-info-card">
-          <div className="cd-card-header">
-            <h3><Volume2 size={18} /> How It Works</h3>
-          </div>
-          <div className="aic-steps">
-            {[
-              { step: 1, title: 'Setup', desc: 'Start the Python AI server, ngrok tunnel, and Ollama LLM', icon: '⚙️' },
-              { step: 2, title: 'Select Candidate', desc: 'Choose a candidate profile for tailored interview questions', icon: '👤' },
-              { step: 3, title: 'Initiate Call', desc: 'Enter phone number and trigger the AI call via Twilio', icon: '📞' },
-              { step: 4, title: 'AI Interview', desc: 'AI agent conducts voice interview with real-time speech recognition', icon: '🤖' },
-              { step: 5, title: 'Review Logs', desc: 'View call transcripts, responses, and assessment results', icon: '📋' },
-            ].map(s => (
-              <div className="aic-step" key={s.step}>
-                <div className="aic-step-num">{s.icon}</div>
-                <div>
-                  <h4>Step {s.step}: {s.title}</h4>
-                  <p>{s.desc}</p>
-                </div>
+        {/* Right: Live Transcript */}
+        <div className="cd-card aic-transcript-card">
+          <div className="aic-transcript-header">
+            <div className="aic-transcript-title">
+              <FileText size={18} />
+              <h3>Live Call Script</h3>
+            </div>
+            {callState === 'active' && (
+              <div className="aic-live-indicator">
+                <span className="aic-live-dot" />
+                LIVE
               </div>
-            ))}
+            )}
           </div>
 
-          <div className="aic-prereqs">
-            <h4>Prerequisites</h4>
-            <ul>
-              <li><code>ollama run llama3.1:8b</code> — Run Ollama LLM locally</li>
-              <li><code>ngrok http 8000</code> — Tunnel for Twilio webhook</li>
-              <li><code>python server.py</code> — Start AI Calling server on port 8000</li>
-              <li>Set <code>TWILIO_ACCOUNT_SID</code>, <code>TWILIO_AUTH_TOKEN</code>, <code>TWILIO_PHONE_NUMBER</code>, <code>NGROK_URL</code> in backend <code>.env</code></li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Call Logs */}
-      <div className="cd-card aic-logs-card">
-        <div className="cd-card-header">
-          <h3><FileText size={18} /> Call Logs</h3>
-          <button className="aic-refresh-btn" onClick={fetchLogs}>Refresh</button>
-        </div>
-        {callLogs.length === 0 ? (
-          <div className="cd-empty-state">
-            <Phone size={40} /><h4>No call logs yet</h4><p>Initiate an AI call to see logs here</p>
-          </div>
-        ) : (
-          <div className="aic-logs-list">
-            {callLogs.slice(0, 20).map((log, i) => (
-              <div className="aic-log-item" key={i}>
-                <div className="aic-log-time">{new Date(log.timestamp || log.time).toLocaleString()}</div>
-                <div className="aic-log-msg">{log.message || log.event || JSON.stringify(log)}</div>
+          <div className="aic-transcript-body" ref={transcriptRef}>
+            {transcript.length === 0 ? (
+              <div className="aic-transcript-empty">
+                <Volume2 size={40} />
+                <h4>No call in progress</h4>
+                <p>Start an AI call to see the live conversation script here</p>
               </div>
-            ))}
+            ) : (
+              <div className="aic-transcript-messages">
+                {transcript.map((msg, i) => (
+                  <div key={i} className={`aic-msg ${msg.speaker}`}>
+                    <div className="aic-msg-avatar">
+                      {msg.speaker === 'agent' ? '🤖' : msg.speaker === 'user' ? '👤' : '📞'}
+                    </div>
+                    <div className="aic-msg-content">
+                      <div className="aic-msg-speaker">
+                        {msg.speaker === 'agent' ? 'AI Agent' : msg.speaker === 'user' ? 'Candidate' : 'System'}
+                      </div>
+                      <div className="aic-msg-text">{msg.text}</div>
+                      {msg.timestamp && (
+                        <div className="aic-msg-time">{new Date(msg.timestamp).toLocaleTimeString()}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {callState === 'active' && (
+                  <div className="aic-typing-indicator">
+                    <span /><span /><span />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
