@@ -1,40 +1,90 @@
-import {useState, useEffect, useRef} from 'react';
+import {useState, useEffect, useRef, useCallback} from 'react';
 import Peer from 'simple-peer';
 import socketService from '../services/socket';
-import {Video as VideoIcon, VideoOff as VideoOffIcon, Mic as MicIcon, MicOff as MicOffIcon, Loader2 as LoadingIcon} from 'lucide-react';
+import {Video as VideoIcon, VideoOff as VideoOffIcon, Mic as MicIcon, MicOff as MicOffIcon, Loader2 as LoadingIcon, Smartphone as PhoneIcon, Monitor as ScreenIcon, MonitorOff as ScreenOffIcon} from 'lucide-react';
 import './VideoPanel.css';
 
-function VideoPanel({interviewId, userName, role, videoRef, onVideoReady})
+function VideoPanel({interviewId, userName, role, videoRef, onVideoReady, secondaryCamSnapshot, onScreenShareChange})
 {
     const [localStream, setLocalStream]=useState(null);
     const [remoteStream, setRemoteStream]=useState(null);
     const [isVideoOn, setIsVideoOn]=useState(true);
     const [isAudioOn, setIsAudioOn]=useState(true);
+    const [isScreenSharing, setIsScreenSharing]=useState(false);
     const [remotePeerId, setRemotePeerId]=useState(null);
     const [isLoading, setIsLoading]=useState(true);
+    const [cameraError, setCameraError]=useState(null);
+    const [connectionStatus, setConnectionStatus]=useState('waiting');
 
     const internalVideoRef=useRef();
     const localVideoRef=videoRef||internalVideoRef;
     const remoteVideoRef=useRef();
-    const peerRef=useRef();
+    const screenVideoRef=useRef();
+    const peerRef=useRef(null);
+    const localStreamRef=useRef(null);
+    const screenStreamRef=useRef(null);
+    const pendingPeerRef=useRef(null);
+    const pendingSignalsRef=useRef([]);
+    const roleRef=useRef(role);
+    const remotePeerIdRef=useRef(null);
+    const originalVideoTrackRef=useRef(null);
+
+    useEffect(() => {roleRef.current=role;}, [role]);
+
+    // When localStream becomes available, process any queued peer connection
+    useEffect(() =>
+    {
+        if (!localStream) return;
+        if (pendingPeerRef.current&&roleRef.current==='recruiter')
+        {
+            console.log('[WebRTC] Stream ready — initiating queued call to', pendingPeerRef.current);
+            createPeer(true, pendingPeerRef.current);
+            pendingPeerRef.current=null;
+        }
+        if (pendingSignalsRef.current.length>0)
+        {
+            console.log('[WebRTC] Stream ready — processing', pendingSignalsRef.current.length, 'queued signals');
+            const signals=[...pendingSignalsRef.current];
+            pendingSignalsRef.current=[];
+            for (const {signal, from} of signals)
+            {
+                handleIncomingSignal(signal, from);
+            }
+        }
+    }, [localStream]);
 
     useEffect(() =>
     {
         startLocalStream();
-        setupWebRTC();
+        const cleanupWebRTC=setupWebRTC();
 
         return () =>
         {
-            if (localStream)
+            if (localStreamRef.current)
             {
-                localStream.getTracks().forEach(track => track.stop());
+                localStreamRef.current.getTracks().forEach(track => track.stop());
+            }
+            if (screenStreamRef.current)
+            {
+                screenStreamRef.current.getTracks().forEach(track => track.stop());
             }
             if (peerRef.current)
             {
                 peerRef.current.destroy();
+                peerRef.current=null;
             }
+            if (cleanupWebRTC) cleanupWebRTC();
         };
     }, []);
+
+    // Attach screen stream to screenVideoRef once it renders
+    useEffect(() =>
+    {
+        if (isScreenSharing&&screenVideoRef.current&&screenStreamRef.current)
+        {
+            screenVideoRef.current.srcObject=screenStreamRef.current;
+        }
+    }, [isScreenSharing]);
 
     const startLocalStream=async () =>
     {
@@ -50,163 +100,357 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady})
             });
 
             setLocalStream(stream);
+            localStreamRef.current=stream;
             if (localVideoRef.current)
             {
                 localVideoRef.current.srcObject=stream;
 
-                // Wait for video to load before starting proctoring
                 const handleLoadedMetadata=() =>
                 {
-                    console.log('Video metadata loaded');
-                    console.log('Video dimensions:', localVideoRef.current.videoWidth, 'x', localVideoRef.current.videoHeight);
-                    console.log('Video ready state:', localVideoRef.current.readyState);
+                    console.log('Video metadata loaded, dimensions:', localVideoRef.current.videoWidth, 'x', localVideoRef.current.videoHeight);
                     setIsLoading(false);
 
-                    // Ensure video is playing
                     localVideoRef.current.play().then(() =>
                     {
                         console.log('Video playing');
-                        if (onVideoReady)
-                        {
-                            console.log('Calling onVideoReady callback');
-                            onVideoReady(stream);
-                        }
+                        if (onVideoReady) onVideoReady(stream);
                     }).catch(err =>
                     {
                         console.error('Error playing video:', err);
-                        // Try calling anyway
-                        if (onVideoReady)
-                        {
-                            onVideoReady(stream);
-                        }
+                        if (onVideoReady) onVideoReady(stream);
                     });
                 };
 
                 localVideoRef.current.onloadedmetadata=handleLoadedMetadata;
-
-                // If metadata already loaded, call immediately
-                if (localVideoRef.current.readyState>=1)
-                {
-                    console.log('Video metadata already loaded');
-                    handleLoadedMetadata();
-                }
+                if (localVideoRef.current.readyState>=1) handleLoadedMetadata();
             }
         } catch (error)
         {
             console.error('Error accessing media devices:', error);
             setIsLoading(false);
-            alert('Camera access denied. Please allow camera permissions to join the interview.');
+            setCameraError('Camera access denied. Please allow camera permissions to join the interview.');
+        }
+    };
+
+    // ---- Unified signal handler: routes SDP vs ICE to correct peer ----
+    const handleIncomingSignal=(signal, fromPeerId) =>
+    {
+        // If peer exists, just forward signal to it (ICE candidates, etc.)
+        if (peerRef.current)
+        {
+            console.log('[WebRTC] Forwarding signal to existing peer, type:', signal.type||'candidate');
+            try {peerRef.current.signal(signal);} catch (e) {console.error('[WebRTC] signal() error:', e);}
+            return;
+        }
+        // No peer yet — only create one for an SDP offer (responder side)
+        if (signal.type==='offer')
+        {
+            console.log('[WebRTC] Creating responder peer for offer from', fromPeerId);
+            remotePeerIdRef.current=fromPeerId;
+            setRemotePeerId(fromPeerId);
+            createPeer(false, fromPeerId, signal);
+        }
+        else
+        {
+            // ICE candidate arrived before peer was created — queue it
+            console.log('[WebRTC] Queuing signal (no peer yet), type:', signal.type||'candidate');
+            pendingSignalsRef.current.push({signal, from: fromPeerId});
+        }
+    };
+
+    // ---- Create peer (initiator or responder) ----
+    const createPeer=(initiator, targetPeerId, initialSignal) =>
+    {
+        const stream=localStreamRef.current;
+        if (!stream) {console.warn('[WebRTC] createPeer — no local stream'); return;}
+        console.log('[WebRTC] Creating peer, initiator:', initiator, 'target:', targetPeerId);
+
+        if (peerRef.current) {peerRef.current.destroy(); peerRef.current=null;}
+
+        const peer=new Peer({
+            initiator,
+            trickle: true,
+            stream,
+            config: {
+                iceServers: [
+                    {urls: 'stun:stun.l.google.com:19302'},
+                    {urls: 'stun:stun1.l.google.com:19302'},
+                    {urls: 'stun:stun2.l.google.com:19302'},
+                ]
+            },
+        });
+
+        peer.on('signal', (sig) =>
+        {
+            // Route outgoing signals based on type
+            if (sig.type==='offer')
+            {
+                console.log('[WebRTC] Sending SDP offer to', targetPeerId);
+                socketService.sendOffer(sig, targetPeerId);
+            }
+            else if (sig.type==='answer')
+            {
+                console.log('[WebRTC] Sending SDP answer to', targetPeerId);
+                socketService.sendAnswer(sig, targetPeerId);
+            }
+            else if (sig.candidate)
+            {
+                console.log('[WebRTC] Sending ICE candidate to', targetPeerId);
+                socketService.sendIceCandidate(sig, targetPeerId);
+            }
+        });
+
+        peer.on('stream', (remStream) =>
+        {
+            console.log('[WebRTC] Got remote stream, tracks:', remStream.getTracks().map(t => t.kind));
+            setRemoteStream(remStream);
+            setConnectionStatus('connected');
+            if (remoteVideoRef.current) remoteVideoRef.current.srcObject=remStream;
+        });
+
+        peer.on('connect', () =>
+        {
+            console.log('[WebRTC] Peer connected!');
+            setConnectionStatus('connected');
+        });
+
+        peer.on('error', (err) =>
+        {
+            console.error('[WebRTC] Peer error:', err);
+            setConnectionStatus('error');
+        });
+
+        peer.on('close', () =>
+        {
+            console.log('[WebRTC] Peer connection closed');
+            setConnectionStatus('disconnected');
+        });
+
+        peerRef.current=peer;
+
+        // If we have an initial offer to process (responder), signal it
+        if (initialSignal) peer.signal(initialSignal);
+
+        // Process any queued signals
+        if (pendingSignalsRef.current.length>0)
+        {
+            console.log('[WebRTC] Processing', pendingSignalsRef.current.length, 'queued signals');
+            const queued=[...pendingSignalsRef.current];
+            pendingSignalsRef.current=[];
+            for (const {signal} of queued) {try {peer.signal(signal);} catch (e) {console.error('[WebRTC] queued signal error:', e);} }
         }
     };
 
     const setupWebRTC=() =>
     {
         const socket=socketService.socket;
-        if (!socket) return;
+        if (!socket) {console.warn('[WebRTC] No socket available'); return null;}
 
-        // Listen for new user
-        socket.on('user-joined', (data) =>
+        const handleUserJoined=(data) =>
         {
-            console.log('User joined:', data);
+            console.log('[WebRTC] User joined:', data);
             setRemotePeerId(data.userId);
+            remotePeerIdRef.current=data.userId;
 
-            // Initiate call if you're the recruiter
-            if (role==='recruiter')
+            // Recruiter initiates the call
+            if (roleRef.current==='recruiter')
             {
-                initiateCall(data.userId);
+                if (localStreamRef.current)
+                {
+                    createPeer(true, data.userId);
+                }
+                else
+                {
+                    console.log('[WebRTC] Stream not ready yet — queuing call to', data.userId);
+                    pendingPeerRef.current=data.userId;
+                }
             }
-        });
+        };
 
-        // Listen for offer
-        socket.on('webrtc-offer', async (data) =>
+        const handleWebRTCOffer=(data) =>
         {
-            console.log('Received offer from:', data.from);
-            await handleOffer(data.offer, data.from);
-        });
+            console.log('[WebRTC] Received offer/signal from:', data.from, 'type:', data.offer?.type||'candidate');
+            if (localStreamRef.current)
+            {
+                handleIncomingSignal(data.offer, data.from);
+            }
+            else
+            {
+                console.log('[WebRTC] Stream not ready yet — queuing signal from', data.from);
+                pendingSignalsRef.current.push({signal: data.offer, from: data.from});
+            }
+        };
 
-        // Listen for answer
-        socket.on('webrtc-answer', async (data) =>
+        const handleWebRTCAnswer=(data) =>
         {
-            console.log('Received answer from:', data.from);
+            console.log('[WebRTC] Received answer from:', data.from, 'type:', data.answer?.type||'candidate');
             if (peerRef.current)
             {
-                await peerRef.current.signal(data.answer);
+                try {peerRef.current.signal(data.answer);} catch (e) {console.error('[WebRTC] answer signal error:', e);}
             }
-        });
+            else
+            {
+                console.log('[WebRTC] No peer for answer — queuing');
+                pendingSignalsRef.current.push({signal: data.answer, from: data.from});
+            }
+        };
 
-        // Listen for ICE candidate
-        socket.on('webrtc-ice-candidate', (data) =>
+        const handleICECandidate=(data) =>
         {
+            console.log('[WebRTC] Received ICE candidate from:', data.from);
             if (peerRef.current)
             {
-                peerRef.current.signal(data.candidate);
+                try {peerRef.current.signal(data.candidate);} catch (e) {console.error('[WebRTC] ICE signal error:', e);}
             }
-        });
+            else
+            {
+                console.log('[WebRTC] No peer for ICE — queuing');
+                pendingSignalsRef.current.push({signal: data.candidate, from: data.from});
+            }
+        };
+
+        // Handle list of users already in the room (sent on join)
+        const handleRoomUsers=(data) =>
+        {
+            console.log('[WebRTC] Existing room users:', data.users);
+            if (data.users&&data.users.length>0)
+            {
+                const otherUser=data.users[0]; // first other user
+                setRemotePeerId(otherUser.userId);
+                remotePeerIdRef.current=otherUser.userId;
+
+                // Recruiter always initiates the call
+                if (roleRef.current==='recruiter')
+                {
+                    if (localStreamRef.current)
+                    {
+                        createPeer(true, otherUser.userId);
+                    }
+                    else
+                    {
+                        console.log('[WebRTC] Stream not ready — queuing call to existing user', otherUser.userId);
+                        pendingPeerRef.current=otherUser.userId;
+                    }
+                }
+            }
+        };
+
+        socket.on('user-joined', handleUserJoined);
+        socket.on('room-users', handleRoomUsers);
+        socket.on('webrtc-offer', handleWebRTCOffer);
+        socket.on('webrtc-answer', handleWebRTCAnswer);
+        socket.on('webrtc-ice-candidate', handleICECandidate);
+
+        return () =>
+        {
+            socket.off('user-joined', handleUserJoined);
+            socket.off('room-users', handleRoomUsers);
+            socket.off('webrtc-offer', handleWebRTCOffer);
+            socket.off('webrtc-answer', handleWebRTCAnswer);
+            socket.off('webrtc-ice-candidate', handleICECandidate);
+        };
     };
 
-    const initiateCall=(remotePeerId) =>
+    // ---- Screen Sharing ----
+    const toggleScreenShare=async () =>
     {
-        if (!localStream) return;
-
-        const peer=new Peer({
-            initiator: true,
-            trickle: true,
-            stream: localStream,
-        });
-
-        peer.on('signal', (signal) =>
+        if (isScreenSharing)
         {
-            socketService.sendOffer(signal, remotePeerId);
-        });
-
-        peer.on('stream', (stream) =>
-        {
-            setRemoteStream(stream);
-            if (remoteVideoRef.current)
+            // Stop screen sharing — restore camera track
+            if (screenStreamRef.current)
             {
-                remoteVideoRef.current.srcObject=stream;
+                screenStreamRef.current.getTracks().forEach(t => t.stop());
+                screenStreamRef.current=null;
             }
-        });
-
-        peerRef.current=peer;
-    };
-
-    const handleOffer=async (offer, fromPeerId) =>
-    {
-        if (!localStream) return;
-
-        const peer=new Peer({
-            initiator: false,
-            trickle: true,
-            stream: localStream,
-        });
-
-        peer.on('signal', (signal) =>
-        {
-            socketService.sendAnswer(signal, fromPeerId);
-        });
-
-        peer.on('stream', (stream) =>
-        {
-            setRemoteStream(stream);
-            if (remoteVideoRef.current)
+            const camTrack=originalVideoTrackRef.current;
+            if (camTrack&&peerRef.current)
             {
-                remoteVideoRef.current.srcObject=stream;
+                try
+                {
+                    const senders=peerRef.current._pc?.getSenders();
+                    const videoSender=senders?.find(s => s.track?.kind==='video'||s.track===null);
+                    if (videoSender) await videoSender.replaceTrack(camTrack);
+                }
+                catch (e) {console.error('[ScreenShare] replaceTrack restore error:', e);}
             }
-        });
+            // Restore local video to camera
+            if (localVideoRef.current&&localStreamRef.current) localVideoRef.current.srcObject=localStreamRef.current;
+            if (screenVideoRef.current) screenVideoRef.current.srcObject=null;
+            setIsScreenSharing(false);
+            if (onScreenShareChange) onScreenShareChange(false);
+        }
+        else
+        {
+            // Notify proctoring BEFORE the picker dialog opens (prevents false positives)
+            if (onScreenShareChange) onScreenShareChange(true);
 
-        peer.signal(offer);
-        peerRef.current=peer;
+            try
+            {
+                // Force ENTIRE SCREEN only — no tab/window options
+                const screenStream=await navigator.mediaDevices.getDisplayMedia({
+                    video: {
+                        displaySurface: 'monitor',
+                    },
+                    audio: false,
+                    selfBrowserSurface: 'exclude',
+                    surfaceSwitching: 'exclude',
+                    systemAudio: 'exclude',
+                });
+
+                // Verify user selected entire screen (not tab/window)
+                const screenTrack=screenStream.getVideoTracks()[0];
+                const settings=screenTrack.getSettings();
+                if (settings.displaySurface&&settings.displaySurface!=='monitor')
+                {
+                    // User selected a window or tab — reject it
+                    screenStream.getTracks().forEach(t => t.stop());
+                    alert('Please share your entire screen, not a window or tab.');
+                    if (onScreenShareChange) onScreenShareChange(false);
+                    return;
+                }
+
+                screenStreamRef.current=screenStream;
+                // Save original camera track for restoration
+                if (!originalVideoTrackRef.current)
+                {
+                    originalVideoTrackRef.current=localStreamRef.current?.getVideoTracks()[0];
+                }
+
+                // Replace the video track in the peer connection
+                if (peerRef.current)
+                {
+                    try
+                    {
+                        const senders=peerRef.current._pc?.getSenders();
+                        const videoSender=senders?.find(s => s.track?.kind==='video');
+                        if (videoSender) await videoSender.replaceTrack(screenTrack);
+                    }
+                    catch (e) {console.error('[ScreenShare] replaceTrack error:', e);}
+                }
+
+                // Set state first — useEffect will attach stream to video element after render
+                setIsScreenSharing(true);
+
+                // When user stops sharing via browser UI
+                screenTrack.onended=() =>
+                {
+                    toggleScreenShare();
+                };
+            }
+            catch (err)
+            {
+                console.error('[ScreenShare] Error:', err);
+                // User cancelled the picker
+                if (onScreenShareChange) onScreenShareChange(false);
+            }
+        }
     };
 
     const toggleVideo=() =>
     {
         if (localStream)
         {
-            localStream.getVideoTracks().forEach(track =>
-            {
-                track.enabled=!track.enabled;
-            });
+            localStream.getVideoTracks().forEach(track => {track.enabled=!track.enabled;});
             setIsVideoOn(!isVideoOn);
         }
     };
@@ -215,10 +459,7 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady})
     {
         if (localStream)
         {
-            localStream.getAudioTracks().forEach(track =>
-            {
-                track.enabled=!track.enabled;
-            });
+            localStream.getAudioTracks().forEach(track => {track.enabled=!track.enabled;});
             setIsAudioOn(!isAudioOn);
         }
     };
@@ -227,12 +468,34 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady})
         <div className="video-panel card">
             <div className="video-header">
                 <h3><VideoIcon size={18} /> Video Call</h3>
+                {connectionStatus==='connected'&&<span className="connection-badge connected">Connected</span>}
+                {connectionStatus==='error'&&<span className="connection-badge error">Error</span>}
+                {connectionStatus==='disconnected'&&<span className="connection-badge disconnected">Disconnected</span>}
             </div>
 
             <div className="videos">
-                {/* Local Video */}
-                <div className="video-container local">
-                    {isLoading&&(
+                {/* Screen Share - full width when active */}
+                {isScreenSharing&&(
+                    <div className="video-container screen-share-main">
+                        <video
+                            ref={screenVideoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="video"
+                        />
+                        <div className="video-label">Your Screen</div>
+                    </div>
+                )}
+
+                {/* Local Video (camera) */}
+                <div className={`video-container local ${isScreenSharing? 'pip-mode':''}`}>
+                    {cameraError&&(
+                        <div className="camera-error" style={{padding: '16px', color: '#ef4444', textAlign: 'center', fontSize: '14px'}}>
+                            <p>{cameraError}</p>
+                        </div>
+                    )}
+                    {isLoading&&!cameraError&&(
                         <div className="waiting">
                             <div className="waiting-icon"><LoadingIcon size={24} /></div>
                             <p>Starting camera...</p>
@@ -246,7 +509,7 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady})
                         className="video"
                         style={{display: isLoading? 'none':'block'}}
                     />
-                    {!isLoading&&<div className="video-label">You ({userName})</div>}
+                    {!isLoading&&!isScreenSharing&&<div className="video-label">You ({userName})</div>}
                 </div>
 
                 {/* Remote Video */}
@@ -264,10 +527,22 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady})
                     ):(
                         <div className="waiting">
                             <div className="waiting-icon"><LoadingIcon size={24} /></div>
-                            <p>Waiting for other participant...</p>
+                            <p>Waiting for participant...</p>
                         </div>
                     )}
                 </div>
+
+                {/* Secondary Camera Feed */}
+                {secondaryCamSnapshot&&(
+                    <div className="video-container secondary-cam">
+                        <img
+                            src={secondaryCamSnapshot}
+                            alt="Secondary Camera"
+                            className="video"
+                        />
+                        <div className="video-label"><PhoneIcon size={10} /> Cam 2</div>
+                    </div>
+                )}
             </div>
 
             <div className="video-controls">
@@ -275,6 +550,7 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady})
                     className={`control-btn ${!isVideoOn? 'off':''}`}
                     onClick={toggleVideo}
                     title="Toggle Video"
+                    disabled={isScreenSharing}
                 >
                     {isVideoOn? <VideoIcon size={18} />:<VideoOffIcon size={18} />}
                 </button>
@@ -284,6 +560,13 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady})
                     title="Toggle Audio"
                 >
                     {isAudioOn? <MicIcon size={18} />:<MicOffIcon size={18} />}
+                </button>
+                <button
+                    className={`control-btn screen-share-btn ${isScreenSharing? 'active':''}`}
+                    onClick={toggleScreenShare}
+                    title={isScreenSharing? 'Stop Screen Share':'Share Screen'}
+                >
+                    {isScreenSharing? <ScreenOffIcon size={18} />:<ScreenIcon size={18} />}
                 </button>
             </div>
         </div>

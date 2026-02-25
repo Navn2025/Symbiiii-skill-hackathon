@@ -9,4 +9,14 @@ export default defineConfig({
     define: {
         global: 'globalThis',
     },
+    resolve: {
+        alias: {
+            buffer: 'buffer',
+            events: 'events',
+            util: 'util',
+        },
+    },
+    optimizeDeps: {
+        include: ['buffer', 'events', 'util', 'simple-peer'],
+    },
 })

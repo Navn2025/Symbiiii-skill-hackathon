@@ -1,40 +1,46 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import {
-  BarChart3, Trophy, Award, Clock, TrendingUp, Star,
-  ChevronRight, ArrowUp, ArrowDown, Minus, Target,
-  CheckCircle2, XCircle, LogOut, Zap, Users, Home
-} from 'lucide-react';
-import {
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Cell,
-} from 'recharts';
-import axios from 'axios';
+import {useState, useEffect} from 'react';
+import {useNavigate, Link} from 'react-router-dom';
+import
+  {
+    BarChart3, Trophy, Award, Clock, TrendingUp, Star,
+    ChevronRight, ArrowUp, ArrowDown, Minus, Target,
+    CheckCircle2, XCircle, LogOut, Zap, Users, Home
+  } from 'lucide-react';
+import
+  {
+    RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    Cell,
+  } from 'recharts';
+import api from '../services/api';
 import './CandidateResults.css';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-function scoreColor(score) {
-  if (score >= 80) return '#22c55e';
-  if (score >= 60) return '#eab308';
+function scoreColor(score)
+{
+  if (score>=80) return '#22c55e';
+  if (score>=60) return '#eab308';
   return '#ef4444';
 }
-function scoreClass(score) {
-  if (score >= 80) return 'high';
-  if (score >= 60) return 'mid';
+function scoreClass(score)
+{
+  if (score>=80) return 'high';
+  if (score>=60) return 'mid';
   return 'low';
 }
-function levelColor(level) {
-  switch (level) {
+function levelColor(level)
+{
+  switch (level)
+  {
     case 'Expert': return '#22c55e';
     case 'Advanced': return '#3b82f6';
     case 'Intermediate': return '#eab308';
     default: return '#ef4444';
   }
 }
-function levelIcon(level) {
-  switch (level) {
+function levelIcon(level)
+{
+  switch (level)
+  {
     case 'Expert': return '🏆';
     case 'Advanced': return '🔷';
     case 'Intermediate': return '🔶';
@@ -42,29 +48,33 @@ function levelIcon(level) {
   }
 }
 
-const SECTION_CHART_COLORS = ['#6366f1', '#a855f7', '#14b8a6', '#f59e0b', '#ec4899'];
+const SECTION_CHART_COLORS=['#6366f1', '#a855f7', '#14b8a6', '#f59e0b', '#ec4899'];
 
-export default function CandidateResults() {
-  const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [results, setResults] = useState(null);
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview'); // overview | sections | skills | leaderboard
+export default function CandidateResults()
+{
+  const navigate=useNavigate();
+  const [user, setUser]=useState(null);
+  const [results, setResults]=useState(null);
+  const [leaderboard, setLeaderboard]=useState([]);
+  const [loading, setLoading]=useState(true);
+  const [activeTab, setActiveTab]=useState('overview'); // overview | sections | skills | leaderboard
 
-  useEffect(() => {
-    const stored = localStorage.getItem('user');
+  useEffect(() =>
+  {
+    const stored=localStorage.getItem('user');
     if (stored) setUser(JSON.parse(stored));
     else navigate('/login');
   }, [navigate]);
 
-  useEffect(() => {
+  useEffect(() =>
+  {
     if (!user) return;
     setLoading(true);
     Promise.all([
-      axios.get(`${API}/api/scoring/candidate/my-results`),
-      axios.get(`${API}/api/scoring/leaderboard/sde-fullstack`),
-    ]).then(([resResults, resLB]) => {
+      api.get('/scoring/candidate/my-results'),
+      api.get('/scoring/leaderboard/sde-fullstack'),
+    ]).then(([resResults, resLB]) =>
+    {
       setResults(resResults.data);
       setLeaderboard(resLB.data.leaderboard);
     }).catch(() => {}).finally(() => setLoading(false));
@@ -85,44 +95,45 @@ export default function CandidateResults() {
     </div>
   );
 
-  const { candidate, averages, percentile, strengths, improvements } = results;
+  const {candidate, averages, percentile, strengths, improvements}=results;
 
   /* chart data */
-  const sectionData = Object.entries(candidate.sections).map(([k, v]) => ({
-    name: k.charAt(0).toUpperCase() + k.slice(1),
+  const sectionData=Object.entries(candidate.sections).map(([k, v]) => ({
+    name: k.charAt(0).toUpperCase()+k.slice(1),
     you: v,
-    avg: averages[k] || 0,
+    avg: averages[k]||0,
   }));
 
-  const radarData = candidate.skills.map(s => ({
+  const radarData=candidate.skills.map(s => ({
     skill: s.name,
     score: s.score,
     fullMark: 100,
   }));
 
   /* circular progress helper */
-  const CircularProgress = ({ value, size = 120, stroke = 10, color }) => {
-    const r = (size - stroke) / 2;
-    const c = 2 * Math.PI * r;
-    const offset = c - (value / 100) * c;
+  const CircularProgress=({value, size=120, stroke=10, color}) =>
+  {
+    const r=(size-stroke)/2;
+    const c=2*Math.PI*r;
+    const offset=c-(value/100)*c;
     return (
       <svg width={size} height={size} className="cres-circle-svg">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1f1f1f" strokeWidth={stroke} />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#1f1f1f" strokeWidth={stroke} />
         <circle
-          cx={size / 2} cy={size / 2} r={r} fill="none"
+          cx={size/2} cy={size/2} r={r} fill="none"
           stroke={color} strokeWidth={stroke}
           strokeDasharray={c} strokeDashoffset={offset}
-          strokeLinecap="round" transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          style={{ transition: 'stroke-dashoffset 1s ease' }}
+          strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`}
+          style={{transition: 'stroke-dashoffset 1s ease'}}
         />
-        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize={size * 0.28} fontWeight="900">
+        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize={size*0.28} fontWeight="900">
           {value}
         </text>
       </svg>
     );
   };
 
-  const initials = (user.username || 'C').charAt(0).toUpperCase();
+  const initials=(user.username||'C').charAt(0).toUpperCase();
 
   return (
     <div className="cres-page">
@@ -132,13 +143,13 @@ export default function CandidateResults() {
           <Link to="/candidate-dashboard" className="cres-logo">HireSpec</Link>
           <div className="cres-nav-tabs">
             {[
-              { id: 'overview', label: 'Overview', icon: <BarChart3 size={14} /> },
-              { id: 'sections', label: 'Sections', icon: <Target size={14} /> },
-              { id: 'skills', label: 'Skills', icon: <Star size={14} /> },
-              { id: 'leaderboard', label: 'Leaderboard', icon: <Trophy size={14} /> },
+              {id: 'overview', label: 'Overview', icon: <BarChart3 size={14} />},
+              {id: 'sections', label: 'Sections', icon: <Target size={14} />},
+              {id: 'skills', label: 'Skills', icon: <Star size={14} />},
+              {id: 'leaderboard', label: 'Leaderboard', icon: <Trophy size={14} />},
             ].map(t => (
               <button key={t.id}
-                className={`cres-tab-btn ${activeTab === t.id ? 'active' : ''}`}
+                className={`cres-tab-btn ${activeTab===t.id? 'active':''}`}
                 onClick={() => setActiveTab(t.id)}>
                 {t.icon} {t.label}
               </button>
@@ -146,7 +157,7 @@ export default function CandidateResults() {
           </div>
           <div className="cres-nav-right">
             <button className="cres-icon-btn" onClick={() => navigate('/candidate-dashboard')} title="Dashboard"><Home size={18} /></button>
-            <button className="cres-icon-btn" onClick={() => { localStorage.removeItem('user'); localStorage.removeItem('token'); window.dispatchEvent(new Event('storage')); navigate('/login'); }} title="Logout"><LogOut size={18} /></button>
+            <button className="cres-icon-btn" onClick={() => {localStorage.removeItem('user'); localStorage.removeItem('token'); window.dispatchEvent(new Event('storage')); navigate('/login');}} title="Logout"><LogOut size={18} /></button>
             <div className="cres-avatar">{initials}</div>
           </div>
         </div>
@@ -156,7 +167,7 @@ export default function CandidateResults() {
         <div className="cres-container">
 
           {/* ═══ OVERVIEW ═══ */}
-          {activeTab === 'overview' && (
+          {activeTab==='overview'&&(
             <>
               {/* Hero card */}
               <div className="cres-hero-card">
@@ -167,8 +178,8 @@ export default function CandidateResults() {
                     <p>{candidate.email}</p>
                     <div className="cres-hero-badges">
                       <span className={`cres-status-pill ${candidate.status}`}>
-                        {candidate.status === 'qualified' ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-                        {candidate.status === 'qualified' ? 'Qualified' : 'Not Qualified'}
+                        {candidate.status==='qualified'? <CheckCircle2 size={14} />:<XCircle size={14} />}
+                        {candidate.status==='qualified'? 'Qualified':'Not Qualified'}
                       </span>
                       <span className="cres-rank-badge"><Award size={14} /> Rank #{candidate.rank}</span>
                     </div>
@@ -196,9 +207,9 @@ export default function CandidateResults() {
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={sectionData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
-                    <XAxis dataKey="name" tick={{ fill: '#888', fontSize: 12 }} />
-                    <YAxis domain={[0, 100]} tick={{ fill: '#888', fontSize: 12 }} />
-                    <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 8, fontSize: 13 }} />
+                    <XAxis dataKey="name" tick={{fill: '#888', fontSize: 12}} />
+                    <YAxis domain={[0, 100]} tick={{fill: '#888', fontSize: 12}} />
+                    <Tooltip contentStyle={{background: '#1a1a1a', border: '1px solid #333', borderRadius: 8, fontSize: 13}} />
                     <Bar dataKey="you" name="Your Score" fill="#6366f1" radius={[6, 6, 0, 0]} />
                     <Bar dataKey="avg" name="Average" fill="#333" radius={[6, 6, 0, 0]} />
                   </BarChart>
@@ -228,25 +239,26 @@ export default function CandidateResults() {
           )}
 
           {/* ═══ SECTIONS ═══ */}
-          {activeTab === 'sections' && (
+          {activeTab==='sections'&&(
             <>
               <div className="cres-tab-header">
                 <h2><Target size={20} /> Section-wise Breakdown</h2>
                 <p>Detailed performance in each assessment section</p>
               </div>
               <div className="cres-sections-grid">
-                {sectionData.map((s, idx) => {
-                  const diff = s.you - s.avg;
+                {sectionData.map((s, idx) =>
+                {
+                  const diff=s.you-s.avg;
                   return (
                     <div className="cres-section-detail-card" key={s.name}>
                       <div className="cres-sdc-top">
-                        <div className="cres-sdc-icon" style={{ background: `${SECTION_CHART_COLORS[idx]}18`, color: SECTION_CHART_COLORS[idx] }}>
+                        <div className="cres-sdc-icon" style={{background: `${SECTION_CHART_COLORS[idx]}18`, color: SECTION_CHART_COLORS[idx]}}>
                           <Target size={18} />
                         </div>
                         <div>
                           <h4>{s.name}</h4>
-                          <span className="cres-sdc-diff" style={{ color: diff >= 0 ? '#22c55e' : '#ef4444' }}>
-                            {diff >= 0 ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+                          <span className="cres-sdc-diff" style={{color: diff>=0? '#22c55e':'#ef4444'}}>
+                            {diff>=0? <ArrowUp size={12} />:<ArrowDown size={12} />}
                             {Math.abs(diff).toFixed(1)} vs avg
                           </span>
                         </div>
@@ -254,12 +266,12 @@ export default function CandidateResults() {
                       <div className="cres-sdc-score-row">
                         <CircularProgress value={s.you} size={80} stroke={8} color={SECTION_CHART_COLORS[idx]} />
                         <div className="cres-sdc-legend">
-                          <div><span className="cres-dot" style={{ background: SECTION_CHART_COLORS[idx] }} /> You: <strong>{s.you}</strong></div>
-                          <div><span className="cres-dot" style={{ background: '#555' }} /> Avg: <strong>{s.avg}</strong></div>
+                          <div><span className="cres-dot" style={{background: SECTION_CHART_COLORS[idx]}} /> You: <strong>{s.you}</strong></div>
+                          <div><span className="cres-dot" style={{background: '#555'}} /> Avg: <strong>{s.avg}</strong></div>
                         </div>
                       </div>
                       <div className="cres-sdc-bar-wrap">
-                        <div className="cres-sdc-bar" style={{ width: `${s.you}%`, background: SECTION_CHART_COLORS[idx] }} />
+                        <div className="cres-sdc-bar" style={{width: `${s.you}%`, background: SECTION_CHART_COLORS[idx]}} />
                       </div>
                     </div>
                   );
@@ -269,7 +281,7 @@ export default function CandidateResults() {
           )}
 
           {/* ═══ SKILLS ═══ */}
-          {activeTab === 'skills' && (
+          {activeTab==='skills'&&(
             <>
               <div className="cres-tab-header">
                 <h2><Star size={20} /> Skill Competency Map</h2>
@@ -282,8 +294,8 @@ export default function CandidateResults() {
                 <ResponsiveContainer width="100%" height={300}>
                   <RadarChart data={radarData}>
                     <PolarGrid stroke="#262626" />
-                    <PolarAngleAxis dataKey="skill" tick={{ fill: '#aaa', fontSize: 11 }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#555', fontSize: 10 }} />
+                    <PolarAngleAxis dataKey="skill" tick={{fill: '#aaa', fontSize: 11}} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{fill: '#555', fontSize: 10}} />
                     <Radar name="Score" dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} strokeWidth={2} />
                   </RadarChart>
                 </ResponsiveContainer>
@@ -291,18 +303,18 @@ export default function CandidateResults() {
 
               {/* Skill cards */}
               <div className="cres-skills-grid">
-                {candidate.skills.sort((a, b) => b.score - a.score).map(s => (
+                {candidate.skills.sort((a, b) => b.score-a.score).map(s => (
                   <div className="cres-skill-card" key={s.name}>
                     <div className="cres-sk-top">
                       <span className="cres-sk-emoji">{levelIcon(s.level)}</span>
                       <div>
                         <strong>{s.name}</strong>
-                        <span className="cres-sk-level" style={{ color: levelColor(s.level) }}>{s.level}</span>
+                        <span className="cres-sk-level" style={{color: levelColor(s.level)}}>{s.level}</span>
                       </div>
                       <span className={`cres-sk-score ${scoreClass(s.score)}`}>{s.score}</span>
                     </div>
                     <div className="cres-progress-bar">
-                      <div className="cres-progress-fill" style={{ width: `${s.score}%`, background: levelColor(s.level) }} />
+                      <div className="cres-progress-fill" style={{width: `${s.score}%`, background: levelColor(s.level)}} />
                     </div>
                   </div>
                 ))}
@@ -311,7 +323,7 @@ export default function CandidateResults() {
           )}
 
           {/* ═══ LEADERBOARD ═══ */}
-          {activeTab === 'leaderboard' && (
+          {activeTab==='leaderboard'&&(
             <>
               <div className="cres-tab-header">
                 <h2><Trophy size={20} /> Leaderboard</h2>
@@ -319,17 +331,18 @@ export default function CandidateResults() {
               </div>
 
               {/* top 3 podium */}
-              {leaderboard.length >= 3 && (
+              {leaderboard.length>=3&&(
                 <div className="cres-podium">
-                  {[1, 0, 2].map(idx => {
-                    const c = leaderboard[idx];
+                  {[1, 0, 2].map(idx =>
+                  {
+                    const c=leaderboard[idx];
                     if (!c) return null;
-                    const isYou = c.name === candidate.name;
+                    const isYou=c.name===candidate.name;
                     return (
-                      <div className={`cres-podium-card podium-${idx + 1} ${isYou ? 'is-you' : ''}`} key={c.rank}>
+                      <div className={`cres-podium-card podium-${idx+1} ${isYou? 'is-you':''}`} key={c.rank}>
                         <div className="cres-podium-rank">{['🥇', '🥈', '🥉'][idx]}</div>
                         <div className="cres-podium-avatar">{c.name.charAt(0)}</div>
-                        <strong>{isYou ? 'You' : c.name}</strong>
+                        <strong>{isYou? 'You':c.name}</strong>
                         <span className="cres-podium-score">{c.overall}</span>
                       </div>
                     );
@@ -339,15 +352,16 @@ export default function CandidateResults() {
 
               {/* rest */}
               <div className="cres-lb-list">
-                {leaderboard.slice(3).map(c => {
-                  const isYou = c.name === candidate.name;
+                {leaderboard.slice(3).map(c =>
+                {
+                  const isYou=c.name===candidate.name;
                   return (
-                    <div className={`cres-lb-row ${isYou ? 'is-you' : ''}`} key={c.rank}>
+                    <div className={`cres-lb-row ${isYou? 'is-you':''}`} key={c.rank}>
                       <span className="cres-lb-rank">{c.rank}</span>
                       <div className="cres-lb-avatar">{c.name.charAt(0)}</div>
-                      <span className="cres-lb-name">{isYou ? 'You' : c.name}</span>
+                      <span className="cres-lb-name">{isYou? 'You':c.name}</span>
                       <div className="cres-lb-bar-wrap">
-                        <div className="cres-lb-bar" style={{ width: `${c.overall}%`, background: scoreColor(c.overall) }} />
+                        <div className="cres-lb-bar" style={{width: `${c.overall}%`, background: scoreColor(c.overall)}} />
                       </div>
                       <span className={`cres-lb-score ${scoreClass(c.overall)}`}>{c.overall}</span>
                     </div>

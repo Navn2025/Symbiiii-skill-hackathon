@@ -55,6 +55,9 @@ function Navbar() {
                 <Link to={getDashboardPath()} className="navbar-link">Dashboard</Link>
               </li>
               <li className="navbar-item">
+                <Link to="/quiz/dashboard" className="navbar-link">Quiz</Link>
+              </li>
+              <li className="navbar-item">
                 <button onClick={handleLogout} className="navbar-link navbar-logout-btn">
                   <LogOut size={16} />
                   Logout

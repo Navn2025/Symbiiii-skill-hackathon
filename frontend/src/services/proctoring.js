@@ -29,6 +29,9 @@ class ProctoringService
         this.codeSnapshots=[];
         this.largeTextPasteCount=0;
         this.aiPatternDetections=0;
+
+        // Screen share flag — when true, suppress tab/fullscreen false positives
+        this.isScreenShareActive=false;
     }
 
     // Initialize face detection models
@@ -72,6 +75,12 @@ class ProctoringService
     // Start monitoring
     async startMonitoring(videoElement, interviewId, onViolationCallback, socketService=null)
     {
+        if (!videoElement)
+        {
+            console.warn('⚠️ No video element provided to startMonitoring');
+            return;
+        }
+
         if (!this.isInitialized)
         {
             const initialized=await this.initialize();
@@ -81,8 +90,8 @@ class ProctoringService
             }
         }
 
-        // Initialize cleanup functions array
-        this.cleanupFunctions=[];
+        // Initialize cleanup functions array (append if already exists to avoid orphaning)
+        if (!this.cleanupFunctions) this.cleanupFunctions=[];
 
         this.videoElement=videoElement;
         this.interviewId=interviewId;
@@ -183,10 +192,10 @@ class ProctoringService
                 if (detections.length===0)
                 {
                     this.noFaceDetectedCount++;
-                    if (this.noFaceDetectedCount>3)
+                    if (this.noFaceDetectedCount>5)
                     {
-                        // No face detected for 6+ seconds
-                        this.reportViolation('no_face', 'critical', 'No face detected in camera');
+                        // No face detected for 10+ seconds
+                        this.reportViolation('no_face', 'high', 'No face detected in camera');
                         this.noFaceDetectedCount=0;
                     }
                 } else if (detections.length>1)
@@ -244,11 +253,12 @@ class ProctoringService
                         this.lookingAwayCount++;
                         console.log(`👀 Looking away detected: ${gazeDirection.direction} (confidence: ${gazeDirection.confidence.toFixed(2)}), Count: ${this.lookingAwayCount}`);
 
-                        if (this.lookingAwayCount>2)
+                        // Only flag after sustained looking away (5 consecutive = 10+ seconds)
+                        if (this.lookingAwayCount>5)
                         {
                             this.reportViolation(
                                 'looking_away',
-                                'medium',
+                                'low',
                                 `Looking ${gazeDirection.direction} - attention diverted`
                             );
                             this.lookingAwayCount=0;
@@ -321,15 +331,15 @@ class ProctoringService
         let direction='center';
         let confidence=0;
 
-        // Horizontal gaze detection (left/right)
-        if (horizontalRatio>0.25)
+        // Horizontal gaze detection (left/right) — more forgiving threshold
+        if (horizontalRatio>0.45)
         {
             isLookingAway=true;
             direction=noseXOffset>0? 'right':'left';
             confidence=Math.min(horizontalRatio, 1.0);
         }
-        // Vertical gaze detection (up/down)
-        else if (verticalRatio>0.15)
+        // Vertical gaze detection (up/down) — more forgiving for natural head movement
+        else if (verticalRatio>0.35)
         {
             isLookingAway=true;
             direction=noseYOffset<0? 'up':'down';
@@ -363,14 +373,22 @@ class ProctoringService
     // Setup tab visibility monitoring
     setupTabVisibilityMonitoring()
     {
+        // Debounce to avoid double-firing from visibilitychange + blur
+        let lastBlurTime=0;
+
         const handleVisibilityChange=() =>
         {
             if (document.hidden&&this.isMonitoring)
             {
+                // Suppress during screen share (picker dialog causes false positives)
+                if (this.isScreenShareActive) return;
+                const now=Date.now();
+                if (now-lastBlurTime<1000) return; // deduplicate with blur
+                lastBlurTime=now;
                 this.tabSwitchCount++;
                 this.reportViolation(
                     'tab_switch',
-                    'high',
+                    'medium',
                     `Tab switched (${this.tabSwitchCount} times)`
                 );
             }
@@ -383,7 +401,12 @@ class ProctoringService
         {
             if (this.isMonitoring)
             {
-                this.reportViolation('window_blur', 'high', 'Window lost focus');
+                // Suppress during screen share (picker dialog causes false positives)
+                if (this.isScreenShareActive) return;
+                const now=Date.now();
+                if (now-lastBlurTime<1000) return; // deduplicate with visibilitychange
+                lastBlurTime=now;
+                this.reportViolation('window_blur', 'medium', 'Window lost focus');
             }
         };
 
@@ -401,28 +424,55 @@ class ProctoringService
     // Enforce fullscreen mode
     enforceFullscreen()
     {
+        let lastFullscreenExitTime=0;
+
         const enterFullscreen=async () =>
         {
             try
             {
-                if (!document.fullscreenElement)
+                if (!document.fullscreenElement&&document.documentElement.requestFullscreen)
                 {
                     await document.documentElement.requestFullscreen();
                 }
             } catch (error)
             {
-                console.error('Fullscreen error:', error);
+                // Fullscreen requires a user gesture — log quietly and skip
+                if (error.name==='TypeError'||error.message?.includes('permissions')||error.message?.includes('gesture'))
+                {
+                    console.warn('Fullscreen requires user gesture, will retry on next interaction.');
+                } else
+                {
+                    console.error('Fullscreen error:', error);
+                }
             }
         };
 
-        // Try to enter fullscreen immediately
+        // Defer initial fullscreen attempt to next user interaction
+        const onFirstInteraction=() =>
+        {
+            enterFullscreen();
+            document.removeEventListener('click', onFirstInteraction);
+            document.removeEventListener('keydown', onFirstInteraction);
+        };
+        document.addEventListener('click', onFirstInteraction);
+        document.addEventListener('keydown', onFirstInteraction);
+
+        // Also try immediately (works if already triggered by user gesture)
         enterFullscreen();
 
-        // Monitor fullscreen exit
+        // Monitor fullscreen exit — debounced to prevent double counting
         const handleFullscreenChange=() =>
         {
             if (!document.fullscreenElement&&this.isMonitoring)
             {
+                // Suppress during screen share (getDisplayMedia exits fullscreen)
+                if (this.isScreenShareActive) return;
+
+                // Debounce: ignore if within 2s of the last exit
+                const now=Date.now();
+                if (now-lastFullscreenExitTime<2000) return;
+                lastFullscreenExitTime=now;
+
                 this.fullscreenExitCount++;
                 this.reportViolation(
                     'fullscreen_exit',
@@ -441,6 +491,8 @@ class ProctoringService
         this.cleanupFunctions.push(() =>
         {
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('click', onFirstInteraction);
+            document.removeEventListener('keydown', onFirstInteraction);
         });
     }
 
@@ -721,15 +773,15 @@ class ProctoringService
 
         this.violations.push(violation);
 
-        // Update suspicion score
+        // Update suspicion score (reduced impacts — more forgiving)
         const scoreImpact={
-            low: 5,
-            medium: 10,
-            high: 20,
-            critical: 30,
+            low: 2,
+            medium: 5,
+            high: 10,
+            critical: 20,
         };
 
-        this.suspicionScore=Math.min(100, this.suspicionScore+scoreImpact[severity]);
+        this.suspicionScore=Math.min(100, this.suspicionScore+(scoreImpact[severity]||5));
 
         // Call violation callback
         if (this.onViolation)
@@ -737,10 +789,15 @@ class ProctoringService
             this.onViolation(violation, this.suspicionScore);
         }
 
-        // Send to backend via API
+        // Send to backend via API (flatten to match backend schema)
         try
         {
-            await sendProctoringEvent(this.interviewId, violation);
+            await sendProctoringEvent(this.interviewId, {
+                eventType: violation.type,
+                severity: violation.severity,
+                description: violation.description,
+                timestamp: violation.timestamp,
+            });
         } catch (error)
         {
             console.warn('Failed to send proctoring event to API (backend may be offline):', error.message);
@@ -759,8 +816,8 @@ class ProctoringService
             }
         }
 
-        // Auto-terminate on critical threshold (prevent infinite loop)
-        if (this.suspicionScore>=100&&type!=='auto_terminate'&&!this.isTerminated)
+        // Auto-terminate on critical threshold (prevent infinite loop) — raised to 150 for more forgiving experience
+        if (this.suspicionScore>=150&&type!=='auto_terminate'&&!this.isTerminated)
         {
             this.isTerminated=true;
 
@@ -794,14 +851,14 @@ class ProctoringService
             // Stop monitoring
             this.stopMonitoring();
 
-            // Show alert to user
-            alert('⛔ INTERVIEW TERMINATED\n\nMultiple critical violations detected.\nThe recruiter has been notified.\n\nYou will be redirected to the home page.');
+            // Log termination (no blocking alert)
+            console.warn('⛔ INTERVIEW TERMINATED — Multiple critical violations detected. The recruiter has been notified.');
 
-            // Redirect to home after alert
+            // Redirect to home after a brief delay
             setTimeout(() =>
             {
                 window.location.href='/';
-            }, 1000);
+            }, 3000);
         }
     }
 

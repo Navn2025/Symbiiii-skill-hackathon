@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import {FileText as DocumentIcon, Book as BookIcon, Bot as RobotIcon, CheckCircle as CheckCircleIcon, RefreshCw as RefreshIcon, Folder as FolderIcon, Sparkles as SparklesIcon, Loader2 as LoadingIcon} from 'lucide-react';
 import './QuestionSelector.css';
 
@@ -27,6 +27,7 @@ function QuestionSelector({onQuestionSelected, onClose})
             python: 'def solution():\n    pass',
             javascript: 'function solution() {\n    // your code here\n}',
             java: 'public class Solution {\n    // your code here\n}',
+            cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    // your code here\n    return 0;\n}',
         },
     });
 
@@ -34,14 +35,32 @@ function QuestionSelector({onQuestionSelected, onClose})
     const [libraryQuestions, setLibraryQuestions]=useState([]);
     const [selectedLibraryQuestion, setSelectedLibraryQuestion]=useState(null);
 
+    // ESC key handler to close modal
+    useEffect(() =>
+    {
+        const handleKeyDown=(e) =>
+        {
+            if (e.key==='Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
+    // Auto-load library questions on mount
+    useEffect(() =>
+    {
+        loadLibraryQuestions();
+    }, []);
+
     const loadLibraryQuestions=async () =>
     {
         try
         {
             setLoading(true);
-            const response=await fetch(`${API_URL}/api/questions`);
+            const response=await fetch(`${API_URL}/api/questions`, {credentials: 'include'});
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data=await response.json();
-            setLibraryQuestions(data);
+            setLibraryQuestions(Array.isArray(data)? data:(data.data||[]));
         } catch (err)
         {
             setError('Failed to load questions');
@@ -60,12 +79,14 @@ function QuestionSelector({onQuestionSelected, onClose})
             const response=await fetch(`${API_URL}/api/ai/generate-question`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
                 body: JSON.stringify({
                     difficulty: aiDifficulty,
                     category: aiCategory,
                     customPrompt: customPrompt||null,
                 }),
             });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data=await response.json();
             setGeneratedQuestion(data.question);
         } catch (err)
@@ -81,16 +102,26 @@ function QuestionSelector({onQuestionSelected, onClose})
     {
         if (!generatedQuestion) return;
 
+        // Ensure required fields exist
+        const questionData=generatedQuestion.question||generatedQuestion;
+        if (!questionData.title||!questionData.description)
+        {
+            setError('Generated question is missing title or description. Please regenerate.');
+            return;
+        }
+
         try
         {
             // Save to database
             const response=await fetch(`${API_URL}/api/questions`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(generatedQuestion),
+                credentials: 'include',
+                body: JSON.stringify(questionData),
             });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const savedQuestion=await response.json();
-            onQuestionSelected(savedQuestion);
+            onQuestionSelected(savedQuestion.data||savedQuestion);
         } catch (err)
         {
             setError('Failed to save question');
@@ -111,8 +142,10 @@ function QuestionSelector({onQuestionSelected, onClose})
             const response=await fetch(`${API_URL}/api/questions`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
                 body: JSON.stringify(customQuestion),
             });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const savedQuestion=await response.json();
             onQuestionSelected(savedQuestion);
         } catch (err)
@@ -128,7 +161,8 @@ function QuestionSelector({onQuestionSelected, onClose})
     {
         try
         {
-            const response=await fetch(`${API_URL}/api/questions/${questionId}`);
+            const response=await fetch(`${API_URL}/api/questions/${questionId}`, {credentials: 'include'});
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const question=await response.json();
             onQuestionSelected(question);
         } catch (err)
@@ -204,7 +238,7 @@ function QuestionSelector({onQuestionSelected, onClose})
                             ):(
                                 <div className="questions-list">
                                     {libraryQuestions.map(q => (
-                                        <div key={q.id} className="library-question-card">
+                                        <div key={q._id||q.id} className="library-question-card">
                                             <div className="question-header-row">
                                                 <h4>{q.title}</h4>
                                                 <span className={`badge badge-${q.difficulty}`}>
@@ -215,7 +249,7 @@ function QuestionSelector({onQuestionSelected, onClose})
                                             <p className="question-preview">{q.description}</p>
                                             <button
                                                 className="select-btn"
-                                                onClick={() => handleSelectLibraryQuestion(q.id)}
+                                                onClick={() => handleSelectLibraryQuestion(q._id||q.id)}
                                             >
                                                 Select This Question
                                             </button>
@@ -429,6 +463,17 @@ function QuestionSelector({onQuestionSelected, onClose})
                                             onChange={(e) => setCustomQuestion({
                                                 ...customQuestion,
                                                 starterCode: {...customQuestion.starterCode, java: e.target.value}
+                                            })}
+                                            rows={3}
+                                        />
+                                    </div>
+                                    <div className="code-input">
+                                        <strong>C++:</strong>
+                                        <textarea
+                                            value={customQuestion.starterCode.cpp}
+                                            onChange={(e) => setCustomQuestion({
+                                                ...customQuestion,
+                                                starterCode: {...customQuestion.starterCode, cpp: e.target.value}
                                             })}
                                             rows={3}
                                         />

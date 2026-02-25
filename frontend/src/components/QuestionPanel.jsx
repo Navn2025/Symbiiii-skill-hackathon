@@ -15,31 +15,37 @@ function QuestionPanel({question})
     return (
         <div className="question-panel card">
             <div className="question-title-section">
-                <h2>{question.title}</h2>
-                <span className={`badge badge-${question.difficulty}`}>
-                    {question.difficulty}
-                </span>
+                <h2>{question.title||'Untitled Question'}</h2>
+                {question.difficulty&&(
+                    <span className={`badge badge-${question.difficulty}`}>
+                        {question.difficulty}
+                    </span>
+                )}
             </div>
 
-            <div className="question-category">
-                <span><FolderIcon size={14} /> Category: {question.category}</span>
-            </div>
+            {question.category&&(
+                <div className="question-category">
+                    <span><FolderIcon size={14} /> Category: {question.category}</span>
+                </div>
+            )}
 
-            <p className="question-description">{question.description}</p>
+            <p className="question-description">{question.description||'No description available.'}</p>
 
-            <div className="question-examples">
-                <h4>Examples:</h4>
-                {question.examples.map((example, index) => (
-                    <div key={index} className="example-box">
-                        <div className="example-row">
-                            <strong>Input:</strong> <code>{example.input}</code>
+            {Array.isArray(question.examples)&&question.examples.length>0&&(
+                <div className="question-examples">
+                    <h4>Examples:</h4>
+                    {question.examples.map((example, index) => (
+                        <div key={index} className="example-box">
+                            <div className="example-row">
+                                <strong>Input:</strong> <code>{example.input}</code>
+                            </div>
+                            <div className="example-row">
+                                <strong>Output:</strong> <code>{example.output}</code>
+                            </div>
                         </div>
-                        <div className="example-row">
-                            <strong>Output:</strong> <code>{example.output}</code>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

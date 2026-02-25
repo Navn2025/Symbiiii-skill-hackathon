@@ -1,22 +1,21 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import {useState} from 'react';
+import {useNavigate} from 'react-router-dom';
+import api from '../services/api';
 import './AIInterviewSetup.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-function AIInterviewSetup() {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+function AIInterviewSetup()
+{
+  const navigate=useNavigate();
+  const [formData, setFormData]=useState({
     candidateName: '',
     role: '',
     experience: 'entry',
     topics: [],
     duration: 30
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]=useState(false);
 
-  const availableTopics = [
+  const availableTopics=[
     'JavaScript',
     'React',
     'Node.js',
@@ -29,50 +28,58 @@ function AIInterviewSetup() {
     'Web Development'
   ];
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange=(e) =>
+  {
+    const {name, value}=e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
   };
 
-  const handleTopicToggle = (topic) => {
+  const handleTopicToggle=(topic) =>
+  {
     setFormData(prev => ({
       ...prev,
       topics: prev.topics.includes(topic)
-        ? prev.topics.filter(t => t !== topic)
-        : [...prev.topics, topic]
+        ? prev.topics.filter(t => t!==topic)
+        :[...prev.topics, topic]
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit=async (e) =>
+  {
     e.preventDefault();
-    
-    if (formData.topics.length === 0) {
+
+    if (formData.topics.length===0)
+    {
       alert('Please select at least one topic');
       return;
     }
 
     setLoading(true);
-    try {
+    try
+    {
       // Include candidateId from logged-in user
-      let candidateId = null;
-      try {
-        const stored = localStorage.getItem('user');
-        if (stored) {
-          const user = JSON.parse(stored);
-          candidateId = user._id || user.id || null;
+      let candidateId=null;
+      try
+      {
+        const stored=localStorage.getItem('user');
+        if (stored)
+        {
+          const user=JSON.parse(stored);
+          candidateId=user._id||user.id||null;
         }
-      } catch { /* ignore */ }
+      } catch { /* ignore */}
 
-      const response = await axios.post(`${API_URL}/api/ai-interview/create`, {
+      const response=await api.post('/ai-interview/create', {
         ...formData,
         candidateId,
       });
-      const sessionId = response.data.sessionId;
+      const sessionId=response.data.sessionId;
       navigate(`/ai-interview/${sessionId}`);
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error creating AI interview:', error);
       alert('Failed to create interview session');
       setLoading(false);
@@ -134,7 +141,7 @@ function AIInterviewSetup() {
                 <button
                   key={topic}
                   type="button"
-                  className={`topic-button ${formData.topics.includes(topic) ? 'selected' : ''}`}
+                  className={`topic-button ${formData.topics.includes(topic)? 'selected':''}`}
                   onClick={() => handleTopicToggle(topic)}
                 >
                   {topic}
@@ -160,7 +167,7 @@ function AIInterviewSetup() {
           </div>
 
           <button type="submit" className="start-button" disabled={loading}>
-            {loading ? 'Starting Interview...' : 'Start AI Interview'}
+            {loading? 'Starting Interview...':'Start AI Interview'}
           </button>
         </form>
       </div>

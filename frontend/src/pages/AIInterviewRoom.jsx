@@ -1,169 +1,192 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import {useState, useEffect, useRef, useCallback} from 'react';
+import {useParams, useNavigate} from 'react-router-dom';
+import api from '../services/api';
 import './AIInterviewRoom.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
 /* ── Text-to-Speech helper ── */
-function speakText(text, onEnd) {
-  if (!window.speechSynthesis) { onEnd?.(); return; }
+function speakText(text, onEnd)
+{
+  if (!window.speechSynthesis) {onEnd?.(); return;}
   window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.rate = 1;
-  utter.pitch = 1;
+  const utter=new SpeechSynthesisUtterance(text);
+  utter.rate=1;
+  utter.pitch=1;
   // Pick a good English voice
-  const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female'))
-    || voices.find(v => v.lang.startsWith('en'))
-    || voices[0];
-  if (preferred) utter.voice = preferred;
-  utter.onend = () => onEnd?.();
-  utter.onerror = () => onEnd?.();
+  const voices=window.speechSynthesis.getVoices();
+  const preferred=voices.find(v => v.lang.startsWith('en')&&v.name.includes('Female'))
+    ||voices.find(v => v.lang.startsWith('en'))
+    ||voices[0];
+  if (preferred) utter.voice=preferred;
+  utter.onend=() => onEnd?.();
+  utter.onerror=() => onEnd?.();
   window.speechSynthesis.speak(utter);
 }
 
-function AIInterviewRoom() {
-  const { sessionId } = useParams();
-  const navigate = useNavigate();
-  const [sessionData, setSessionData] = useState(null);
-  const [currentQuestion, setCurrentQuestion] = useState('');
-  const [answer, setAnswer] = useState('');
-  const [conversation, setConversation] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
+function AIInterviewRoom()
+{
+  const {sessionId}=useParams();
+  const navigate=useNavigate();
+  const [sessionData, setSessionData]=useState(null);
+  const [currentQuestion, setCurrentQuestion]=useState('');
+  const [answer, setAnswer]=useState('');
+  const [conversation, setConversation]=useState([]);
+  const [loading, setLoading]=useState(true);
+  const [submitting, setSubmitting]=useState(false);
+  const [timeLeft, setTimeLeft]=useState(0);
 
   // Voice states
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [voiceSupported, setVoiceSupported] = useState(false);
-  const [micSupported, setMicSupported] = useState(false);
-  const recognitionRef = useRef(null);
-  const conversationEndRef = useRef(null);
-  const initDone = useRef(false);
+  const [isSpeaking, setIsSpeaking]=useState(false);
+  const [isRecording, setIsRecording]=useState(false);
+  const [voiceSupported, setVoiceSupported]=useState(false);
+  const [micSupported, setMicSupported]=useState(false);
+  const recognitionRef=useRef(null);
+  const conversationEndRef=useRef(null);
+  const initDone=useRef(false);
 
   // Detect if this interview was started from verification flow
-  const isFromVerification = sessionStorage.getItem('fromVerification') === 'true';
+  const isFromVerification=sessionStorage.getItem('fromVerification')==='true';
 
   // Check browser support
-  useEffect(() => {
+  useEffect(() =>
+  {
     setVoiceSupported(!!window.speechSynthesis);
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
     setMicSupported(!!SpeechRecognition);
 
     // Pre-load voices
-    if (window.speechSynthesis) {
+    if (window.speechSynthesis)
+    {
       window.speechSynthesis.getVoices();
-      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged=() => window.speechSynthesis.getVoices();
     }
 
-    return () => {
+    return () =>
+    {
       window.speechSynthesis?.cancel();
       recognitionRef.current?.abort();
     };
   }, []);
 
   // Auto-scroll conversation
-  useEffect(() => {
-    conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  useEffect(() =>
+  {
+    conversationEndRef.current?.scrollIntoView({behavior: 'smooth'});
   }, [conversation]);
 
   // Timer
-  useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+  useEffect(() =>
+  {
+    if (timeLeft>0)
+    {
+      const timer=setTimeout(() => setTimeLeft(timeLeft-1), 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && sessionData && !loading) {
+    } else if (timeLeft===0&&sessionData&&!loading)
+    {
       handleEndInterview();
     }
   }, [timeLeft, sessionData, loading]);
 
   // Init: fetch session + first question (once)
-  useEffect(() => {
+  useEffect(() =>
+  {
     if (initDone.current) return;
-    initDone.current = true;
+    initDone.current=true;
 
-    (async () => {
-      try {
-        const res = await axios.get(`${API_URL}/api/ai-interview/${sessionId}`);
+    (async () =>
+    {
+      try
+      {
+        const res=await api.get(`/ai-interview/${sessionId}`);
         setSessionData(res.data);
-        setTimeLeft(res.data.duration * 60);
+        setTimeLeft(res.data.duration*60);
 
         // Fetch first question
-        const qRes = await axios.post(`${API_URL}/api/ai-interview/${sessionId}/question`, {});
-        if (qRes.data.question) {
+        const qRes=await api.post(`/ai-interview/${sessionId}/question`, {});
+        if (qRes.data.question)
+        {
           setCurrentQuestion(qRes.data.question);
-          setConversation([{ role: 'assistant', content: qRes.data.question }]);
+          setConversation([{role: 'assistant', content: qRes.data.question}]);
           // Speak the first question
           setIsSpeaking(true);
           speakText(qRes.data.question, () => setIsSpeaking(false));
         }
-      } catch (error) {
+      } catch (error)
+      {
         console.error('Error fetching session:', error);
         alert('Session not found');
         navigate('/ai-interview-setup');
-      } finally {
+      } finally
+      {
         setLoading(false);
       }
     })();
   }, [sessionId, navigate]);
 
   /* ── Speech Recognition (mic) ── */
-  const startRecording = useCallback(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const startRecording=useCallback(() =>
+  {
+    const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
     // Stop AI speaking if it is
     window.speechSynthesis?.cancel();
     setIsSpeaking(false);
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    const recognition=new SpeechRecognition();
+    recognition.continuous=true;
+    recognition.interimResults=true;
+    recognition.lang='en-US';
 
-    let finalTranscript = answer; // Keep existing text
+    let finalTranscript=answer; // Keep existing text
 
-    recognition.onresult = (event) => {
-      let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += (finalTranscript ? ' ' : '') + transcript;
-        } else {
-          interim += transcript;
+    recognition.onresult=(event) =>
+    {
+      let interim='';
+      for (let i=event.resultIndex;i<event.results.length;i++)
+      {
+        const transcript=event.results[i][0].transcript;
+        if (event.results[i].isFinal)
+        {
+          finalTranscript+=(finalTranscript? ' ':'')+transcript;
+        } else
+        {
+          interim+=transcript;
         }
       }
-      setAnswer(finalTranscript + (interim ? ' ' + interim : ''));
+      setAnswer(finalTranscript+(interim? ' '+interim:''));
     };
 
-    recognition.onerror = (e) => {
+    recognition.onerror=(e) =>
+    {
       console.error('Speech recognition error:', e.error);
       setIsRecording(false);
     };
 
-    recognition.onend = () => {
+    recognition.onend=() =>
+    {
       setIsRecording(false);
     };
 
-    recognitionRef.current = recognition;
+    recognitionRef.current=recognition;
     recognition.start();
     setIsRecording(true);
   }, [answer]);
 
-  const stopRecording = useCallback(() => {
+  const stopRecording=useCallback(() =>
+  {
     recognitionRef.current?.stop();
     setIsRecording(false);
   }, []);
 
-  const toggleRecording = useCallback(() => {
+  const toggleRecording=useCallback(() =>
+  {
     if (isRecording) stopRecording();
     else startRecording();
   }, [isRecording, startRecording, stopRecording]);
 
   /* ── Replay current question ── */
-  const replayQuestion = useCallback(() => {
+  const replayQuestion=useCallback(() =>
+  {
     if (!currentQuestion) return;
     window.speechSynthesis?.cancel();
     setIsSpeaking(true);
@@ -171,7 +194,8 @@ function AIInterviewRoom() {
   }, [currentQuestion]);
 
   /* ── Submit answer ── */
-  const handleSubmitAnswer = async (e) => {
+  const handleSubmitAnswer=async (e) =>
+  {
     e.preventDefault();
     if (!answer.trim()) return;
 
@@ -182,25 +206,30 @@ function AIInterviewRoom() {
     setIsSpeaking(false);
 
     setSubmitting(true);
-    const userAnswer = answer.trim();
-    setConversation(prev => [...prev, { role: 'user', content: userAnswer }]);
+    const userAnswer=answer.trim();
+    setConversation(prev => [...prev, {role: 'user', content: userAnswer}]);
     setAnswer('');
 
-    try {
-      const response = await axios.post(`${API_URL}/api/ai-interview/${sessionId}/answer`, {
+    try
+    {
+      const response=await api.post(`/ai-interview/${sessionId}/answer`, {
         question: currentQuestion,
         answer: userAnswer,
       });
 
-      if (response.data.interviewComplete) {
-        setConversation(prev => [...prev, { role: 'assistant', content: response.data.message }]);
-        speakText(response.data.message, () => {
-          if (isFromVerification) {
+      if (response.data.interviewComplete)
+      {
+        setConversation(prev => [...prev, {role: 'assistant', content: response.data.message}]);
+        speakText(response.data.message, () =>
+        {
+          if (isFromVerification)
+          {
             // Completed all questions from verification flow — go to report with verification flag
             sessionStorage.setItem('verificationInterviewComplete', 'true');
             sessionStorage.setItem('verificationSessionId', sessionId);
             navigate(`/ai-interview-report/${sessionId}`);
-          } else {
+          } else
+          {
             navigate(`/ai-interview-report/${sessionId}`);
           }
         });
@@ -208,72 +237,89 @@ function AIInterviewRoom() {
       }
 
       // Determine next question text
-      const nextQ = response.data.followUpQuestion || response.data.question || response.data.nextQuestion;
-      const transitionMsg = response.data.message || '';
+      const nextQ=response.data.followUpQuestion||response.data.question||response.data.nextQuestion;
+      const transitionMsg=response.data.message||'';
 
-      if (nextQ) {
+      if (nextQ)
+      {
         setCurrentQuestion(nextQ);
-        if (transitionMsg) {
-          setConversation(prev => [...prev, { role: 'assistant', content: `${transitionMsg}\n\n${nextQ}` }]);
-        } else {
-          setConversation(prev => [...prev, { role: 'assistant', content: nextQ }]);
+        if (transitionMsg)
+        {
+          setConversation(prev => [...prev, {role: 'assistant', content: `${transitionMsg}\n\n${nextQ}`}]);
+        } else
+        {
+          setConversation(prev => [...prev, {role: 'assistant', content: nextQ}]);
         }
         // Speak transition + question
-        const fullSpeak = transitionMsg ? `${transitionMsg} ${nextQ}` : nextQ;
+        const fullSpeak=transitionMsg? `${transitionMsg} ${nextQ}`:nextQ;
         setIsSpeaking(true);
         speakText(fullSpeak, () => setIsSpeaking(false));
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error submitting answer:', error);
-    } finally {
+    } finally
+    {
       setSubmitting(false);
     }
   };
 
   /* ── End interview ── */
-  const handleEndInterview = async () => {
+  const handleEndInterview=async () =>
+  {
     window.speechSynthesis?.cancel();
     recognitionRef.current?.stop();
-    try {
-      await axios.post(`${API_URL}/api/ai-interview/${sessionId}/end`);
+    try
+    {
+      await api.post(`/ai-interview/${sessionId}/end`);
 
-      if (isFromVerification) {
+      if (isFromVerification)
+      {
         // Ended early from verification flow — mark as incomplete, redirect to verification
-        try {
-          const stored = localStorage.getItem('user');
-          if (stored) {
-            const u = JSON.parse(stored);
-            const userId = u.id || u._id;
-            await axios.post(`${API_URL}/api/verification/${userId}/verify-interview-result`, { sessionId });
+        try
+        {
+          const stored=localStorage.getItem('user');
+          if (stored)
+          {
+            const u=JSON.parse(stored);
+            const userId=u.id||u._id;
+            await api.post(`/verification/${userId}/verify-interview-result`, {sessionId});
           }
-        } catch (e) {
+        } catch (e)
+        {
           console.error('Failed to update verification status:', e);
         }
         sessionStorage.removeItem('fromVerification');
         sessionStorage.removeItem('verificationInterviewComplete');
         sessionStorage.removeItem('verificationSessionId');
         navigate('/resume-verification');
-      } else {
+      } else
+      {
         navigate(`/ai-interview-report/${sessionId}`);
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error ending interview:', error);
-      if (isFromVerification) {
+      if (isFromVerification)
+      {
         sessionStorage.removeItem('fromVerification');
         navigate('/resume-verification');
-      } else {
+      } else
+      {
         navigate(`/ai-interview-report/${sessionId}`);
       }
     }
   };
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+  const formatTime=(seconds) =>
+  {
+    const mins=Math.floor(seconds/60);
+    const secs=seconds%60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (loading) {
+  if (loading)
+  {
     return <div className="loading">Loading interview session...</div>;
   }
 
@@ -300,7 +346,7 @@ function AIInterviewRoom() {
             {conversation.map((msg, index) => (
               <div key={index} className={`message ${msg.role}`}>
                 <div className="message-label">
-                  {msg.role === 'assistant' ? '🤖 AI Interviewer' : '👤 You'}
+                  {msg.role==='assistant'? '🤖 AI Interviewer':'👤 You'}
                 </div>
                 <div className="message-content">{msg.content}</div>
               </div>
@@ -313,14 +359,14 @@ function AIInterviewRoom() {
           <h3>Current Question</h3>
           <div className="current-question">
             {currentQuestion}
-            {voiceSupported && (
+            {voiceSupported&&(
               <button
-                className={`speak-btn ${isSpeaking ? 'speaking' : ''}`}
+                className={`speak-btn ${isSpeaking? 'speaking':''}`}
                 onClick={replayQuestion}
-                title={isSpeaking ? 'Speaking...' : 'Replay question'}
+                title={isSpeaking? 'Speaking...':'Replay question'}
                 type="button"
               >
-                {isSpeaking ? '🔊' : '🔈'}
+                {isSpeaking? '🔊':'🔈'}
               </button>
             )}
           </div>
@@ -330,35 +376,35 @@ function AIInterviewRoom() {
               <textarea
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
-                placeholder={isRecording ? '🎙️ Listening... speak now' : 'Type your answer or click the mic to speak...'}
+                placeholder={isRecording? '🎙️ Listening... speak now':'Type your answer or click the mic to speak...'}
                 rows="6"
                 disabled={submitting}
-                className={isRecording ? 'recording' : ''}
+                className={isRecording? 'recording':''}
               />
-              {micSupported && (
+              {micSupported&&(
                 <button
                   type="button"
-                  className={`mic-btn ${isRecording ? 'recording' : ''}`}
+                  className={`mic-btn ${isRecording? 'recording':''}`}
                   onClick={toggleRecording}
                   disabled={submitting}
-                  title={isRecording ? 'Stop recording' : 'Start voice recording'}
+                  title={isRecording? 'Stop recording':'Start voice recording'}
                 >
-                  {isRecording ? (
+                  {isRecording? (
                     <span className="mic-icon recording-icon">⏹️</span>
-                  ) : (
+                  ):(
                     <span className="mic-icon">🎙️</span>
                   )}
                 </button>
               )}
             </div>
-            {isRecording && (
+            {isRecording&&(
               <div className="recording-indicator">
                 <span className="pulse-dot" />
                 <span>Recording... speak your answer</span>
               </div>
             )}
-            <button type="submit" disabled={submitting || !answer.trim()}>
-              {submitting ? 'Submitting...' : 'Submit Answer'}
+            <button type="submit" disabled={submitting||!answer.trim()}>
+              {submitting? 'Submitting...':'Submit Answer'}
             </button>
           </form>
         </div>

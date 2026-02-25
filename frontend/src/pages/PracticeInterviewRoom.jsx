@@ -78,8 +78,14 @@ function PracticeInterviewRoom()
             const response=await fetch(`${API_URL}/api/practice/start`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
                 body: JSON.stringify({sessionId, role, difficulty, interviewType: type, mode}),
             });
+            if (!response.ok)
+            {
+                const err=await response.json().catch(() => ({}));
+                throw new Error(err.error||`Server error ${response.status}`);
+            }
             const data=await response.json();
             setGreeting(data.greeting||'Welcome to your practice interview!');
 
@@ -104,23 +110,29 @@ function PracticeInterviewRoom()
     {
         setLoading(true);
         setShowGreeting(false);
-        
+
         // Start timer on first question
         if (!timerStarted)
         {
             setTimerStarted(true);
         }
-        
+
         try
         {
             const response=await fetch(`${API_URL}/api/practice/next-question`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
                 body: JSON.stringify({
                     sessionId,
                     previousAnswer: evaluation? {score: evaluation.score}:null,
                 }),
             });
+            if (!response.ok)
+            {
+                const err=await response.json().catch(() => ({}));
+                throw new Error(err.error||`Server error ${response.status}`);
+            }
             const data=await response.json();
 
             setCurrentQuestion(data.question);
@@ -176,12 +188,18 @@ function PracticeInterviewRoom()
             const response=await fetch(`${API_URL}/api/practice/evaluate-answer`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
                 body: JSON.stringify({
                     sessionId,
                     questionId: currentQuestion.questionNumber,
                     answer,
                 }),
             });
+            if (!response.ok)
+            {
+                const err=await response.json().catch(() => ({}));
+                throw new Error(err.error||`Server error ${response.status}`);
+            }
             const data=await response.json();
 
             setEvaluation(data.evaluation);
@@ -220,12 +238,18 @@ function PracticeInterviewRoom()
             const response=await fetch(`${API_URL}/api/codeExecution/execute`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
                 body: JSON.stringify({
                     code: answer,
                     language: language,
                     testCases: currentQuestion.testCases,
                 }),
             });
+            if (!response.ok)
+            {
+                const err=await response.json().catch(() => ({}));
+                throw new Error(err.error||`Server error ${response.status}`);
+            }
             const data=await response.json();
 
             setTestResults(data);

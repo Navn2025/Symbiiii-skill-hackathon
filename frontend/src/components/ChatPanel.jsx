@@ -8,20 +8,31 @@ function ChatPanel({interviewId, userName})
     const [messages, setMessages]=useState([]);
     const [inputMessage, setInputMessage]=useState('');
     const messagesEndRef=useRef(null);
+    const processedIdsRef=useRef(new Set());
 
     useEffect(() =>
     {
         const socket=socketService.socket;
         if (!socket) return;
 
-        socket.on('chat-message', (data) =>
+        const handleChatMessage=(data) =>
         {
+            // Don't add our own messages (we already added them locally)
+            if (data.from===socket.id) return;
+            // Deduplicate by messageId if available
+            const msgKey=data.messageId||`${data.from}-${data.timestamp}`;
+            if (processedIdsRef.current.has(msgKey)) return;
+            processedIdsRef.current.add(msgKey);
+
             setMessages(prev => [...prev, data]);
-        });
+        };
+
+        socket.on('chat-message', handleChatMessage);
 
         return () =>
         {
-            socket.off('chat-message');
+            // Remove only our specific listener, not ALL chat-message listeners
+            socket.off('chat-message', handleChatMessage);
         };
     }, []);
 
@@ -37,21 +48,25 @@ function ChatPanel({interviewId, userName})
 
     const handleSendMessage=() =>
     {
-        if (!inputMessage.trim()) return;
+        const trimmed=inputMessage.trim();
+        if (!trimmed) return;
+        // Enforce message length limit (5000 chars)
+        if (trimmed.length>5000) return;
 
         const message={
-            message: inputMessage,
+            message: trimmed,
             userName,
             timestamp: new Date(),
             from: 'me',
         };
 
         setMessages(prev => [...prev, message]);
-        socketService.sendChatMessage(interviewId, inputMessage, userName);
+        socketService.sendChatMessage(interviewId, trimmed, userName);
         setInputMessage('');
     };
 
-    const handleKeyPress=(e) =>
+    // Use onKeyDown instead of deprecated onKeyPress
+    const handleKeyDown=(e) =>
     {
         if (e.key==='Enter'&&!e.shiftKey)
         {
@@ -99,7 +114,7 @@ function ChatPanel({interviewId, userName})
                     placeholder="Type a message..."
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                    onKeyDown={handleKeyDown}
                 />
                 <button
                     className="btn btn-primary send-btn"

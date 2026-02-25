@@ -2,7 +2,7 @@ import {useState, useEffect} from 'react';
 import {Shield as ShieldIcon, UserX as NoFaceIcon, Users as UsersIcon, Eye as EyeIcon, Moon as SleepIcon, ArrowRightLeft as TabSwitchIcon, Minimize2 as FullscreenExitIcon, Clipboard as ClipboardIcon, Bot as RobotIcon, FileText as DocumentIcon, AlertCircle as AlertIcon, CheckCircle as CheckCircleIcon, X as XIcon, User as UserIcon, Smartphone as PhoneIcon, Circle as RecordIcon} from 'lucide-react';
 import './ProctoringMonitor.css';
 
-function ProctoringMonitor({interviewId, events, suspicionScore=0, integrityScore: propIntegrityScore})
+function ProctoringMonitor({interviewId, events=[], suspicionScore=0, integrityScore: propIntegrityScore})
 {
     const [integrityScore, setIntegrityScore]=useState(100);
     const [alertCount, setAlertCount]=useState(0);
@@ -92,79 +92,55 @@ function ProctoringMonitor({interviewId, events, suspicionScore=0, integrityScor
     return (
         <div className="proctoring-monitor card">
             <div className="proctoring-header">
-                <h3><ShieldIcon size={18} /> Proctoring Monitor</h3>
-            </div>
-
-            <div className="integrity-score">
-                <div className="score-label">Integrity Score</div>
-                <div className="score-value" style={{color: getScoreColor()}}>
-                    {integrityScore}/100
-                </div>
-                <div className="score-bar">
-                    <div
-                        className="score-fill"
-                        style={{
-                            width: `${integrityScore}%`,
-                            background: getScoreColor()
-                        }}
-                    />
+                <h3><ShieldIcon size={14} /> Proctoring</h3>
+                <div className="header-badges">
+                    <span className="feature-badge" title="Face detection"><UserIcon size={10} /> Face</span>
+                    <span className="feature-badge" title="Eye tracking"><EyeIcon size={10} /> Eyes</span>
+                    <span className="feature-badge" title="AI detection"><RobotIcon size={10} /> AI</span>
+                    <span className="feature-badge" title="Tab monitoring"><TabSwitchIcon size={10} /> Focus</span>
+                    <span className="feature-badge" title="Secondary camera"><PhoneIcon size={10} /> Cam2</span>
                 </div>
             </div>
 
-            <div className="proctoring-stats">
-                <div className="stat">
-                    <div className="stat-label">Total Alerts</div>
-                    <div className="stat-value">{alertCount}</div>
-                </div>
-                <div className="stat">
-                    <div className="stat-label">Critical</div>
-                    <div className="stat-value" style={{color: criticalAlerts>0? '#ef4444':'#10b981'}}>
-                        {criticalAlerts}
+            <div className="proctoring-summary">
+                <div className="summary-score">
+                    <div className="score-value" style={{color: getScoreColor()}}>{integrityScore}<span className="score-max">/100</span></div>
+                    <div className="score-bar">
+                        <div className="score-fill" style={{width: `${integrityScore}%`, background: getScoreColor()}} />
                     </div>
                 </div>
-                <div className="stat">
-                    <div className="stat-label">Status</div>
-                    <div className="stat-value status">
-                        {integrityScore>=80? <><CheckCircleIcon size={16} /> Good</>:integrityScore>=60? <><AlertIcon size={16} /> Warning</>:<><XIcon size={16} /> Risk</>}
-                    </div>
+                <div className="summary-stat">
+                    <div className="stat-num">{alertCount}</div>
+                    <div className="stat-lbl">Alerts</div>
                 </div>
-            </div>
-
-            <div className="monitoring-features">
-                <div className="features-label">Active Monitoring</div>
-                <div className="feature-badges">
-                    <span className="feature-badge" title="Face detection and tracking"><UserIcon size={14} /> Face</span>
-                    <span className="feature-badge" title="Eye tracking and gaze detection"><EyeIcon size={14} /> Eyes</span>
-                    <span className="feature-badge" title="AI-generated code detection"><RobotIcon size={14} /> AI</span>
-                    <span className="feature-badge" title="Tab and window monitoring"><TabSwitchIcon size={14} /> Focus</span>
-                    <span className="feature-badge" title="Secondary camera (phone)"><PhoneIcon size={14} /> Camera 2</span>
+                <div className="summary-stat">
+                    <div className="stat-num" style={{color: criticalAlerts>0? '#ef4444':'#10b981'}}>{criticalAlerts}</div>
+                    <div className="stat-lbl">Critical</div>
+                </div>
+                <div className="summary-stat">
+                    <div className="stat-num status-icon">
+                        {integrityScore>=80? <><CheckCircleIcon size={14} color="#10b981" /></>:integrityScore>=60? <><AlertIcon size={14} color="#f59e0b" /></>:<><XIcon size={14} color="#ef4444" /></>}
+                    </div>
+                    <div className="stat-lbl">{integrityScore>=80? 'Good':integrityScore>=60? 'Warn':'Risk'}</div>
                 </div>
             </div>
 
             <div className="events-list">
                 <div className="events-header">
-                    Recent Events
-                    {newEventPulse&&<span className="live-indicator"><RecordIcon size={12} color="#ef4444" /> LIVE</span>}
+                    Events {newEventPulse&&<span className="live-indicator"><RecordIcon size={10} color="#ef4444" /> LIVE</span>}
                 </div>
-
                 {events.length===0? (
                     <div className="no-events">
-                        <span><CheckCircleIcon size={24} /></span>
-                        <p>No violations detected</p>
+                        <CheckCircleIcon size={16} /> No violations
                     </div>
                 ):(
                     <div className="events">
                         {events.slice(-10).reverse().map((event, index) => (
                             <div key={index} className="event-item">
-                                <div
-                                    className="event-severity"
-                                    style={{background: getSeverityBadge(event.severity)}}
-                                />
+                                <div className="event-severity" style={{background: getSeverityBadge(event.severity)}} />
                                 <div className="event-content">
                                     <div className="event-type">{formatEventType(event)}</div>
-                                    <div className="event-time">
-                                        {new Date(event.timestamp).toLocaleTimeString()}
-                                    </div>
+                                    <div className="event-time">{new Date(event.timestamp).toLocaleTimeString()}</div>
                                 </div>
                             </div>
                         ))}

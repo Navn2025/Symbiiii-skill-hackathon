@@ -1,54 +1,61 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import {
+import {useState, useEffect, useRef, useCallback} from 'react';
+import {useNavigate, Link} from 'react-router-dom';
+import
+{
   Briefcase, Eye, TrendingUp, Star, Search, Bell, LogOut,
   Dumbbell, Code, Bot, Shield, FileText, ChevronRight,
   BookOpen, Target, Award, Clock, MapPin, Building2, Users,
   BarChart3, ChevronDown, Send, Trash2, Play, Upload,
-  Video, UserCheck, CheckCircle, XCircle, ExternalLink, Trophy,
+  Video, UserCheck, CheckCircle, XCircle, ExternalLink, Trophy, Calendar,
   Phone, PhoneCall, PhoneOff, Mic, Volume2, Filter, Columns3, List
 } from 'lucide-react';
-import axios from 'axios';
+import api, {getMyInterviews} from '../services/api';
 import CodeEditor from '../components/CodeEditor';
 import './CandidateDashboard.css';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 /* ═══════════════════════════════════════════════════════════════════
    TAB DEFINITIONS
    ═══════════════════════════════════════════════════════════════════ */
-const TABS = [
-  { key: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={16} /> },
-  { key: 'jobs', label: 'Jobs', icon: <Briefcase size={16} /> },
-  { key: 'profile', label: 'Profile', icon: <UserCheck size={16} /> },
-  { key: 'recruiter', label: 'Recruiter Interview', icon: <Video size={16} /> },
-  { key: 'practice', label: 'Practice', icon: <Dumbbell size={16} /> },
-  { key: 'coding', label: 'Coding Practice', icon: <Code size={16} /> },
-  { key: 'ai-interview', label: 'AI Interview', icon: <Bot size={16} /> },
-  { key: 'ai-calling', label: 'AI Calling', icon: <PhoneCall size={16} /> },
-  { key: 'axiom', label: 'Spec AI', icon: <BookOpen size={16} /> },
+const TABS=[
+  {key: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={16} />},
+  {key: 'jobs', label: 'Jobs', icon: <Briefcase size={16} />},
+  {key: 'profile', label: 'Profile', icon: <UserCheck size={16} />},
+  {key: 'quiz', label: 'Live Quiz', icon: <Trophy size={16} />},
+  {key: 'recruiter', label: 'Recruiter Interview', icon: <Video size={16} />},
+  {key: 'practice', label: 'Practice', icon: <Dumbbell size={16} />},
+  {key: 'coding', label: 'Coding Practice', icon: <Code size={16} />},
+  {key: 'ai-interview', label: 'AI Interview', icon: <Bot size={16} />},
+  {key: 'ai-calling', label: 'AI Calling', icon: <PhoneCall size={16} />},
+  {key: 'axiom', label: 'Spec AI', icon: <BookOpen size={16} />},
 ];
 
-function CandidateDashboard() {
-  const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [searchQuery, setSearchQuery] = useState('');
+function CandidateDashboard()
+{
+  const navigate=useNavigate();
+  const [user, setUser]=useState(null);
+  const [activeTab, setActiveTab]=useState('dashboard');
+  const [searchQuery, setSearchQuery]=useState('');
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('user');
-      if (stored) {
+  useEffect(() =>
+  {
+    try
+    {
+      const stored=localStorage.getItem('user');
+      if (stored)
+      {
         setUser(JSON.parse(stored));
-      } else {
+      } else
+      {
         navigate('/login');
       }
-    } catch {
+    } catch
+    {
       navigate('/login');
     }
   }, [navigate]);
 
-  const handleLogout = () => {
+  const handleLogout=() =>
+  {
     localStorage.removeItem('user');
     localStorage.removeItem('practiceSession');
     localStorage.removeItem('token');
@@ -57,7 +64,7 @@ function CandidateDashboard() {
   };
 
   if (!user) return null;
-  const initials = (user.username || 'U').charAt(0).toUpperCase();
+  const initials=(user.username||'U').charAt(0).toUpperCase();
 
   return (
     <div className="cd-page">
@@ -69,9 +76,10 @@ function CandidateDashboard() {
           {TABS.map((t) => (
             <button
               key={t.key}
-              className={`cd-nav-tab ${activeTab === t.key ? 'active' : ''}`}
-              onClick={() => {
-                if (t.key === 'profile') return navigate('/candidate-profile');
+              className={`cd-nav-tab ${activeTab===t.key? 'active':''}`}
+              onClick={() =>
+              {
+                if (t.key==='profile') return navigate('/candidate-profile');
                 setActiveTab(t.key);
               }}
             >
@@ -86,7 +94,7 @@ function CandidateDashboard() {
             <div className="cd-avatar" title={user.username}>{initials}</div>
             <div className="cd-sidebar-user-info">
               <span className="cd-sidebar-username">{user.username}</span>
-              <span className="cd-sidebar-role">{user.role === 'candidate' ? 'Candidate' : user.role}</span>
+              <span className="cd-sidebar-role">{user.role==='candidate'? 'Candidate':user.role}</span>
             </div>
           </div>
           <button className="cd-icon-btn" title="Logout" onClick={handleLogout}><LogOut size={16} /></button>
@@ -113,14 +121,15 @@ function CandidateDashboard() {
 
         {/* ═══ Tab Content ═══ */}
         <main className="cd-main">
-        {activeTab === 'dashboard' && <DashboardTab user={user} initials={initials} setActiveTab={setActiveTab} />}
-        {activeTab === 'jobs' && <JobsTab user={user} />}
-        {activeTab === 'recruiter' && <RecruiterInterviewTab user={user} />}
-        {activeTab === 'practice' && <PracticeTab user={user} />}
-        {activeTab === 'coding' && <CodingTab />}
-        {activeTab === 'ai-interview' && <AIInterviewTab user={user} />}
-        {activeTab === 'ai-calling' && <AICallingTab user={user} />}
-        {activeTab === 'axiom' && <AxiomTab user={user} />}
+          {activeTab==='dashboard'&&<DashboardTab user={user} initials={initials} setActiveTab={setActiveTab} />}
+          {activeTab==='jobs'&&<JobsTab user={user} />}
+          {activeTab==='quiz'&&<LiveQuizTab user={user} />}
+          {activeTab==='recruiter'&&<RecruiterInterviewTab user={user} />}
+          {activeTab==='practice'&&<PracticeTab user={user} />}
+          {activeTab==='coding'&&<CodingTab />}
+          {activeTab==='ai-interview'&&<AIInterviewTab user={user} />}
+          {activeTab==='ai-calling'&&<AICallingTab user={user} />}
+          {activeTab==='axiom'&&<AxiomTab user={user} />}
         </main>
       </div>
     </div>
@@ -130,73 +139,83 @@ function CandidateDashboard() {
 /* ═══════════════════════════════════════════════════════════════════
    DASHBOARD TAB (home overview)
    ═══════════════════════════════════════════════════════════════════ */
-function DashboardTab({ user, initials, setActiveTab }) {
-  const navigate = useNavigate();
-  const [stats, setStats] = useState({ applied: 0, assessments: 0, pending: 0, availableJobs: 0 });
-  const [jobs, setJobs] = useState([]);
-  const [applications, setApplications] = useState([]);
-  const [loadingJobs, setLoadingJobs] = useState(true);
+function DashboardTab({user, initials, setActiveTab})
+{
+  const navigate=useNavigate();
+  const [stats, setStats]=useState({applied: 0, assessments: 0, pending: 0, availableJobs: 0});
+  const [jobs, setJobs]=useState([]);
+  const [applications, setApplications]=useState([]);
+  const [loadingJobs, setLoadingJobs]=useState(true);
 
-  useEffect(() => {
+  useEffect(() =>
+  {
     fetchDashboardData();
   }, []);
 
-  const fetchDashboardData = async () => {
-    try {
-      const [statsRes, jobsRes, appsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/jobs/stats/${user.id}`).catch(() => ({ data: { applied: 0, assessments: 0, pending: 0, availableJobs: 0 } })),
-        axios.get(`${API_URL}/api/jobs/browse`).catch(() => ({ data: { jobs: [] } })),
-        axios.get(`${API_URL}/api/jobs/applications/${user.id}`).catch(() => ({ data: { applications: [] } })),
+  const fetchDashboardData=async () =>
+  {
+    try
+    {
+      const [statsRes, jobsRes, appsRes]=await Promise.all([
+        api.get(`/jobs/stats/${user.id}`).catch(() => ({data: {applied: 0, assessments: 0, pending: 0, availableJobs: 0}})),
+        api.get('/jobs/browse').catch(() => ({data: {jobs: []}})),
+        api.get(`/jobs/applications/${user.id}`).catch(() => ({data: {applications: []}})),
       ]);
       setStats(statsRes.data);
-      setJobs(jobsRes.data.jobs || []);
-      setApplications(appsRes.data.applications || []);
-    } catch (err) {
+      setJobs(jobsRes.data.jobs||[]);
+      setApplications(appsRes.data.applications||[]);
+    } catch (err)
+    {
       console.error('Dashboard fetch error:', err);
-    } finally {
+    } finally
+    {
       setLoadingJobs(false);
     }
   };
 
-  const handleApply = async (jobId) => {
-    try {
-      await axios.post(`${API_URL}/api/jobs/${jobId}/apply`, { candidateId: user.id });
+  const handleApply=async (jobId) =>
+  {
+    try
+    {
+      await api.post(`/jobs/${jobId}/apply`, {candidateId: user.id});
       fetchDashboardData();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to apply');
+    } catch (err)
+    {
+      alert(err.response?.data?.message||'Failed to apply');
     }
   };
 
-  const appliedJobIds = new Set(applications.map(a => a.job?.id));
+  const appliedJobIds=new Set(applications.map(a => a.job?.id));
 
-  const statCards = [
-    { label: 'APPLIED', value: String(stats.applied), icon: <Briefcase size={20} />, color: '#3b82f6' },
-    { label: 'ASSESSMENTS', value: String(stats.assessments), icon: <Eye size={20} />, color: '#a855f7' },
-    { label: 'PENDING', value: String(stats.pending), icon: <TrendingUp size={20} />, color: '#14b8a6' },
-    { label: 'AVAILABLE', value: String(stats.availableJobs), icon: <Star size={20} />, color: '#eab308' },
+  const statCards=[
+    {label: 'APPLIED', value: String(stats.applied), icon: <Briefcase size={20} />, color: '#3b82f6'},
+    {label: 'ASSESSMENTS', value: String(stats.assessments), icon: <Eye size={20} />, color: '#a855f7'},
+    {label: 'PENDING', value: String(stats.pending), icon: <TrendingUp size={20} />, color: '#14b8a6'},
+    {label: 'AVAILABLE', value: String(stats.availableJobs), icon: <Star size={20} />, color: '#eab308'},
   ];
 
-  const quickActions = [
-    { label: 'My Profile', desc: 'Update resume, skills & experience', icon: <UserCheck size={22} />, tab: 'profile', badge: 'PROFILE', link: '/candidate-profile' },
-    { label: 'Browse Jobs', desc: 'Find & apply to available positions', icon: <Briefcase size={22} />, tab: 'jobs', badge: 'JOBS' },
-    { label: 'Resume Verify', desc: '3-layer resume verification system', icon: <Shield size={22} />, tab: 'verify', badge: 'VERIFY', link: '/resume-verification' },
-    { label: 'Recruiter Interview', desc: 'Join live interview with recruiter', icon: <Video size={22} />, tab: 'recruiter', badge: 'LIVE' },
-    { label: 'Practice Interview', desc: 'AI interviewer with instant feedback', icon: <Dumbbell size={22} />, tab: 'practice', badge: 'PRACTICE' },
-    { label: 'Coding Practice', desc: 'LeetCode-style problems with hints', icon: <Code size={22} />, tab: 'coding', badge: 'DSA' },
-    { label: 'AI Interview', desc: 'Full AI-powered mock interview', icon: <Bot size={22} />, tab: 'ai-interview', badge: 'AI' },
-    { label: 'AI Calling', desc: 'AI phone interview via Twilio', icon: <PhoneCall size={22} />, tab: 'ai-calling', badge: 'CALL' },
-    { label: 'Spec AI', desc: 'AI assistant for interview prep', icon: <BookOpen size={22} />, tab: 'axiom', badge: 'CHAT' },
-    { label: 'My Results', desc: 'Scores, rankings & leaderboard', icon: <Trophy size={22} />, tab: 'results', badge: 'SCORES', link: '/candidate-results' },
-    { label: 'Analytics', desc: 'Deep visual analytics & insights', icon: <BarChart3 size={22} />, tab: 'analytics', badge: 'NEW', link: '/candidate-analytics' },
+  const quickActions=[
+    {label: 'My Profile', desc: 'Update resume, skills & experience', icon: <UserCheck size={22} />, tab: 'profile', badge: 'PROFILE', link: '/candidate-profile'},
+    {label: 'Browse Jobs', desc: 'Find & apply to available positions', icon: <Briefcase size={22} />, tab: 'jobs', badge: 'JOBS'},
+    {label: 'Resume Verify', desc: '3-layer resume verification system', icon: <Shield size={22} />, tab: 'verify', badge: 'VERIFY', link: '/resume-verification'},
+    {label: 'Recruiter Interview', desc: 'Join live interview with recruiter', icon: <Video size={22} />, tab: 'recruiter', badge: 'LIVE'},
+    {label: 'Practice Interview', desc: 'AI interviewer with instant feedback', icon: <Dumbbell size={22} />, tab: 'practice', badge: 'PRACTICE'},
+    {label: 'Coding Practice', desc: 'LeetCode-style problems with hints', icon: <Code size={22} />, tab: 'coding', badge: 'DSA'},
+    {label: 'AI Interview', desc: 'Full AI-powered mock interview', icon: <Bot size={22} />, tab: 'ai-interview', badge: 'AI'},
+    {label: 'AI Calling', desc: 'AI phone interview via Twilio', icon: <PhoneCall size={22} />, tab: 'ai-calling', badge: 'CALL'},
+    {label: 'Spec AI', desc: 'AI assistant for interview prep', icon: <BookOpen size={22} />, tab: 'axiom', badge: 'CHAT'},
+    {label: 'My Results', desc: 'Scores, rankings & leaderboard', icon: <Trophy size={22} />, tab: 'results', badge: 'SCORES', link: '/candidate-results'},
+    {label: 'Analytics', desc: 'Deep visual analytics & insights', icon: <BarChart3 size={22} />, tab: 'analytics', badge: 'NEW', link: '/candidate-analytics'},
   ];
 
-  const timeAgo = (dateStr) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const days = Math.floor(diff / 86400000);
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days}d ago`;
-    return `${Math.floor(days / 7)}w ago`;
+  const timeAgo=(dateStr) =>
+  {
+    const diff=Date.now()-new Date(dateStr).getTime();
+    const days=Math.floor(diff/86400000);
+    if (days===0) return 'Today';
+    if (days===1) return 'Yesterday';
+    if (days<7) return `${days}d ago`;
+    return `${Math.floor(days/7)}w ago`;
   };
 
   return (
@@ -209,7 +228,7 @@ function DashboardTab({ user, initials, setActiveTab }) {
       <div className="cd-stats-row">
         {statCards.map((s) => (
           <div className="cd-stat-card" key={s.label}>
-            <div className="cd-stat-icon" style={{ color: s.color, background: `${s.color}15` }}>{s.icon}</div>
+            <div className="cd-stat-icon" style={{color: s.color, background: `${s.color}15`}}>{s.icon}</div>
             <div className="cd-stat-info">
               <span className="cd-stat-label">{s.label}</span>
               <span className="cd-stat-value">{s.value}</span>
@@ -220,13 +239,13 @@ function DashboardTab({ user, initials, setActiveTab }) {
 
       <div className="cd-grid">
         {/* Profile Card */}
-        <div className="cd-card cd-profile-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/candidate-profile')}>
+        <div className="cd-card cd-profile-card" style={{cursor: 'pointer'}} onClick={() => navigate('/candidate-profile')}>
           <div className="cd-profile-banner">
             <div className="cd-profile-avatar">{initials}</div>
           </div>
           <div className="cd-profile-body">
             <h3>{user.username}</h3>
-            <span className="cd-role-badge">{user.role === 'candidate' ? 'Candidate' : user.role}</span>
+            <span className="cd-role-badge">{user.role==='candidate'? 'Candidate':user.role}</span>
             <div className="cd-profile-stats">
               <div><strong>{stats.applied}</strong><span>APPLIED</span></div>
               <div><strong>{stats.assessments}</strong><span>TESTS</span></div>
@@ -237,7 +256,7 @@ function DashboardTab({ user, initials, setActiveTab }) {
                 <span>Profile Completion</span><span>50%</span>
               </div>
               <div className="cd-progress-bar">
-                <div className="cd-progress-fill" style={{ width: '50%' }}></div>
+                <div className="cd-progress-fill" style={{width: '50%'}}></div>
               </div>
             </div>
           </div>
@@ -248,13 +267,13 @@ function DashboardTab({ user, initials, setActiveTab }) {
             <h3><Target size={18} /> Recommended Jobs</h3>
             <span className="cd-badge">{jobs.length} available</span>
           </div>
-          {loadingJobs ? (
+          {loadingJobs? (
             <div className="cd-empty-state"><p>Loading jobs...</p></div>
-          ) : jobs.length === 0 ? (
+          ):jobs.length===0? (
             <div className="cd-empty-state">
               <Briefcase size={40} /><h4>No jobs found</h4><p>Try adjusting your search or check back later</p>
             </div>
-          ) : (
+          ):(
             <div className="cd-jobs-list">
               {jobs.slice(0, 5).map(job => (
                 <div className="cd-job-item" key={job.id}>
@@ -266,9 +285,9 @@ function DashboardTab({ user, initials, setActiveTab }) {
                   </div>
                   <div className="cd-job-actions">
                     <span className="cd-job-type-badge">{job.type}</span>
-                    {appliedJobIds.has(job.id) ? (
+                    {appliedJobIds.has(job.id)? (
                       <span className="cd-applied-badge"><CheckCircle size={14} /> Applied</span>
-                    ) : (
+                    ):(
                       <button className="cd-apply-btn" onClick={() => handleApply(job.id)}>Apply</button>
                     )}
                   </div>
@@ -282,16 +301,16 @@ function DashboardTab({ user, initials, setActiveTab }) {
           <div className="cd-card-header">
             <h3><FileText size={18} /> My Applications</h3>
           </div>
-          {applications.length === 0 ? (
+          {applications.length===0? (
             <div className="cd-empty-state">
               <FileText size={40} /><h4>No applications</h4><p>Apply to jobs to track your progress</p>
             </div>
-          ) : (
+          ):(
             <div className="cd-apps-list">
               {applications.slice(0, 5).map(app => (
                 <div className="cd-app-item" key={app.id}>
                   <div className="cd-app-info">
-                    <strong>{app.job?.title || 'Unknown Job'}</strong>
+                    <strong>{app.job?.title||'Unknown Job'}</strong>
                     <span>{app.job?.companyName} · {app.job?.location}</span>
                   </div>
                   <span className={`cd-app-status ${app.status}`}>{app.status}</span>
@@ -303,12 +322,12 @@ function DashboardTab({ user, initials, setActiveTab }) {
       </div>
 
       <div className="cd-section">
-        <div className="cd-card-header" style={{ marginBottom: 20 }}>
+        <div className="cd-card-header" style={{marginBottom: 20}}>
           <h3><Award size={18} /> Quick Actions</h3>
         </div>
         <div className="cd-actions-grid">
           {quickActions.map((action) => (
-            <div className="cd-action-card" key={action.label} onClick={() => action.link ? navigate(action.link) : setActiveTab(action.tab)}>
+            <div className="cd-action-card" key={action.label} onClick={() => action.link? navigate(action.link):setActiveTab(action.tab)}>
               <div className="cd-action-top">
                 <div className="cd-action-icon">{action.icon}</div>
                 <span className="cd-action-badge">{action.badge}</span>
@@ -339,77 +358,88 @@ function DashboardTab({ user, initials, setActiveTab }) {
 /* ═══════════════════════════════════════════════════════════════════
    JOBS TAB — Browse Available Jobs + Kanban Overview
    ═══════════════════════════════════════════════════════════════════ */
-function JobsTab({ user }) {
-  const [viewMode, setViewMode] = useState('browse'); // 'browse' | 'kanban'
-  const [jobs, setJobs] = useState([]);
-  const [kanban, setKanban] = useState({ applied: [], shortlisted: [], selected: [], rejected: [] });
-  const [counts, setCounts] = useState({ applied: 0, shortlisted: 0, selected: 0, rejected: 0, total: 0 });
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [locationFilter, setLocationFilter] = useState('All');
-  const [typeFilter, setTypeFilter] = useState('All');
-  const [appliedIds, setAppliedIds] = useState(new Set());
-  const [selectedJob, setSelectedJob] = useState(null);
-  const [applyingId, setApplyingId] = useState(null);
+function JobsTab({user})
+{
+  const [viewMode, setViewMode]=useState('browse'); // 'browse' | 'kanban'
+  const [jobs, setJobs]=useState([]);
+  const [kanban, setKanban]=useState({applied: [], shortlisted: [], selected: [], rejected: []});
+  const [counts, setCounts]=useState({applied: 0, shortlisted: 0, selected: 0, rejected: 0, total: 0});
+  const [loading, setLoading]=useState(true);
+  const [searchQuery, setSearchQuery]=useState('');
+  const [locationFilter, setLocationFilter]=useState('All');
+  const [typeFilter, setTypeFilter]=useState('All');
+  const [appliedIds, setAppliedIds]=useState(new Set());
+  const [selectedJob, setSelectedJob]=useState(null);
+  const [applyingId, setApplyingId]=useState(null);
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => {fetchAll();}, []);
 
-  const fetchAll = async () => {
+  const fetchAll=async () =>
+  {
     setLoading(true);
-    try {
-      const [jobsRes, kanbanRes] = await Promise.all([
-        axios.get(`${API_URL}/api/jobs/browse`).catch(() => ({ data: { jobs: [] } })),
-        axios.get(`${API_URL}/api/jobs/kanban/${user.id}`).catch(() => ({ data: { kanban: { applied: [], shortlisted: [], selected: [], rejected: [] }, counts: {} } })),
+    try
+    {
+      const [jobsRes, kanbanRes]=await Promise.all([
+        api.get('/jobs/browse').catch(() => ({data: {jobs: []}})),
+        api.get(`/jobs/kanban/${user.id}`).catch(() => ({data: {kanban: {applied: [], shortlisted: [], selected: [], rejected: []}, counts: {}}})),
       ]);
-      setJobs(jobsRes.data.jobs || []);
-      setKanban(kanbanRes.data.kanban || { applied: [], shortlisted: [], selected: [], rejected: [] });
-      setCounts(kanbanRes.data.counts || {});
+      setJobs(jobsRes.data.jobs||[]);
+      setKanban(kanbanRes.data.kanban||{applied: [], shortlisted: [], selected: [], rejected: []});
+      setCounts(kanbanRes.data.counts||{});
       // Build set of applied job IDs
-      const allApps = [
-        ...(kanbanRes.data.kanban?.applied || []),
-        ...(kanbanRes.data.kanban?.shortlisted || []),
-        ...(kanbanRes.data.kanban?.selected || []),
-        ...(kanbanRes.data.kanban?.rejected || []),
+      const allApps=[
+        ...(kanbanRes.data.kanban?.applied||[]),
+        ...(kanbanRes.data.kanban?.shortlisted||[]),
+        ...(kanbanRes.data.kanban?.selected||[]),
+        ...(kanbanRes.data.kanban?.rejected||[]),
       ];
       setAppliedIds(new Set(allApps.map(a => a.job?.id).filter(Boolean)));
-    } catch (err) {
+    } catch (err)
+    {
       console.error('Jobs fetch error:', err);
-    } finally { setLoading(false); }
+    } finally {setLoading(false);}
   };
 
-  const handleApply = async (jobId) => {
+  const handleApply=async (jobId) =>
+  {
     setApplyingId(jobId);
-    try {
-      await axios.post(`${API_URL}/api/jobs/${jobId}/apply`, { candidateId: user.id });
+    try
+    {
+      await api.post(`/jobs/${jobId}/apply`, {candidateId: user.id});
       await fetchAll();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to apply');
-    } finally { setApplyingId(null); }
+    } catch (err)
+    {
+      alert(err.response?.data?.message||'Failed to apply');
+    } finally {setApplyingId(null);}
   };
 
-  const filteredJobs = jobs.filter(j => {
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      if (!j.title?.toLowerCase().includes(q) && !j.companyName?.toLowerCase().includes(q) && !j.department?.toLowerCase().includes(q)) return false;
+  const filteredJobs=jobs.filter(j =>
+  {
+    if (searchQuery)
+    {
+      const q=searchQuery.toLowerCase();
+      if (!j.title?.toLowerCase().includes(q)&&!j.companyName?.toLowerCase().includes(q)&&!j.department?.toLowerCase().includes(q)) return false;
     }
-    if (locationFilter !== 'All' && j.location !== locationFilter) return false;
-    if (typeFilter !== 'All' && j.type !== typeFilter) return false;
+    if (locationFilter!=='All'&&j.location!==locationFilter) return false;
+    if (typeFilter!=='All'&&j.type!==typeFilter) return false;
     return true;
   });
 
-  const timeAgo = (dateStr) => {
+  const timeAgo=(dateStr) =>
+  {
     if (!dateStr) return '';
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const days = Math.floor(diff / 86400000);
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days}d ago`;
-    return `${Math.floor(days / 7)}w ago`;
+    const diff=Date.now()-new Date(dateStr).getTime();
+    const days=Math.floor(diff/86400000);
+    if (days===0) return 'Today';
+    if (days===1) return 'Yesterday';
+    if (days<7) return `${days}d ago`;
+    return `${Math.floor(days/7)}w ago`;
   };
 
-  const getStatusColor = (status) => {
-    const colors = { applied: '#3b82f6', shortlisted: '#f59e0b', selected: '#22c55e', rejected: '#ef4444' };
-    return colors[status] || '#6b7280';
+  const getStatusColor=(status) =>
+  {
+    const colors={applied: '#3b82f6', shortlisted: '#f59e0b', selected: '#22c55e', rejected: '#ef4444'};
+    return colors[status]||'#6b7280';
   };
 
   return (
@@ -421,20 +451,20 @@ function JobsTab({ user }) {
 
       {/* Stats Strip */}
       <div className="jt-stats-strip">
-        <div className="jt-stat" style={{ borderColor: '#3b82f6' }}>
-          <span className="jt-stat-num">{counts.applied || 0}</span>
+        <div className="jt-stat" style={{borderColor: '#3b82f6'}}>
+          <span className="jt-stat-num">{counts.applied||0}</span>
           <span className="jt-stat-label">Applied</span>
         </div>
-        <div className="jt-stat" style={{ borderColor: '#f59e0b' }}>
-          <span className="jt-stat-num">{counts.shortlisted || 0}</span>
+        <div className="jt-stat" style={{borderColor: '#f59e0b'}}>
+          <span className="jt-stat-num">{counts.shortlisted||0}</span>
           <span className="jt-stat-label">Shortlisted</span>
         </div>
-        <div className="jt-stat" style={{ borderColor: '#22c55e' }}>
-          <span className="jt-stat-num">{counts.selected || 0}</span>
+        <div className="jt-stat" style={{borderColor: '#22c55e'}}>
+          <span className="jt-stat-num">{counts.selected||0}</span>
           <span className="jt-stat-label">Selected</span>
         </div>
-        <div className="jt-stat" style={{ borderColor: '#ef4444' }}>
-          <span className="jt-stat-num">{counts.rejected || 0}</span>
+        <div className="jt-stat" style={{borderColor: '#ef4444'}}>
+          <span className="jt-stat-num">{counts.rejected||0}</span>
           <span className="jt-stat-label">Rejected</span>
         </div>
       </div>
@@ -442,14 +472,14 @@ function JobsTab({ user }) {
       {/* View Toggle */}
       <div className="jt-toolbar">
         <div className="jt-view-toggle">
-          <button className={viewMode === 'browse' ? 'active' : ''} onClick={() => setViewMode('browse')}>
+          <button className={viewMode==='browse'? 'active':''} onClick={() => setViewMode('browse')}>
             <List size={16} /> Browse Jobs
           </button>
-          <button className={viewMode === 'kanban' ? 'active' : ''} onClick={() => setViewMode('kanban')}>
+          <button className={viewMode==='kanban'? 'active':''} onClick={() => setViewMode('kanban')}>
             <Columns3 size={16} /> Kanban Board
           </button>
         </div>
-        {viewMode === 'browse' && (
+        {viewMode==='browse'&&(
           <div className="jt-filters">
             <div className="jt-search-box">
               <Search size={14} />
@@ -472,19 +502,19 @@ function JobsTab({ user }) {
         )}
       </div>
 
-      {loading ? (
+      {loading? (
         <div className="cd-empty-state"><p>Loading...</p></div>
-      ) : viewMode === 'browse' ? (
+      ):viewMode==='browse'? (
         /* ── Browse View ── */
         <div className="jt-browse-layout">
           <div className="jt-jobs-list-full">
-            {filteredJobs.length === 0 ? (
+            {filteredJobs.length===0? (
               <div className="cd-empty-state">
                 <Briefcase size={40} /><h4>No jobs found</h4><p>Try adjusting your search filters</p>
               </div>
-            ) : (
+            ):(
               filteredJobs.map(job => (
-                <div className={`jt-job-card ${selectedJob?.id === job.id ? 'active' : ''}`} key={job.id} onClick={() => setSelectedJob(job)}>
+                <div className={`jt-job-card ${selectedJob?.id===job.id? 'active':''}`} key={job.id} onClick={() => setSelectedJob(job)}>
                   <div className="jt-job-card-header">
                     <div>
                       <h3>{job.title}</h3>
@@ -496,22 +526,22 @@ function JobsTab({ user }) {
                     </div>
                     <div className="jt-job-card-actions">
                       <span className="jt-type-badge">{job.type}</span>
-                      {job.skills?.length > 0 && (
+                      {job.skills?.length>0&&(
                         <div className="jt-skills-row">
                           {job.skills.slice(0, 3).map((s, i) => <span key={i} className="jt-skill-chip">{s}</span>)}
-                          {job.skills.length > 3 && <span className="jt-skill-chip more">+{job.skills.length - 3}</span>}
+                          {job.skills.length>3&&<span className="jt-skill-chip more">+{job.skills.length-3}</span>}
                         </div>
                       )}
                     </div>
                   </div>
-                  {job.description && <p className="jt-job-desc">{job.description.slice(0, 150)}{job.description.length > 150 ? '...' : ''}</p>}
+                  {job.description&&<p className="jt-job-desc">{job.description.slice(0, 150)}{job.description.length>150? '...':''}</p>}
                   <div className="jt-job-card-footer">
-                    <span className="jt-applicants"><Users size={13} /> {job.applicantCount || 0} applicants</span>
-                    {appliedIds.has(job.id) ? (
+                    <span className="jt-applicants"><Users size={13} /> {job.applicantCount||0} applicants</span>
+                    {appliedIds.has(job.id)? (
                       <span className="jt-applied-badge"><CheckCircle size={14} /> Applied</span>
-                    ) : (
-                      <button className="jt-apply-btn" disabled={applyingId === job.id} onClick={(e) => { e.stopPropagation(); handleApply(job.id); }}>
-                        {applyingId === job.id ? 'Applying...' : 'Apply Now'}
+                    ):(
+                      <button className="jt-apply-btn" disabled={applyingId===job.id} onClick={(e) => {e.stopPropagation(); handleApply(job.id);}}>
+                        {applyingId===job.id? 'Applying...':'Apply Now'}
                       </button>
                     )}
                   </div>
@@ -520,42 +550,42 @@ function JobsTab({ user }) {
             )}
           </div>
         </div>
-      ) : (
+      ):(
         /* ── Kanban View ── */
         <div className="jt-kanban-board">
           {[
-            { key: 'applied', label: 'Applied', color: '#3b82f6', icon: <FileText size={16} /> },
-            { key: 'shortlisted', label: 'Shortlisted', color: '#f59e0b', icon: <Star size={16} /> },
-            { key: 'selected', label: 'Selected', color: '#22c55e', icon: <CheckCircle size={16} /> },
-            { key: 'rejected', label: 'Rejected', color: '#ef4444', icon: <XCircle size={16} /> },
+            {key: 'applied', label: 'Applied', color: '#3b82f6', icon: <FileText size={16} />},
+            {key: 'shortlisted', label: 'Shortlisted', color: '#f59e0b', icon: <Star size={16} />},
+            {key: 'selected', label: 'Selected', color: '#22c55e', icon: <CheckCircle size={16} />},
+            {key: 'rejected', label: 'Rejected', color: '#ef4444', icon: <XCircle size={16} />},
           ].map(col => (
             <div className="jt-kanban-column" key={col.key}>
-              <div className="jt-kanban-col-header" style={{ borderTopColor: col.color }}>
+              <div className="jt-kanban-col-header" style={{borderTopColor: col.color}}>
                 <div className="jt-kanban-col-title">
                   {col.icon}
                   <span>{col.label}</span>
-                  <span className="jt-kanban-count" style={{ background: col.color }}>{kanban[col.key]?.length || 0}</span>
+                  <span className="jt-kanban-count" style={{background: col.color}}>{kanban[col.key]?.length||0}</span>
                 </div>
               </div>
               <div className="jt-kanban-col-body">
-                {(kanban[col.key] || []).length === 0 ? (
+                {(kanban[col.key]||[]).length===0? (
                   <div className="jt-kanban-empty">No applications</div>
-                ) : (
-                  (kanban[col.key] || []).map(app => (
+                ):(
+                  (kanban[col.key]||[]).map(app => (
                     <div className="jt-kanban-card" key={app.id}>
-                      <h4>{app.job?.title || 'Unknown Job'}</h4>
+                      <h4>{app.job?.title||'Unknown Job'}</h4>
                       <div className="jt-kanban-card-meta">
                         <span><Building2 size={12} /> {app.job?.companyName}</span>
                         <span><MapPin size={12} /> {app.job?.location}</span>
                       </div>
-                      {app.job?.skills?.length > 0 && (
+                      {app.job?.skills?.length>0&&(
                         <div className="jt-kanban-skills">
                           {app.job.skills.slice(0, 3).map((s, i) => <span key={i} className="jt-skill-chip small">{s}</span>)}
                         </div>
                       )}
                       <div className="jt-kanban-card-footer">
                         <span className="jt-kanban-date">{timeAgo(app.appliedAt)}</span>
-                        <span className="jt-kanban-status" style={{ color: col.color }}>{app.status}</span>
+                        <span className="jt-kanban-status" style={{color: col.color}}>{app.status}</span>
                       </div>
                     </div>
                   ))
@@ -572,99 +602,122 @@ function JobsTab({ user }) {
 /* ═══════════════════════════════════════════════════════════════════
    AI CALLING TAB — Live AI Phone Interview
    ═══════════════════════════════════════════════════════════════════ */
-function AICallingTab({ user }) {
-  const [serverStatus, setServerStatus] = useState('checking');
-  const [candidates, setCandidates] = useState([]);
-  const [selectedCandidate, setSelectedCandidate] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [callState, setCallState] = useState('idle'); // idle | calling | ringing | active | ended
-  const [callInfo, setCallInfo] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [transcript, setTranscript] = useState([]);
-  const [callDuration, setCallDuration] = useState(0);
-  const [config, setConfig] = useState({ ngrokUrl: '', hasTwilio: false, twilioPhone: '' });
-  const transcriptRef = useRef(null);
-  const timerRef = useRef(null);
-  const pollRef = useRef(null);
+function AICallingTab({user})
+{
+  const [serverStatus, setServerStatus]=useState('checking');
+  const [candidates, setCandidates]=useState([]);
+  const [selectedCandidate, setSelectedCandidate]=useState('');
+  const [phoneNumber, setPhoneNumber]=useState('');
+  const [callState, setCallState]=useState('idle'); // idle | calling | ringing | active | ended
+  const [callInfo, setCallInfo]=useState(null);
+  const [loading, setLoading]=useState(false);
+  const [transcript, setTranscript]=useState([]);
+  const [callDuration, setCallDuration]=useState(0);
+  const [config, setConfig]=useState({ngrokUrl: '', hasTwilio: false, twilioPhone: ''});
+  const transcriptRef=useRef(null);
+  const timerRef=useRef(null);
+  const pollRef=useRef(null);
 
-  useEffect(() => {
+  useEffect(() =>
+  {
     checkServerStatus();
     fetchCandidates();
     fetchConfig();
-    return () => {
+    return () =>
+    {
       if (timerRef.current) clearInterval(timerRef.current);
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
 
   // Auto-scroll transcript
-  useEffect(() => {
-    if (transcriptRef.current) {
-      transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
+  useEffect(() =>
+  {
+    if (transcriptRef.current)
+    {
+      transcriptRef.current.scrollTop=transcriptRef.current.scrollHeight;
     }
   }, [transcript]);
 
-  const fetchConfig = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/ai-calling/config`);
+  const fetchConfig=async () =>
+  {
+    try
+    {
+      const res=await api.get('/ai-calling/config');
       setConfig(res.data);
-    } catch { /* ignore */ }
+    } catch { /* ignore */}
   };
 
-  const checkServerStatus = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/ai-calling/health`);
-      setServerStatus(res.data.status === 'online' ? 'online' : 'offline');
-    } catch { setServerStatus('offline'); }
+  const checkServerStatus=async () =>
+  {
+    try
+    {
+      const res=await api.get('/ai-calling/health');
+      setServerStatus(res.data.status==='online'? 'online':'offline');
+    } catch {setServerStatus('offline');}
   };
 
-  const fetchCandidates = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/ai-calling/candidates`);
-      setCandidates(res.data.demos || []);
-    } catch { /* keep empty */ }
+  const fetchCandidates=async () =>
+  {
+    try
+    {
+      const res=await api.get('/ai-calling/candidates');
+      setCandidates(res.data.demos||[]);
+    } catch { /* keep empty */}
   };
 
-  const fetchTranscript = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/ai-calling/conversation`);
-      if (res.data.log && res.data.log.length > 0) {
+  const fetchTranscript=async () =>
+  {
+    try
+    {
+      const res=await api.get('/ai-calling/conversation');
+      if (res.data.log&&res.data.log.length>0)
+      {
         setTranscript(res.data.log);
       }
-    } catch { /* ignore */ }
+    } catch { /* ignore */}
   };
 
-  const handleInitiateCall = async () => {
+  const handleInitiateCall=async () =>
+  {
     if (!phoneNumber.trim()) return alert('Please enter a phone number');
     setLoading(true);
     setCallState('calling');
     setTranscript([]);
     setCallDuration(0);
 
-    try {
-      const res = await axios.post(`${API_URL}/api/ai-calling/initiate-call`, {
+    try
+    {
+      const res=await api.post('/ai-calling/initiate-call', {
         phoneNumber: phoneNumber.trim(),
-        candidateId: selectedCandidate || undefined,
+        candidateId: selectedCandidate||undefined,
       });
       setCallInfo(res.data);
       setCallState('ringing');
 
       // Add call initiated to transcript
-      setTranscript([{ speaker: 'system', text: `Call initiated to ${phoneNumber}`, timestamp: new Date().toISOString() }]);
+      setTranscript([{speaker: 'system', text: `Call initiated to ${phoneNumber}`, timestamp: new Date().toISOString()}]);
 
       // Start polling call status + transcript
-      if (res.data.callSid) {
-        pollRef.current = setInterval(async () => {
-          try {
-            const statusRes = await axios.get(`${API_URL}/api/ai-calling/call-status/${res.data.callSid}`);
-            setCallInfo(prev => ({ ...prev, ...statusRes.data }));
+      if (res.data.callSid)
+      {
+        pollRef.current=setInterval(async () =>
+        {
+          try
+          {
+            const statusRes=await api.get(`/ai-calling/call-status/${res.data.callSid}`);
+            setCallInfo(prev => ({...prev, ...statusRes.data}));
 
-            if (statusRes.data.status === 'in-progress' || statusRes.data.status === 'ringing') {
-              if (statusRes.data.status === 'in-progress') {
-                setCallState(prev => {
-                  if (prev !== 'active') {
+            if (statusRes.data.status==='in-progress'||statusRes.data.status==='ringing')
+            {
+              if (statusRes.data.status==='in-progress')
+              {
+                setCallState(prev =>
+                {
+                  if (prev!=='active')
+                  {
                     // Start timer only on first transition to active
-                    timerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
+                    timerRef.current=setInterval(() => setCallDuration(d => d+1), 1000);
                   }
                   return 'active';
                 });
@@ -673,27 +726,30 @@ function AICallingTab({ user }) {
               fetchTranscript();
             }
 
-            if (['completed', 'failed', 'canceled', 'no-answer', 'busy'].includes(statusRes.data.status)) {
+            if (['completed', 'failed', 'canceled', 'no-answer', 'busy'].includes(statusRes.data.status))
+            {
               setCallState('ended');
               clearInterval(pollRef.current);
               if (timerRef.current) clearInterval(timerRef.current);
               // Final transcript fetch
               fetchTranscript();
-              setTranscript(prev => [...prev, { speaker: 'system', text: `Call ${statusRes.data.status}. Duration: ${statusRes.data.duration || 0}s`, timestamp: new Date().toISOString() }]);
+              setTranscript(prev => [...prev, {speaker: 'system', text: `Call ${statusRes.data.status}. Duration: ${statusRes.data.duration||0}s`, timestamp: new Date().toISOString()}]);
             }
-          } catch { /* keep polling */ }
+          } catch { /* keep polling */}
         }, 3000);
 
         // Stop polling after 10 minutes
-        setTimeout(() => { if (pollRef.current) clearInterval(pollRef.current); }, 600000);
+        setTimeout(() => {if (pollRef.current) clearInterval(pollRef.current);}, 600000);
       }
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to initiate call');
+    } catch (err)
+    {
+      alert(err.response?.data?.message||'Failed to initiate call');
       setCallState('idle');
-    } finally { setLoading(false); }
+    } finally {setLoading(false);}
   };
 
-  const resetCall = () => {
+  const resetCall=() =>
+  {
     setCallState('idle');
     setCallInfo(null);
     setTranscript([]);
@@ -704,13 +760,14 @@ function AICallingTab({ user }) {
     if (pollRef.current) clearInterval(pollRef.current);
   };
 
-  const formatDuration = (s) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
+  const formatDuration=(s) =>
+  {
+    const m=Math.floor(s/60);
+    const sec=s%60;
     return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const selectedCandidateData = candidates.find(c => c.id === selectedCandidate);
+  const selectedCandidateData=candidates.find(c => c.id===selectedCandidate);
 
   return (
     <div className="cd-container cd-tab-content">
@@ -723,19 +780,19 @@ function AICallingTab({ user }) {
       <div className="aic-status-row">
         <div className={`aic-status-chip ${serverStatus}`}>
           <div className="aic-status-dot" />
-          {serverStatus === 'online' ? 'AI Server Online' : serverStatus === 'offline' ? 'AI Server Offline' : 'Checking...'}
+          {serverStatus==='online'? 'AI Server Online':serverStatus==='offline'? 'AI Server Offline':'Checking...'}
         </div>
-        <div className={`aic-status-chip ${config.hasTwilio ? 'online' : 'offline'}`}>
+        <div className={`aic-status-chip ${config.hasTwilio? 'online':'offline'}`}>
           <div className="aic-status-dot" />
-          {config.hasTwilio ? 'Twilio Connected' : 'Twilio Not Configured'}
+          {config.hasTwilio? 'Twilio Connected':'Twilio Not Configured'}
         </div>
-        {config.ngrokUrl && (
+        {config.ngrokUrl&&(
           <div className="aic-status-chip online">
             <div className="aic-status-dot" />
             Tunnel Active
           </div>
         )}
-        <button className="aic-refresh-btn" onClick={() => { checkServerStatus(); fetchConfig(); }}>
+        <button className="aic-refresh-btn" onClick={() => {checkServerStatus(); fetchConfig();}}>
           Refresh
         </button>
       </div>
@@ -743,7 +800,7 @@ function AICallingTab({ user }) {
       <div className="aic-live-layout">
         {/* Left: Call Controls */}
         <div className="cd-card aic-controls-card">
-          {callState === 'idle' && (
+          {callState==='idle'&&(
             <>
               <div className="aic-controls-header">
                 <Phone size={20} />
@@ -770,34 +827,34 @@ function AICallingTab({ user }) {
                   </select>
                 </div>
 
-                {selectedCandidateData && (
+                {selectedCandidateData&&(
                   <div className="aic-candidate-preview">
                     <h4>{selectedCandidateData.name}</h4>
                     <p>{selectedCandidateData.position}</p>
                   </div>
                 )}
 
-                <button className="aic-call-btn" onClick={handleInitiateCall} disabled={loading || !phoneNumber.trim()}>
-                  <PhoneCall size={18} /> {loading ? 'Initiating...' : 'Start AI Call'}
+                <button className="aic-call-btn" onClick={handleInitiateCall} disabled={loading||!phoneNumber.trim()}>
+                  <PhoneCall size={18} /> {loading? 'Initiating...':'Start AI Call'}
                 </button>
               </div>
             </>
           )}
 
-          {(callState === 'calling' || callState === 'ringing') && (
+          {(callState==='calling'||callState==='ringing')&&(
             <div className="aic-live-status">
               <div className="aic-live-ring">
                 <div className="aic-ring-circle" />
                 <div className="aic-ring-circle delay" />
                 <PhoneCall size={32} className="aic-ring-icon" />
               </div>
-              <h3>{callState === 'calling' ? 'Connecting...' : 'Ringing...'}</h3>
+              <h3>{callState==='calling'? 'Connecting...':'Ringing...'}</h3>
               <p className="aic-live-phone">{phoneNumber}</p>
-              {selectedCandidateData && <p className="aic-live-candidate">{selectedCandidateData.name} — {selectedCandidateData.position}</p>}
+              {selectedCandidateData&&<p className="aic-live-candidate">{selectedCandidateData.name} — {selectedCandidateData.position}</p>}
             </div>
           )}
 
-          {callState === 'active' && (
+          {callState==='active'&&(
             <div className="aic-live-status active">
               <div className="aic-live-active-icon">
                 <Mic size={28} />
@@ -805,25 +862,25 @@ function AICallingTab({ user }) {
               <h3>Call In Progress</h3>
               <div className="aic-live-timer">{formatDuration(callDuration)}</div>
               <p className="aic-live-phone">{callInfo?.to}</p>
-              {callInfo?.status && (
+              {callInfo?.status&&(
                 <span className="aic-live-badge active">{callInfo.status}</span>
               )}
             </div>
           )}
 
-          {callState === 'ended' && (
+          {callState==='ended'&&(
             <div className="aic-live-status ended">
               <div className="aic-live-ended-icon">
                 <PhoneOff size={28} />
               </div>
               <h3>Call Ended</h3>
-              {callInfo && (
+              {callInfo&&(
                 <div className="aic-ended-details">
-                  <span>Duration: {callInfo.duration || callDuration}s</span>
+                  <span>Duration: {callInfo.duration||callDuration}s</span>
                   <span className="aic-live-badge ended">{callInfo.status}</span>
                 </div>
               )}
-              <button className="aic-call-btn" onClick={resetCall} style={{ marginTop: 16 }}>
+              <button className="aic-call-btn" onClick={resetCall} style={{marginTop: 16}}>
                 <Phone size={16} /> New Call
               </button>
             </div>
@@ -837,7 +894,7 @@ function AICallingTab({ user }) {
               <FileText size={18} />
               <h3>Live Call Script</h3>
             </div>
-            {callState === 'active' && (
+            {callState==='active'&&(
               <div className="aic-live-indicator">
                 <span className="aic-live-dot" />
                 LIVE
@@ -846,31 +903,31 @@ function AICallingTab({ user }) {
           </div>
 
           <div className="aic-transcript-body" ref={transcriptRef}>
-            {transcript.length === 0 ? (
+            {transcript.length===0? (
               <div className="aic-transcript-empty">
                 <Volume2 size={40} />
                 <h4>No call in progress</h4>
                 <p>Start an AI call to see the live conversation script here</p>
               </div>
-            ) : (
+            ):(
               <div className="aic-transcript-messages">
                 {transcript.map((msg, i) => (
                   <div key={i} className={`aic-msg ${msg.speaker}`}>
                     <div className="aic-msg-avatar">
-                      {msg.speaker === 'agent' ? '🤖' : msg.speaker === 'user' ? '👤' : '📞'}
+                      {msg.speaker==='agent'? '🤖':msg.speaker==='user'? '👤':'📞'}
                     </div>
                     <div className="aic-msg-content">
                       <div className="aic-msg-speaker">
-                        {msg.speaker === 'agent' ? 'AI Agent' : msg.speaker === 'user' ? 'Candidate' : 'System'}
+                        {msg.speaker==='agent'? 'AI Agent':msg.speaker==='user'? 'Candidate':'System'}
                       </div>
                       <div className="aic-msg-text">{msg.text}</div>
-                      {msg.timestamp && (
+                      {msg.timestamp&&(
                         <div className="aic-msg-time">{new Date(msg.timestamp).toLocaleTimeString()}</div>
                       )}
                     </div>
                   </div>
                 ))}
-                {callState === 'active' && (
+                {callState==='active'&&(
                   <div className="aic-typing-indicator">
                     <span /><span /><span />
                   </div>
@@ -887,34 +944,52 @@ function AICallingTab({ user }) {
 /* ═══════════════════════════════════════════════════════════════════
    RECRUITER INTERVIEW TAB
    ═══════════════════════════════════════════════════════════════════ */
-function RecruiterInterviewTab({ user }) {
-  const navigate = useNavigate();
-  const [interviewCode, setInterviewCode] = useState('');
-  const [joinLoading, setJoinLoading] = useState(false);
+function RecruiterInterviewTab({user})
+{
+  const navigate=useNavigate();
+  const [interviewCode, setInterviewCode]=useState('');
+  const [joinLoading, setJoinLoading]=useState(false);
+  const [scheduledInterviews, setScheduledInterviews]=useState([]);
+  const [loadingInterviews, setLoadingInterviews]=useState(true);
 
-  const handleJoinInterview = () => {
+  useEffect(() =>
+  {
+    (async () =>
+    {
+      try
+      {
+        const res=await getMyInterviews();
+        setScheduledInterviews(res.data?.data||res.data?.interviews||[]);
+      } catch (e) {console.error('Failed to load interviews', e);}
+      finally {setLoadingInterviews(false);}
+    })();
+  }, []);
+
+  const handleJoinInterview=() =>
+  {
     if (!interviewCode.trim()) return alert('Please enter an interview code');
     setJoinLoading(true);
     navigate(`/interview/${interviewCode.trim()}?mode=candidate&name=${encodeURIComponent(user.username)}&role=candidate`);
   };
 
-  const handleQuickJoin = () => {
-    const code = `interview-${Date.now()}`;
+  const handleQuickJoin=() =>
+  {
+    const code=`interview-${Date.now()}`;
     navigate(`/interview/${code}?mode=candidate&name=${encodeURIComponent(user.username)}&role=candidate`);
   };
 
-  const tips = [
-    { icon: '🎯', title: 'Be Prepared', desc: 'Review the job description and company background before the interview' },
-    { icon: '💡', title: 'Test Your Setup', desc: 'Check camera, microphone and internet connection before joining' },
-    { icon: '📝', title: 'Have Notes Ready', desc: 'Keep a pen and paper handy for any notes during the interview' },
-    { icon: '🕐', title: 'Join Early', desc: 'Try to join the interview 2-3 minutes before the scheduled time' },
+  const tips=[
+    {icon: '🎯', title: 'Be Prepared', desc: 'Review the job description and company background before the interview'},
+    {icon: '💡', title: 'Test Your Setup', desc: 'Check camera, microphone and internet connection before joining'},
+    {icon: '📝', title: 'Have Notes Ready', desc: 'Keep a pen and paper handy for any notes during the interview'},
+    {icon: '🕐', title: 'Join Early', desc: 'Try to join the interview 2-3 minutes before the scheduled time'},
   ];
 
-  const features = [
-    { icon: <Video size={24} />, title: 'Video Interview', desc: 'Face-to-face video call with your recruiter', color: '#3b82f6' },
-    { icon: <Code size={24} />, title: 'Live Code Editor', desc: 'Collaborative code editor for technical rounds', color: '#a855f7' },
-    { icon: <Shield size={24} />, title: 'AI Proctoring', desc: 'Secure & monitored interview environment', color: '#14b8a6' },
-    { icon: <FileText size={24} />, title: 'Real-time Chat', desc: 'Text chat alongside video for sharing links', color: '#eab308' },
+  const features=[
+    {icon: <Video size={24} />, title: 'Video Interview', desc: 'Face-to-face video call with your recruiter', color: '#3b82f6'},
+    {icon: <Code size={24} />, title: 'Live Code Editor', desc: 'Collaborative code editor for technical rounds', color: '#a855f7'},
+    {icon: <Shield size={24} />, title: 'AI Proctoring', desc: 'Secure & monitored interview environment', color: '#14b8a6'},
+    {icon: <FileText size={24} />, title: 'Real-time Chat', desc: 'Text chat alongside video for sharing links', color: '#eab308'},
   ];
 
   return (
@@ -923,6 +998,43 @@ function RecruiterInterviewTab({ user }) {
         <h1>Recruiter Interview</h1>
         <p>Join a live interview session with your recruiter</p>
       </div>
+
+      {/* Scheduled Interviews */}
+      {loadingInterviews? (
+        <div style={{textAlign: 'center', padding: '20px', color: 'var(--text-muted)'}}>
+          Loading scheduled interviews...
+        </div>
+      ):scheduledInterviews.length>0&&(
+        <div className="cdt-section" style={{marginBottom: '1.5rem'}}>
+          <h2>📅 Scheduled Interviews ({scheduledInterviews.length})</h2>
+          <div className="cdt-ri-scheduled-grid">
+            {scheduledInterviews.map(iv => (
+              <div className="cdt-ri-scheduled-card" key={iv.sessionId}>
+                <div className="cdt-ri-scheduled-header">
+                  <div>
+                    <h3>{iv.jobTitle||'Interview'}</h3>
+                    <p>{iv.companyName||''}{iv.department? ` · ${iv.department}`:''}</p>
+                  </div>
+                  <span className={`cdt-ri-status-pill ${iv.status}`}>{iv.status}</span>
+                </div>
+                <div className="cdt-ri-scheduled-details">
+                  {iv.scheduledAt&&<span><Calendar size={14} /> {new Date(iv.scheduledAt).toLocaleString()}</span>}
+                  {iv.duration&&<span><Clock size={14} /> {iv.duration} min</span>}
+                  {iv.location&&<span><MapPin size={14} /> {iv.location}</span>}
+                </div>
+                {iv.notes&&<p className="cdt-ri-scheduled-notes">{iv.notes}</p>}
+                <button
+                  className="cdt-ri-join-btn"
+                  onClick={() => navigate(`/interview/${iv.sessionId}?mode=candidate&name=${encodeURIComponent(user.username)}&role=candidate`)}
+                  disabled={iv.status==='completed'}
+                >
+                  {iv.status==='completed'? '✅ Completed':iv.status==='active'? '🔴 Join Now':'🚀 Join Interview'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Join Interview Card */}
       <div className="cdt-ri-join-card">
@@ -939,11 +1051,11 @@ function RecruiterInterviewTab({ user }) {
             placeholder="Enter interview code (e.g., INT-2024-001)"
             value={interviewCode}
             onChange={(e) => setInterviewCode(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleJoinInterview()}
+            onKeyDown={(e) => e.key==='Enter'&&handleJoinInterview()}
             className="cdt-ri-input"
           />
           <button className="cdt-ri-join-btn" onClick={handleJoinInterview} disabled={joinLoading}>
-            {joinLoading ? 'Joining...' : '🚀 Join Interview'}
+            {joinLoading? 'Joining...':'🚀 Join Interview'}
           </button>
         </div>
         <div className="cdt-ri-divider"><span>or</span></div>
@@ -958,7 +1070,7 @@ function RecruiterInterviewTab({ user }) {
         <div className="cdt-ri-features-grid">
           {features.map((f, i) => (
             <div className="cdt-ri-feature-card" key={i}>
-              <div className="cdt-ri-feature-icon" style={{ color: f.color, background: `${f.color}15` }}>{f.icon}</div>
+              <div className="cdt-ri-feature-icon" style={{color: f.color, background: `${f.color}15`}}>{f.icon}</div>
               <h3>{f.title}</h3>
               <p>{f.desc}</p>
             </div>
@@ -988,41 +1100,49 @@ function RecruiterInterviewTab({ user }) {
 /* ═══════════════════════════════════════════════════════════════════
    PRACTICE TAB  (PracticeSessionSetup embedded)
    ═══════════════════════════════════════════════════════════════════ */
-function PracticeTab({ user }) {
-  const navigate = useNavigate();
-  const [config, setConfig] = useState({
+function PracticeTab({user})
+{
+  const navigate=useNavigate();
+  const [config, setConfig]=useState({
     role: '', difficulty: 'medium', interviewType: 'technical', mode: 'quick', duration: 20,
   });
 
-  const roles = [
-    { id: 'frontend', name: 'Frontend Developer', icon: '🎨' },
-    { id: 'backend', name: 'Backend Developer', icon: '⚙️' },
-    { id: 'fullstack', name: 'Full Stack Developer', icon: '🚀' },
-    { id: 'data-science', name: 'Data Scientist', icon: '📊' },
-    { id: 'devops', name: 'DevOps Engineer', icon: '🔧' },
-    { id: 'mobile', name: 'Mobile Developer', icon: '📱' },
+  const roles=[
+    {id: 'frontend', name: 'Frontend Developer', icon: '🎨'},
+    {id: 'backend', name: 'Backend Developer', icon: '⚙️'},
+    {id: 'fullstack', name: 'Full Stack Developer', icon: '🚀'},
+    {id: 'data-science', name: 'Data Scientist', icon: '📊'},
+    {id: 'devops', name: 'DevOps Engineer', icon: '🔧'},
+    {id: 'mobile', name: 'Mobile Developer', icon: '📱'},
   ];
 
-  const interviewTypes = [
-    { id: 'technical', name: 'Technical Interview', desc: 'Technical concepts and problem solving', icon: '💻' },
-    { id: 'behavioral', name: 'Behavioral Interview', desc: 'Behavioral questions and soft skills', icon: '💬' },
-    { id: 'coding', name: 'Coding Round', desc: 'Live coding challenges', icon: '⌨️' },
-    { id: 'system-design', name: 'System Design', desc: 'Architecture and design discussions', icon: '🏗️' },
+  const interviewTypes=[
+    {id: 'technical', name: 'Technical Interview', desc: 'Technical concepts and problem solving', icon: '💻'},
+    {id: 'behavioral', name: 'Behavioral Interview', desc: 'Behavioral questions and soft skills', icon: '💬'},
+    {id: 'coding', name: 'Coding Round', desc: 'Live coding challenges', icon: '⌨️'},
+    {id: 'system-design', name: 'System Design', desc: 'Architecture and design discussions', icon: '🏗️'},
   ];
 
-  const modes = [
-    { id: 'quick', name: 'Quick Practice', desc: '5 questions, 10-15 min', duration: 15, icon: '⚡',
-      features: ['Fast feedback', 'No strict scoring', 'Basic evaluation'] },
-    { id: 'real', name: 'Real Interview Simulation', desc: '10-15 questions, 30-40 min', duration: 35, icon: '🎯',
-      features: ['Timed session', 'Adaptive difficulty', 'Detailed scorecard', 'Follow-up questions'] },
-    { id: 'coding', name: 'Coding Challenge', desc: '2-3 problems, 45-60 min', duration: 50, icon: '👨‍💻',
-      features: ['Code editor', 'Run & test', 'Time complexity analysis', 'Code quality review'] },
+  const modes=[
+    {
+      id: 'quick', name: 'Quick Practice', desc: '5 questions, 10-15 min', duration: 15, icon: '⚡',
+      features: ['Fast feedback', 'No strict scoring', 'Basic evaluation']
+    },
+    {
+      id: 'real', name: 'Real Interview Simulation', desc: '10-15 questions, 30-40 min', duration: 35, icon: '🎯',
+      features: ['Timed session', 'Adaptive difficulty', 'Detailed scorecard', 'Follow-up questions']
+    },
+    {
+      id: 'coding', name: 'Coding Challenge', desc: '2-3 problems, 45-60 min', duration: 50, icon: '👨‍💻',
+      features: ['Code editor', 'Run & test', 'Time complexity analysis', 'Code quality review']
+    },
   ];
 
-  const handleStart = () => {
+  const handleStart=() =>
+  {
     if (!config.role) return alert('Please select a role');
-    const sessionId = `practice-${Date.now()}`;
-    localStorage.setItem('practiceSession', JSON.stringify({ ...config, sessionId, startTime: new Date().toISOString() }));
+    const sessionId=`practice-${Date.now()}`;
+    localStorage.setItem('practiceSession', JSON.stringify({...config, sessionId, startTime: new Date().toISOString()}));
     navigate(`/practice-interview/${sessionId}?role=${config.role}&difficulty=${config.difficulty}&type=${config.interviewType}&mode=${config.mode}`);
   };
 
@@ -1034,7 +1154,7 @@ function PracticeTab({ user }) {
         <h2>1. Select Your Target Role</h2>
         <div className="cdt-role-grid">
           {roles.map(r => (
-            <div key={r.id} className={`cdt-role-card ${config.role === r.id ? 'selected' : ''}`} onClick={() => setConfig({ ...config, role: r.id })}>
+            <div key={r.id} className={`cdt-role-card ${config.role===r.id? 'selected':''}`} onClick={() => setConfig({...config, role: r.id})}>
               <span className="cdt-role-icon">{r.icon}</span>
               <span className="cdt-role-name">{r.name}</span>
             </div>
@@ -1046,7 +1166,7 @@ function PracticeTab({ user }) {
         <h2>2. Choose Interview Type</h2>
         <div className="cdt-type-grid">
           {interviewTypes.map(t => (
-            <div key={t.id} className={`cdt-type-card ${config.interviewType === t.id ? 'selected' : ''}`} onClick={() => setConfig({ ...config, interviewType: t.id })}>
+            <div key={t.id} className={`cdt-type-card ${config.interviewType===t.id? 'selected':''}`} onClick={() => setConfig({...config, interviewType: t.id})}>
               <span className="cdt-type-icon">{t.icon}</span>
               <h3>{t.name}</h3>
               <p>{t.desc}</p>
@@ -1059,10 +1179,10 @@ function PracticeTab({ user }) {
         <h2>3. Select Difficulty Level</h2>
         <div className="cdt-diff-grid">
           {['easy', 'medium', 'hard'].map(d => (
-            <button key={d} className={`cdt-diff-btn ${d} ${config.difficulty === d ? 'selected' : ''}`} onClick={() => setConfig({ ...config, difficulty: d })}>
-              <span className="cdt-diff-emoji">{d === 'easy' ? '😊' : d === 'medium' ? '😐' : '😤'}</span>
-              <strong>{d.charAt(0).toUpperCase() + d.slice(1)}</strong>
-              <span>{d === 'easy' ? 'Entry level' : d === 'medium' ? 'Intermediate' : 'Advanced'}</span>
+            <button key={d} className={`cdt-diff-btn ${d} ${config.difficulty===d? 'selected':''}`} onClick={() => setConfig({...config, difficulty: d})}>
+              <span className="cdt-diff-emoji">{d==='easy'? '😊':d==='medium'? '😐':'😤'}</span>
+              <strong>{d.charAt(0).toUpperCase()+d.slice(1)}</strong>
+              <span>{d==='easy'? 'Entry level':d==='medium'? 'Intermediate':'Advanced'}</span>
             </button>
           ))}
         </div>
@@ -1072,7 +1192,7 @@ function PracticeTab({ user }) {
         <h2>4. Choose Practice Mode</h2>
         <div className="cdt-mode-grid">
           {modes.map(m => (
-            <div key={m.id} className={`cdt-mode-card ${config.mode === m.id ? 'selected' : ''}`} onClick={() => setConfig({ ...config, mode: m.id, duration: m.duration })}>
+            <div key={m.id} className={`cdt-mode-card ${config.mode===m.id? 'selected':''}`} onClick={() => setConfig({...config, mode: m.id, duration: m.duration})}>
               <span className="cdt-mode-icon">{m.icon}</span>
               <h3>{m.name}</h3>
               <p>{m.desc}</p>
@@ -1085,10 +1205,10 @@ function PracticeTab({ user }) {
       <div className="cdt-summary">
         <h3>Session Summary</h3>
         <div className="cdt-summary-items">
-          <div><strong>Role</strong><span>{roles.find(r => r.id === config.role)?.name || 'Not selected'}</span></div>
-          <div><strong>Type</strong><span>{interviewTypes.find(t => t.id === config.interviewType)?.name}</span></div>
+          <div><strong>Role</strong><span>{roles.find(r => r.id===config.role)?.name||'Not selected'}</span></div>
+          <div><strong>Type</strong><span>{interviewTypes.find(t => t.id===config.interviewType)?.name}</span></div>
           <div><strong>Difficulty</strong><span className={`cdt-badge-${config.difficulty}`}>{config.difficulty}</span></div>
-          <div><strong>Mode</strong><span>{modes.find(m => m.id === config.mode)?.name}</span></div>
+          <div><strong>Mode</strong><span>{modes.find(m => m.id===config.mode)?.name}</span></div>
           <div><strong>Duration</strong><span>~{config.duration} min</span></div>
         </div>
         <button className="cdt-start-btn" onClick={handleStart} disabled={!config.role}>🚀 Start Practice Interview</button>
@@ -1100,58 +1220,67 @@ function PracticeTab({ user }) {
 /* ═══════════════════════════════════════════════════════════════════
    CODING PRACTICE TAB
    ═══════════════════════════════════════════════════════════════════ */
-function CodingTab() {
-  const [questions, setQuestions] = useState([]);
-  const [selectedQuestion, setSelectedQuestion] = useState(null);
-  const [code, setCode] = useState('');
-  const [language, setLanguage] = useState('javascript');
-  const [output, setOutput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [testResults, setTestResults] = useState(null);
+function CodingTab()
+{
+  const [questions, setQuestions]=useState([]);
+  const [selectedQuestion, setSelectedQuestion]=useState(null);
+  const [code, setCode]=useState('');
+  const [language, setLanguage]=useState('javascript');
+  const [output, setOutput]=useState('');
+  const [loading, setLoading]=useState(false);
+  const [testResults, setTestResults]=useState(null);
 
-  useEffect(() => { fetchQuestions(); }, []);
+  useEffect(() => {fetchQuestions();}, []);
 
-  const fetchQuestions = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/coding-practice/questions`);
-      const qs = res.data.questions || [];
+  const fetchQuestions=async () =>
+  {
+    try
+    {
+      const res=await api.get('/coding-practice/questions');
+      const qs=res.data.questions||[];
       setQuestions(qs);
       if (qs.length) selectQuestion(qs[0]);
-    } catch {
-      const mock = [{ id: 1, title: 'Two Sum', difficulty: 'Easy', description: 'Given an array of integers nums and an integer target, return indices of the two numbers that add up to target.', exampleInput: '[2, 7, 11, 15], target = 9', exampleOutput: '[0, 1]', testCases: [] }];
+    } catch
+    {
+      const mock=[{id: 1, title: 'Two Sum', difficulty: 'Easy', description: 'Given an array of integers nums and an integer target, return indices of the two numbers that add up to target.', exampleInput: '[2, 7, 11, 15], target = 9', exampleOutput: '[0, 1]', testCases: []}];
       setQuestions(mock);
       selectQuestion(mock[0]);
     }
   };
 
-  const getStarter = (q, lang) => {
-    const s = {
+  const getStarter=(q, lang) =>
+  {
+    const s={
       javascript: `// ${q.title}\nfunction solution() {\n  // Write your code here\n}\nsolution();`,
       python: `# ${q.title}\ndef solution():\n    pass\nsolution()`,
       java: `// ${q.title}\npublic class Solution {\n    public static void main(String[] args) {\n    }\n}`
     };
-    return s[lang] || s.javascript;
+    return s[lang]||s.javascript;
   };
 
-  const selectQuestion = (q) => { setSelectedQuestion(q); setCode(getStarter(q, language)); setOutput(''); setTestResults(null); };
+  const selectQuestion=(q) => {setSelectedQuestion(q); setCode(getStarter(q, language)); setOutput(''); setTestResults(null);};
 
-  const handleRun = async () => {
+  const handleRun=async () =>
+  {
     setLoading(true); setOutput('Running...');
-    try {
-      const res = await axios.post(`${API_URL}/api/coding-practice/run`, { code, language, questionId: selectedQuestion.id });
-      setOutput(res.data.output || 'Executed successfully'); setTestResults(res.data.testResults);
-    } catch (e) { setOutput('Error: ' + (e.response?.data?.error || 'Failed')); }
-    finally { setLoading(false); }
+    try
+    {
+      const res=await api.post('/coding-practice/run', {code, language, questionId: selectedQuestion.id});
+      setOutput(res.data.output||'Executed successfully'); setTestResults(res.data.testResults);
+    } catch (e) {setOutput('Error: '+(e.response?.data?.error||'Failed'));}
+    finally {setLoading(false);}
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit=async () =>
+  {
     setLoading(true);
-    try {
-      const res = await axios.post(`${API_URL}/api/coding-practice/submit`, { code, language, questionId: selectedQuestion.id });
+    try
+    {
+      const res=await api.post('/coding-practice/submit', {code, language, questionId: selectedQuestion.id});
       setTestResults(res.data.testResults);
-      setOutput(res.data.allPassed ? '✅ All test cases passed!' : '❌ Some test cases failed.');
-    } catch (e) { setOutput('Error: ' + (e.response?.data?.error || 'Failed')); }
-    finally { setLoading(false); }
+      setOutput(res.data.allPassed? '✅ All test cases passed!':'❌ Some test cases failed.');
+    } catch (e) {setOutput('Error: '+(e.response?.data?.error||'Failed'));}
+    finally {setLoading(false);}
   };
 
   return (
@@ -1160,7 +1289,7 @@ function CodingTab() {
       <div className="cdt-coding-sidebar">
         <h3>Problems</h3>
         {questions.map(q => (
-          <div key={q.id} className={`cdt-q-item ${selectedQuestion?.id === q.id ? 'active' : ''}`} onClick={() => selectQuestion(q)}>
+          <div key={q.id} className={`cdt-q-item ${selectedQuestion?.id===q.id? 'active':''}`} onClick={() => selectQuestion(q)}>
             <span className="cdt-q-title">{q.title}</span>
             <span className={`cdt-q-diff ${q.difficulty.toLowerCase()}`}>{q.difficulty}</span>
           </div>
@@ -1169,7 +1298,7 @@ function CodingTab() {
 
       {/* Main */}
       <div className="cdt-coding-main">
-        {selectedQuestion && (
+        {selectedQuestion&&(
           <>
             <div className="cdt-q-details">
               <h2>{selectedQuestion.title} <span className={`cdt-q-diff-badge ${selectedQuestion.difficulty.toLowerCase()}`}>{selectedQuestion.difficulty}</span></h2>
@@ -1185,25 +1314,25 @@ function CodingTab() {
 
             <div className="cdt-code-section">
               <div className="cdt-code-header">
-                <select value={language} onChange={(e) => { setLanguage(e.target.value); setCode(getStarter(selectedQuestion, e.target.value)); }}>
+                <select value={language} onChange={(e) => {setLanguage(e.target.value); setCode(getStarter(selectedQuestion, e.target.value));}}>
                   <option value="javascript">JavaScript</option>
                   <option value="python">Python</option>
                   <option value="java">Java</option>
                 </select>
                 <div className="cdt-code-actions">
-                  <button onClick={handleRun} disabled={loading}><Play size={14} /> {loading ? 'Running...' : 'Run'}</button>
+                  <button onClick={handleRun} disabled={loading}><Play size={14} /> {loading? 'Running...':'Run'}</button>
                   <button className="cdt-submit-btn" onClick={handleSubmit} disabled={loading}><Upload size={14} /> Submit</button>
                 </div>
               </div>
               <CodeEditor code={code} setCode={setCode} language={language} />
               <div className="cdt-output">
                 <h4>Output:</h4>
-                <pre>{output || 'Run your code to see results...'}</pre>
-                {testResults && (
+                <pre>{output||'Run your code to see results...'}</pre>
+                {testResults&&(
                   <div className="cdt-test-results">
                     {testResults.map((r, i) => (
-                      <div key={i} className={`cdt-test-case ${r.passed ? 'passed' : 'failed'}`}>
-                        Test {i + 1}: {r.passed ? '✅ Passed' : '❌ Failed'}
+                      <div key={i} className={`cdt-test-case ${r.passed? 'passed':'failed'}`}>
+                        Test {i+1}: {r.passed? '✅ Passed':'❌ Failed'}
                       </div>
                     ))}
                   </div>
@@ -1220,23 +1349,26 @@ function CodingTab() {
 /* ═══════════════════════════════════════════════════════════════════
    AI INTERVIEW TAB
    ═══════════════════════════════════════════════════════════════════ */
-function AIInterviewTab({ user }) {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    candidateName: user?.username || '', role: '', experience: 'entry', topics: [], duration: 30
+function AIInterviewTab({user})
+{
+  const navigate=useNavigate();
+  const [formData, setFormData]=useState({
+    candidateName: user?.username||'', role: '', experience: 'entry', topics: [], duration: 30
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]=useState(false);
 
-  const availableTopics = ['JavaScript', 'React', 'Node.js', 'Python', 'Data Structures', 'Algorithms', 'System Design', 'Databases', 'APIs', 'Web Development'];
+  const availableTopics=['JavaScript', 'React', 'Node.js', 'Python', 'Data Structures', 'Algorithms', 'System Design', 'Databases', 'APIs', 'Web Development'];
 
-  const handleSubmit = async (e) => {
+  const handleSubmit=async (e) =>
+  {
     e.preventDefault();
     if (!formData.topics.length) return alert('Select at least one topic');
     setLoading(true);
-    try {
-      const res = await axios.post(`${API_URL}/api/ai-interview/create`, formData);
+    try
+    {
+      const res=await api.post('/ai-interview/create', formData);
       navigate(`/ai-interview/${res.data.sessionId}`);
-    } catch { alert('Failed to create interview session'); setLoading(false); }
+    } catch {alert('Failed to create interview session'); setLoading(false);}
   };
 
   return (
@@ -1247,15 +1379,15 @@ function AIInterviewTab({ user }) {
         <form onSubmit={handleSubmit}>
           <div className="cdt-form-group">
             <label>Your Name</label>
-            <input value={formData.candidateName} onChange={(e) => setFormData({ ...formData, candidateName: e.target.value })} placeholder="Enter your name" required />
+            <input value={formData.candidateName} onChange={(e) => setFormData({...formData, candidateName: e.target.value})} placeholder="Enter your name" required />
           </div>
           <div className="cdt-form-group">
             <label>Target Role</label>
-            <input value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} placeholder="e.g., Frontend Developer" required />
+            <input value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} placeholder="e.g., Frontend Developer" required />
           </div>
           <div className="cdt-form-group">
             <label>Experience Level</label>
-            <select value={formData.experience} onChange={(e) => setFormData({ ...formData, experience: e.target.value })}>
+            <select value={formData.experience} onChange={(e) => setFormData({...formData, experience: e.target.value})}>
               <option value="entry">Entry Level (0-2 years)</option>
               <option value="mid">Mid Level (3-5 years)</option>
               <option value="senior">Senior Level (5+ years)</option>
@@ -1265,8 +1397,8 @@ function AIInterviewTab({ user }) {
             <label>Select Topics</label>
             <div className="cdt-topics-grid">
               {availableTopics.map(t => (
-                <button key={t} type="button" className={`cdt-topic-btn ${formData.topics.includes(t) ? 'selected' : ''}`}
-                  onClick={() => setFormData(p => ({ ...p, topics: p.topics.includes(t) ? p.topics.filter(x => x !== t) : [...p.topics, t] }))}>
+                <button key={t} type="button" className={`cdt-topic-btn ${formData.topics.includes(t)? 'selected':''}`}
+                  onClick={() => setFormData(p => ({...p, topics: p.topics.includes(t)? p.topics.filter(x => x!==t):[...p.topics, t]}))}>
                   {t}
                 </button>
               ))}
@@ -1274,7 +1406,7 @@ function AIInterviewTab({ user }) {
           </div>
           <div className="cdt-form-group">
             <label>Duration</label>
-            <select value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: +e.target.value })}>
+            <select value={formData.duration} onChange={(e) => setFormData({...formData, duration: +e.target.value})}>
               <option value={15}>15 minutes</option>
               <option value={30}>30 minutes</option>
               <option value={45}>45 minutes</option>
@@ -1282,7 +1414,7 @@ function AIInterviewTab({ user }) {
             </select>
           </div>
           <button type="submit" className="cdt-start-btn" disabled={loading}>
-            {loading ? 'Starting...' : '🎯 Start AI Interview'}
+            {loading? 'Starting...':'🎯 Start AI Interview'}
           </button>
         </form>
       </div>
@@ -1293,40 +1425,44 @@ function AIInterviewTab({ user }) {
 /* ═══════════════════════════════════════════════════════════════════
    SPEC AI CHAT TAB
    ═══════════════════════════════════════════════════════════════════ */
-function AxiomTab({ user }) {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const endRef = useRef(null);
+function AxiomTab({user})
+{
+  const [messages, setMessages]=useState([]);
+  const [input, setInput]=useState('');
+  const [loading, setLoading]=useState(false);
+  const endRef=useRef(null);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => {endRef.current?.scrollIntoView({behavior: 'smooth'});}, [messages]);
 
-  const handleSend = async (e) => {
+  const handleSend=async (e) =>
+  {
     e.preventDefault();
     if (!input.trim()) return;
-    setMessages(p => [...p, { role: 'user', content: input }]);
+    setMessages(p => [...p, {role: 'user', content: input}]);
     setInput(''); setLoading(true);
-    try {
-      const res = await axios.post(`${API_URL}/api/spec-ai/chat`, {
+    try
+    {
+      const res=await api.post('/spec-ai/chat', {
         message: input,
         conversationHistory: messages,
-        userData: user ? {
-          id: user.id || user._id,
+        userData: user? {
+          id: user.id||user._id,
           username: user.username,
           email: user.email,
           role: user.role,
-          skills: user.skills || [],
-          bio: user.bio || '',
-          companyName: user.companyName || '',
-        } : null,
+          skills: user.skills||[],
+          bio: user.bio||'',
+          companyName: user.companyName||'',
+        }:null,
       });
-      setMessages(p => [...p, { role: 'assistant', content: res.data.response }]);
-    } catch {
-      setMessages(p => [...p, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
-    } finally { setLoading(false); }
+      setMessages(p => [...p, {role: 'assistant', content: res.data.response}]);
+    } catch
+    {
+      setMessages(p => [...p, {role: 'assistant', content: 'Sorry, something went wrong. Please try again.'}]);
+    } finally {setLoading(false);}
   };
 
-  const suggestions = [
+  const suggestions=[
     'What jobs match my skills?',
     'Help me prepare for my upcoming interview',
     'What skills should I learn next?',
@@ -1342,31 +1478,31 @@ function AxiomTab({ user }) {
           <h2>Spec AI Assistant</h2>
           <p>Your personalized AI assistant for career guidance & interview preparation</p>
         </div>
-        {messages.length > 0 && (
+        {messages.length>0&&(
           <button className="cdt-clear-btn" onClick={() => setMessages([])}><Trash2 size={14} /> Clear</button>
         )}
       </div>
 
       <div className="cdt-chat-messages">
-        {messages.length === 0 ? (
+        {messages.length===0? (
           <div className="cdt-chat-welcome">
-            <h3>👋 Welcome to Spec AI{user ? `, ${user.username}` : ''}!</h3>
+            <h3>👋 Welcome to Spec AI{user? `, ${user.username}`:''}!</h3>
             <p>I'm your personalized AI assistant. I know your profile and can help with career guidance, interview prep, and coding.</p>
             <div className="cdt-suggestions">
               <h4>Try asking me:</h4>
               {suggestions.map((s, i) => (
-                <button key={i} className="cdt-suggestion-btn" onClick={() => { setInput(s); }}>{s}</button>
+                <button key={i} className="cdt-suggestion-btn" onClick={() => {setInput(s);}}>{s}</button>
               ))}
             </div>
           </div>
-        ) : (
+        ):(
           messages.map((msg, i) => (
             <div key={i} className={`cdt-msg ${msg.role}`}>
               <div className="cdt-msg-content">{msg.content}</div>
             </div>
           ))
         )}
-        {loading && (
+        {loading&&(
           <div className="cdt-msg assistant">
             <div className="cdt-msg-content cdt-typing"><span /><span /><span /></div>
           </div>
@@ -1376,10 +1512,136 @@ function AxiomTab({ user }) {
 
       <form className="cdt-chat-input" onSubmit={handleSend}>
         <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask Spec AI anything..." disabled={loading} />
-        <button type="submit" disabled={loading || !input.trim()}><Send size={16} /></button>
+        <button type="submit" disabled={loading||!input.trim()}><Send size={16} /></button>
       </form>
     </div>
   );
 }
 
 export default CandidateDashboard;
+
+/* ═══════════════════════════════════════════════════════════════════
+   LIVE QUIZ TAB — Auto-shows all available quizzes to students
+   ═══════════════════════════════════════════════════════════════════ */
+function LiveQuizTab({user})
+{
+  const navigate=useNavigate();
+  const API_URL=import.meta.env.VITE_API_URL||'http://localhost:5000';
+  const [quizzes, setQuizzes]=useState([]);
+  const [loading, setLoading]=useState(true);
+  const [joinCode, setJoinCode]=useState('');
+  const [playerName, setPlayerName]=useState(user?.username||'');
+
+  const fetchQuizzes=useCallback(async () =>
+  {
+    try
+    {
+      const res=await fetch(`${API_URL}/api/quiz/browse`, {credentials: 'include'});
+      if (res.ok) { const data=await res.json(); setQuizzes(data.quizzes||[]); }
+    } catch (e) { console.error('Fetch quizzes error:', e); }
+    finally { setLoading(false); }
+  }, [API_URL]);
+
+  // Auto-refresh every 8 seconds to show newly started quizzes
+  useEffect(() =>
+  {
+    fetchQuizzes();
+    const interval=setInterval(fetchQuizzes, 8000);
+    return () => clearInterval(interval);
+  }, [fetchQuizzes]);
+
+  const handleJoinByCode=() =>
+  {
+    if (!joinCode.trim()) return;
+    navigate(`/quiz/join?code=${joinCode.trim().toUpperCase()}`);
+  };
+
+  const handleJoinQuiz=(code) =>
+  {
+    const name=playerName||user?.username||'Student';
+    navigate(`/quiz/play?code=${code}&name=${encodeURIComponent(name)}`);
+  };
+
+  const difficultyColor={easy: '#22c55e', medium: '#f59e0b', hard: '#ef4444'};
+  const statusLabel={waiting: 'Open to Join', active: 'Live Now', question_open: '🔴 Live — Question Open', question_closed: 'Live — Between Questions'};
+
+  return (
+    <div className="cd-container cd-tab-content">
+      <div className="cd-welcome">
+        <h1>Live Quizzes</h1>
+        <p>Join a live quiz session — quizzes appear automatically when a host starts one</p>
+      </div>
+
+      {/* Join by code */}
+      <div className="cdt-section" style={{marginBottom: '1.5rem'}}>
+        <div style={{display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap'}}>
+          <input
+            type="text"
+            placeholder="Enter room code (e.g. ABC123)"
+            value={joinCode}
+            onChange={e => setJoinCode(e.target.value.toUpperCase())}
+            onKeyDown={e => e.key==='Enter'&&handleJoinByCode()}
+            style={{padding: '10px 14px', background: 'var(--bg-secondary, #161b27)', border: '1px solid var(--border-color, #2a2d3e)', borderRadius: '8px', color: '#e2e8f0', fontSize: '0.9rem', minWidth: '200px', fontFamily: 'monospace', letterSpacing: '2px'}}
+            maxLength={6}
+          />
+          <button
+            onClick={handleJoinByCode}
+            style={{padding: '10px 20px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem'}}
+            disabled={!joinCode.trim()}
+          >
+            Join by Code
+          </button>
+        </div>
+      </div>
+
+      {/* Available quizzes */}
+      <div className="cdt-section">
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+          <h2>Available Quizzes</h2>
+          <button onClick={fetchQuizzes} style={{padding: '6px 14px', background: 'var(--bg-secondary, #161b27)', border: '1px solid var(--border-color, #2a2d3e)', borderRadius: '6px', color: '#94a3b8', cursor: 'pointer', fontSize: '0.8rem'}}>
+            {loading? 'Loading...':'🔄 Refresh'}
+          </button>
+        </div>
+
+        {loading? (
+          <div style={{textAlign: 'center', padding: '40px', color: 'var(--text-muted, #64748b)'}}>Loading quizzes...</div>
+        ):quizzes.length===0? (
+          <div style={{textAlign: 'center', padding: '50px 20px', color: 'var(--text-muted, #64748b)'}}>
+            <Trophy size={48} style={{marginBottom: '16px', opacity: 0.3}} />
+            <h3 style={{color: 'var(--text-secondary, #94a3b8)', margin: '0 0 8px'}}>No live quizzes right now</h3>
+            <p style={{margin: 0, fontSize: '0.9rem'}}>Quizzes will appear here automatically when a recruiter starts one.<br />You can also join directly with a room code.</p>
+          </div>
+        ):(
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px'}}>
+            {quizzes.map(q => (
+              <div key={q.id} style={{background: 'var(--bg-secondary, #161b27)', border: '1px solid var(--border-color, #2a2d3e)', borderRadius: '14px', padding: '20px', transition: 'border-color 0.2s'}} onMouseEnter={e => e.currentTarget.style.borderColor='#6366f1'} onMouseLeave={e => e.currentTarget.style.borderColor='var(--border-color, #2a2d3e)'}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+                  <span style={{fontSize: '0.75rem', fontFamily: 'monospace', color: '#818cf8', background: 'rgba(99,102,241,0.1)', padding: '3px 8px', borderRadius: '4px'}}>#{q.code}</span>
+                  <span style={{fontSize: '0.7rem', padding: '3px 8px', borderRadius: '12px', fontWeight: 600, textTransform: 'uppercase', background: q.status==='waiting'?'rgba(59,130,246,0.15)':'rgba(34,197,94,0.15)', color: q.status==='waiting'?'#93c5fd':'#86efac'}}>
+                    {statusLabel[q.status]||q.status}
+                  </span>
+                </div>
+                <h3 style={{fontSize: '1.05rem', fontWeight: 600, marginBottom: '4px', color: '#f1f5f9'}}>{q.title}</h3>
+                <p style={{fontSize: '0.82rem', color: '#64748b', marginBottom: '12px'}}>{q.topic}</p>
+                <div style={{display: 'flex', gap: '12px', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '14px', flexWrap: 'wrap'}}>
+                  <span style={{color: difficultyColor[q.difficulty]}}>● {q.difficulty}</span>
+                  <span>📝 {q.questionCount} Q</span>
+                  <span>👥 {q.participantCount} joined</span>
+                  <span>🎙 {q.hostName}</span>
+                </div>
+                <button
+                  onClick={() => handleJoinQuiz(q.code)}
+                  style={{width: '100%', padding: '10px', background: q.status==='waiting'?'#6366f1':'#22c55e', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem', transition: 'opacity 0.2s'}}
+                  onMouseEnter={e => e.target.style.opacity='0.85'}
+                  onMouseLeave={e => e.target.style.opacity='1'}
+                >
+                  {['active','question_open','question_closed'].includes(q.status)?'🔴 Join Live Quiz':'🎮 Join Quiz'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

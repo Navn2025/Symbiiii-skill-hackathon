@@ -1,56 +1,62 @@
-import { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import {useState, useEffect, useRef} from 'react';
+import api from '../services/api';
 import './AxiomChat.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+function AxiomChat()
+{
+  const [messages, setMessages]=useState([]);
+  const [input, setInput]=useState('');
+  const [loading, setLoading]=useState(false);
+  const messagesEndRef=useRef(null);
 
-function AxiomChat() {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const messagesEndRef = useRef(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom=() =>
+  {
+    messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
   };
 
-  useEffect(() => {
+  useEffect(() =>
+  {
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit=async (e) =>
+  {
     e.preventDefault();
     if (!input.trim()) return;
 
-    const userMessage = { role: 'user', content: input };
+    const userMessage={role: 'user', content: input};
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
 
-    try {
-      const response = await axios.post(`${API_URL}/api/spec-ai/chat`, {
+    try
+    {
+      const response=await api.post('/spec-ai/chat', {
         message: input,
         conversationHistory: messages
       });
 
-      const assistantMessage = { 
-        role: 'assistant', 
-        content: response.data.response 
+      const assistantMessage={
+        role: 'assistant',
+        content: response.data.response
       };
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error sending message:', error);
-      const errorMessage = {
+      const errorMessage={
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.'
       };
       setMessages(prev => [...prev, errorMessage]);
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
 
-  const clearChat = () => {
+  const clearChat=() =>
+  {
     setMessages([]);
   };
 
@@ -59,7 +65,7 @@ function AxiomChat() {
       <div className="axiom-chat-header">
         <h1>Spec AI Assistant</h1>
         <p>Your personalized AI assistant for career guidance & interview preparation</p>
-        {messages.length > 0 && (
+        {messages.length>0&&(
           <button onClick={clearChat} className="clear-button">
             Clear Chat
           </button>
@@ -67,7 +73,7 @@ function AxiomChat() {
       </div>
 
       <div className="axiom-chat-messages">
-        {messages.length === 0 ? (
+        {messages.length===0? (
           <div className="welcome-message">
             <h2>👋 Welcome to Spec AI!</h2>
             <p>I'm your personalized AI assistant for career guidance and interview preparation.</p>
@@ -81,7 +87,7 @@ function AxiomChat() {
               </ul>
             </div>
           </div>
-        ) : (
+        ):(
           messages.map((msg, index) => (
             <div key={index} className={`message ${msg.role}`}>
               <div className="message-content">
@@ -90,7 +96,7 @@ function AxiomChat() {
             </div>
           ))
         )}
-        {loading && (
+        {loading&&(
           <div className="message assistant">
             <div className="message-content typing">
               <span></span>
@@ -110,7 +116,7 @@ function AxiomChat() {
           placeholder="Type your message..."
           disabled={loading}
         />
-        <button type="submit" disabled={loading || !input.trim()}>
+        <button type="submit" disabled={loading||!input.trim()}>
           Send
         </button>
       </form>

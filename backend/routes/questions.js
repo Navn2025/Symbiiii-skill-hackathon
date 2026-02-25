@@ -1,113 +1,63 @@
 import express from 'express';
 import {v4 as uuidv4} from 'uuid';
+import {verifyAuth} from '../middleware/auth.js';
+import questionBank from '../services/questionBank.js';
 
 const router=express.Router();
 
-// Sample questions database
-const questions=[
-    {
-        id: '1',
-        title: 'Two Sum',
-        difficulty: 'easy',
-        category: 'arrays',
-        description: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.',
-        examples: [
-            {input: 'nums = [2,7,11,15], target = 9', output: '[0,1]'},
-            {input: 'nums = [3,2,4], target = 6', output: '[1,2]'},
-        ],
-        starterCode: {
-            python: 'def twoSum(nums, target):\n    pass',
-            javascript: 'function twoSum(nums, target) {\n    // your code here\n}',
-            java: 'public int[] twoSum(int[] nums, int target) {\n    // your code here\n}',
-        },
-    },
-    {
-        id: '2',
-        title: 'Valid Parentheses',
-        difficulty: 'easy',
-        category: 'stack',
-        description: 'Given a string s containing just the characters \'(\', \')\', \'{\', \'}\', \'[\' and \']\', determine if the input string is valid.',
-        examples: [
-            {input: 's = "()"', output: 'true'},
-            {input: 's = "()[]{}"', output: 'true'},
-        ],
-        starterCode: {
-            python: 'def isValid(s):\n    pass',
-            javascript: 'function isValid(s) {\n    // your code here\n}',
-            java: 'public boolean isValid(String s) {\n    // your code here\n}',
-        },
-    },
-    {
-        id: '3',
-        title: 'Binary Tree Level Order Traversal',
-        difficulty: 'medium',
-        category: 'tree',
-        description: 'Given the root of a binary tree, return the level order traversal of its nodes\' values.',
-        examples: [
-            {input: 'root = [3,9,20,null,null,15,7]', output: '[[3],[9,20],[15,7]]'},
-        ],
-        starterCode: {
-            python: 'def levelOrder(root):\n    pass',
-            javascript: 'function levelOrder(root) {\n    // your code here\n}',
-            java: 'public List<List<Integer>> levelOrder(TreeNode root) {\n    // your code here\n}',
-        },
-    },
-    {
-        id: '4',
-        title: 'Longest Substring Without Repeating Characters',
-        difficulty: 'medium',
-        category: 'string',
-        description: 'Given a string s, find the length of the longest substring without repeating characters.',
-        examples: [
-            {input: 's = "abcabcbb"', output: '3'},
-            {input: 's = "pwwkew"', output: '3'},
-        ],
-        starterCode: {
-            python: 'def lengthOfLongestSubstring(s):\n    pass',
-            javascript: 'function lengthOfLongestSubstring(s) {\n    // your code here\n}',
-            java: 'public int lengthOfLongestSubstring(String s) {\n    // your code here\n}',
-        },
-    },
-    {
-        id: '5',
-        title: 'Merge Two Sorted Lists',
-        difficulty: 'easy',
-        category: 'linked-list',
-        description: 'Merge two sorted linked lists and return it as a sorted list.',
-        examples: [
-            {input: 'list1 = [1,2,4], list2 = [1,3,4]', output: '[1,1,2,3,4,4]'},
-        ],
-        starterCode: {
-            python: 'def mergeTwoLists(list1, list2):\n    pass',
-            javascript: 'function mergeTwoLists(list1, list2) {\n    // your code here\n}',
-            java: 'public ListNode mergeTwoLists(ListNode list1, ListNode list2) {\n    // your code here\n}',
-        },
-    },
-];
+// Custom questions added via API (supplement the question bank)
+export const customQuestions=[];
 
-// Get all questions
-router.get('/', (req, res) =>
+// Get all questions (from question bank + any custom ones)
+router.get('/', verifyAuth, (req, res) =>
 {
-    const {difficulty, category}=req.query;
-    let filtered=[...questions];
-
-    if (difficulty)
+    try
     {
-        filtered=filtered.filter(q => q.difficulty===difficulty);
-    }
+        const {difficulty, category}=req.query;
+        // Merge question bank questions with custom questions
+        const bankQuestions=questionBank.getAllQuestions({difficulty, domain: category});
+        let allQuestions=[...bankQuestions, ...customQuestions];
 
-    if (category)
+        if (difficulty&&customQuestions.length)
+        {
+            allQuestions=allQuestions.filter(q => q.difficulty===difficulty);
+        }
+        if (category&&customQuestions.length)
+        {
+            allQuestions=allQuestions.filter(q => (q.category||q.domain)===category);
+        }
+
+        res.json({success: true, data: allQuestions});
+    } catch (error)
     {
-        filtered=filtered.filter(q => q.category===category);
+        console.error('[QUESTIONS] Fetch error:', error.message);
+        res.status(500).json({success: false, error: 'Failed to fetch questions'});
     }
-
-    res.json(filtered);
 });
 
-// Get question by ID
-router.get('/:id', (req, res) =>
+// IMPORTANT: Specific routes MUST come before parameterized /:id route
+// Get random questions
+router.get('/random/:count', verifyAuth, (req, res) =>
 {
-    const question=questions.find(q => q.id===req.params.id);
+    const count=parseInt(req.params.count);
+    if (isNaN(count)||count<1)
+    {
+        return res.status(400).json({error: 'Invalid count parameter'});
+    }
+    const allQuestions=[...questionBank.getAllQuestions(), ...customQuestions];
+    const shuffled=allQuestions.sort(() => 0.5-Math.random());
+    res.json(shuffled.slice(0, Math.min(count, shuffled.length)));
+});
+
+// Get question by ID — must come AFTER /random/:count
+router.get('/:id', verifyAuth, (req, res) =>
+{
+    // Look up in question bank first, then custom questions
+    let question=questionBank.getQuestionById(req.params.id);
+    if (!question)
+    {
+        question=customQuestions.find(q => q.id===req.params.id);
+    }
     if (!question)
     {
         return res.status(404).json({error: 'Question not found'});
@@ -115,50 +65,68 @@ router.get('/:id', (req, res) =>
     res.json(question);
 });
 
-// Get random questions
-router.get('/random/:count', (req, res) =>
+// Create custom question — use explicit fields, not ...req.body spread
+router.post('/', verifyAuth, (req, res) =>
 {
-    const count=parseInt(req.params.count);
-    const shuffled=[...questions].sort(() => 0.5-Math.random());
-    res.json(shuffled.slice(0, Math.min(count, shuffled.length)));
-});
+    // Support both flat body and nested {question: {...}} format
+    const data=req.body.question||req.body;
+    const {title, difficulty, category, description, examples, starterCode}=data;
 
-// Create custom question
-router.post('/', (req, res) =>
-{
+    if (!title||!description)
+    {
+        return res.status(400).json({error: 'title and description are required'});
+    }
+
     const question={
         id: uuidv4(),
-        ...req.body,
+        title,
+        difficulty: difficulty||'medium',
+        category: category||'general',
+        description,
+        examples: Array.isArray(examples)? examples:[],
+        starterCode: starterCode||{},
+        testCases: Array.isArray(data.testCases)? data.testCases:[],
+        functionName: data.functionName||null,
+        constraints: Array.isArray(data.constraints)? data.constraints:[],
+        hints: Array.isArray(data.hints)? data.hints:[],
         createdAt: new Date(),
         isCustom: true,
     };
-    questions.push(question);
-    res.json(question);
+    customQuestions.push(question);
+    res.status(201).json(question);
 });
 
-// Update question
-router.put('/:id', (req, res) =>
+// Update question — only custom questions can be edited
+router.put('/:id', verifyAuth, (req, res) =>
 {
-    const index=questions.findIndex(q => q.id===req.params.id);
+    const index=customQuestions.findIndex(q => q.id===req.params.id);
     if (index===-1)
     {
-        return res.status(404).json({error: 'Question not found'});
+        return res.status(404).json({error: 'Question not found or is a built-in question'});
     }
 
-    questions[index]={...questions[index], ...req.body, updatedAt: new Date()};
-    res.json(questions[index]);
+    const {title, difficulty, category, description, examples, starterCode}=req.body;
+    if (title) customQuestions[index].title=title;
+    if (difficulty) customQuestions[index].difficulty=difficulty;
+    if (category) customQuestions[index].category=category;
+    if (description) customQuestions[index].description=description;
+    if (examples) customQuestions[index].examples=examples;
+    if (starterCode) customQuestions[index].starterCode=starterCode;
+    customQuestions[index].updatedAt=new Date();
+
+    res.json(customQuestions[index]);
 });
 
-// Delete question
-router.delete('/:id', (req, res) =>
+// Delete question — only custom questions can be deleted
+router.delete('/:id', verifyAuth, (req, res) =>
 {
-    const index=questions.findIndex(q => q.id===req.params.id);
+    const index=customQuestions.findIndex(q => q.id===req.params.id);
     if (index===-1)
     {
-        return res.status(404).json({error: 'Question not found'});
+        return res.status(404).json({error: 'Question not found or is a built-in question'});
     }
 
-    questions.splice(index, 1);
+    customQuestions.splice(index, 1);
     res.json({success: true, message: 'Question deleted'});
 });
 

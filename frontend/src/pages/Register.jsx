@@ -1,17 +1,18 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import {useState, useRef, useCallback, useEffect} from 'react';
+import {useNavigate, Link} from 'react-router-dom';
+import {AnimatePresence, motion} from 'framer-motion';
 import Webcam from 'react-webcam';
-import {
+import
+{
   UserPlus, Mail, KeyRound, ScanFace, Check, ChevronDown,
   Camera, Loader2
 } from 'lucide-react';
 import ScannerOverlay from '../components/ScannerOverlay';
-import { loadFaceModels, extractDescriptor } from '../services/faceRecognition';
+import {loadFaceModels, extractDescriptor} from '../services/faceRecognition';
 import api from '../services/api';
 import './Register.css';
 
-const STEPS = {
+const STEPS={
   INFO: 'info',
   EMAIL: 'email',
   OTP: 'otp',
@@ -21,44 +22,47 @@ const STEPS = {
   FORM: 'form',
 };
 
-const STEP_ORDER = [STEPS.INFO, STEPS.EMAIL, STEPS.OTP, STEPS.CENTER, STEPS.LEFT, STEPS.RIGHT, STEPS.FORM];
+const STEP_ORDER=[STEPS.INFO, STEPS.EMAIL, STEPS.OTP, STEPS.CENTER, STEPS.LEFT, STEPS.RIGHT, STEPS.FORM];
 
-const ROLE_OPTIONS = [
-  { value: 'candidate', label: 'Candidate', description: 'Take assessments & interviews' },
-  { value: 'company_admin', label: 'Company Admin', description: 'Manage company & postings' },
+const ROLE_OPTIONS=[
+  {value: 'candidate', label: 'Candidate', description: 'Take assessments & interviews'},
+  {value: 'company_admin', label: 'Company Admin', description: 'Manage company & postings'},
 ];
 
-const stepInfo = [
+const stepInfo=[
   'Email verification via OTP',
   'Standard facing scan',
   'Left profile capture',
   'Right profile capture',
 ];
 
-function Register() {
-  const [step, setStep] = useState(STEPS.INFO);
-  const [role, setRole] = useState('candidate');
-  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
-  const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [images, setImages] = useState([]);
-  const [descriptors, setDescriptors] = useState([]);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [scanStatus, setScanStatus] = useState('idle');
-  const [modelsReady, setModelsReady] = useState(false);
+function Register()
+{
+  const [step, setStep]=useState(STEPS.INFO);
+  const [role, setRole]=useState('candidate');
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen]=useState(false);
+  const [email, setEmail]=useState('');
+  const [otp, setOtp]=useState('');
+  const [images, setImages]=useState([]);
+  const [descriptors, setDescriptors]=useState([]);
+  const [username, setUsername]=useState('');
+  const [password, setPassword]=useState('');
+  const [confirmPassword, setConfirmPassword]=useState('');
+  const [error, setError]=useState('');
+  const [loading, setLoading]=useState(false);
+  const [scanStatus, setScanStatus]=useState('idle');
+  const [modelsReady, setModelsReady]=useState(false);
 
-  const webcamRef = useRef(null);
-  const navigate = useNavigate();
+  const webcamRef=useRef(null);
+  const navigate=useNavigate();
 
-  const currentStepIndex = STEP_ORDER.indexOf(step);
+  const currentStepIndex=STEP_ORDER.indexOf(step);
 
   // Pre-load face-api.js models before the camera steps
-  useEffect(() => {
-    if ((step === STEPS.OTP || step === STEPS.CENTER) && !modelsReady) {
+  useEffect(() =>
+  {
+    if ((step===STEPS.OTP||step===STEPS.CENTER)&&!modelsReady)
+    {
       loadFaceModels()
         .then(() => setModelsReady(true))
         .catch(() => setError('Failed to load face recognition models. Please refresh.'));
@@ -66,51 +70,64 @@ function Register() {
   }, [step, modelsReady]);
 
   // ── OTP Handlers ────────────────────────────────────────────────
-  const handleSendOtp = async () => {
+  const handleSendOtp=async () =>
+  {
     setError('');
     setLoading(true);
-    try {
-      await api.post('/auth/send-otp', { email, purpose: 'register' });
+    try
+    {
+      await api.post('/auth/send-otp', {email, purpose: 'register'});
       setStep(STEPS.OTP);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send OTP');
-    } finally {
+    } catch (err)
+    {
+      setError(err.response?.data?.message||'Failed to send OTP');
+    } finally
+    {
       setLoading(false);
     }
   };
 
-  const handleVerifyOtp = async () => {
+  const handleVerifyOtp=async () =>
+  {
     setError('');
     setLoading(true);
-    try {
-      const res = await api.post('/auth/verify-otp', { email, otp, purpose: 'register' });
-      if (res.data?.verified) {
+    try
+    {
+      const res=await api.post('/auth/verify-otp', {email, otp, purpose: 'register'});
+      if (res.data?.data?.verified||res.data?.verified)
+      {
         setStep(STEPS.CENTER);
       }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Invalid OTP');
-    } finally {
+    } catch (err)
+    {
+      setError(err.response?.data?.message||'Invalid OTP');
+    } finally
+    {
       setLoading(false);
     }
   };
 
   // ── Camera Capture (extract descriptor immediately) ─────────────
-  const captureImage = useCallback(async () => {
+  const captureImage=useCallback(async () =>
+  {
     if (!webcamRef.current) return;
     setError('');
     setScanStatus('scanning');
 
-    const imageSrc = webcamRef.current.getScreenshot();
-    if (!imageSrc) {
+    const imageSrc=webcamRef.current.getScreenshot();
+    if (!imageSrc)
+    {
       setScanStatus('error');
       setError('Could not capture image');
       return;
     }
 
     // Extract face descriptor immediately so we can retry if face not detected
-    try {
-      const result = await extractDescriptor(imageSrc);
-      if (!result) {
+    try
+    {
+      const result=await extractDescriptor(imageSrc);
+      if (!result)
+      {
         setScanStatus('error');
         setError('No face detected — keep your face visible and try again');
         return;
@@ -121,13 +138,15 @@ function Register() {
       setImages(prev => [...prev, imageSrc]);
       setDescriptors(prev => [...prev, result.descriptor]);
 
-      setTimeout(() => {
+      setTimeout(() =>
+      {
         setScanStatus('idle');
-        if (step === STEPS.CENTER) setStep(STEPS.LEFT);
-        else if (step === STEPS.LEFT) setStep(STEPS.RIGHT);
-        else if (step === STEPS.RIGHT) setStep(STEPS.FORM);
+        if (step===STEPS.CENTER) setStep(STEPS.LEFT);
+        else if (step===STEPS.LEFT) setStep(STEPS.RIGHT);
+        else if (step===STEPS.RIGHT) setStep(STEPS.FORM);
       }, 600);
-    } catch (err) {
+    } catch (err)
+    {
       setScanStatus('error');
       setError('Face detection failed — please try again');
       console.error('[REGISTER] Capture error:', err);
@@ -135,28 +154,33 @@ function Register() {
   }, [step]);
 
   // ── Final Submit ────────────────────────────────────────────────
-  const handleFinalSubmit = async (e) => {
+  const handleFinalSubmit=async (e) =>
+  {
     e.preventDefault();
     setError('');
 
-    if (password !== confirmPassword) {
+    if (password!==confirmPassword)
+    {
       setError('Passwords do not match');
       return;
     }
-    if (password.length < 6) {
+    if (password.length<6)
+    {
       setError('Password must be at least 6 characters');
       return;
     }
-    if (descriptors.length < 3) {
+    if (descriptors.length<3)
+    {
       setError('Please capture all 3 face images first');
       return;
     }
 
     setLoading(true);
-    try {
+    try
+    {
       console.log(`[REGISTER] Submitting ${descriptors.length} descriptors, dim=${descriptors[0]?.length}`);
 
-      const res = await api.post('/auth/register', {
+      const res=await api.post('/auth/register', {
         username,
         email,
         password,
@@ -165,20 +189,24 @@ function Register() {
         role,
       });
       console.log('[REGISTER] Success:', res.data);
-      localStorage.setItem('user', JSON.stringify(res.data));
-      const dashPath = ['company_admin', 'company_hr', 'recruiter'].includes(res.data.role)
-        ? '/company-dashboard' : '/candidate-dashboard';
+      const userData=res.data.data?.user||res.data.data||res.data;
+      localStorage.setItem('user', JSON.stringify(userData));
+      const dashPath=['company_admin', 'company_hr', 'recruiter'].includes(userData.role)
+        ? '/company-dashboard':'/candidate-dashboard';
       navigate(dashPath);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
-    } finally {
+    } catch (err)
+    {
+      setError(err.response?.data?.message||'Registration failed');
+    } finally
+    {
       setLoading(false);
     }
   };
 
   // ── Camera Step Renderer ────────────────────────────────────────
-  const renderCameraStep = (title, instruction) => {
-    const scanMessages = {
+  const renderCameraStep=(title, instruction) =>
+  {
+    const scanMessages={
       idle: instruction,
       scanning: 'Capturing...',
       success: 'Captured!',
@@ -188,10 +216,10 @@ function Register() {
     return (
       <motion.div
         key={step}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.25 }}
+        initial={{opacity: 0, y: 10}}
+        animate={{opacity: 1, y: 0}}
+        exit={{opacity: 0, y: -10}}
+        transition={{duration: 0.25}}
       >
         <div className="register-card">
           <div className="reg-step-header">
@@ -207,11 +235,11 @@ function Register() {
               ref={webcamRef}
               audio={false}
               screenshotFormat="image/jpeg"
-              videoConstraints={{ facingMode: 'user', width: 640, height: 480 }}
+              videoConstraints={{facingMode: 'user', width: 640, height: 480}}
               mirrored
             />
             <ScannerOverlay
-              scanning={scanStatus === 'scanning'}
+              scanning={scanStatus==='scanning'}
               status={scanStatus}
               message={scanMessages[scanStatus]}
             />
@@ -220,11 +248,11 @@ function Register() {
           <button
             className="reg-btn-primary"
             onClick={captureImage}
-            disabled={scanStatus === 'scanning' || scanStatus === 'success'}
+            disabled={scanStatus==='scanning'||scanStatus==='success'}
           >
-            {scanStatus === 'scanning' ? (
+            {scanStatus==='scanning'? (
               <span className="spinner" />
-            ) : (
+            ):(
               <>
                 <Camera size={16} />
                 Capture
@@ -238,27 +266,27 @@ function Register() {
 
   return (
     <div className="register-page">
-      <div style={{ maxWidth: 480, width: '100%', position: 'relative' }}>
+      <div style={{maxWidth: 480, width: '100%', position: 'relative'}}>
         {/* Progress bar */}
         <div className="reg-progress">
           {STEP_ORDER.map((s, i) => (
             <div
               key={s}
-              className={`reg-progress-step ${i < currentStepIndex ? 'done' : ''} ${i === currentStepIndex ? 'active' : ''}`}
+              className={`reg-progress-step ${i<currentStepIndex? 'done':''} ${i===currentStepIndex? 'active':''}`}
             />
           ))}
         </div>
 
-        {error && <div className="reg-error">{error}</div>}
+        {error&&<div className="reg-error">{error}</div>}
 
         <AnimatePresence mode="wait">
           {/* ── Step 0: Info ─────────────────────────────────── */}
-          {step === STEPS.INFO && (
+          {step===STEPS.INFO&&(
             <motion.div
               key="info"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              initial={{opacity: 0, y: 10}}
+              animate={{opacity: 1, y: 0}}
+              exit={{opacity: 0, y: -10}}
             >
               <div className="register-card">
                 <div className="reg-step-header">
@@ -277,23 +305,23 @@ function Register() {
                     className="reg-role-btn"
                     onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
                   >
-                    {ROLE_OPTIONS.find(r => r.value === role)?.label || 'Select role'}
+                    {ROLE_OPTIONS.find(r => r.value===role)?.label||'Select role'}
                     <ChevronDown size={16} />
                   </button>
-                  {isRoleDropdownOpen && (
+                  {isRoleDropdownOpen&&(
                     <div className="reg-role-dropdown">
                       {ROLE_OPTIONS.map((opt) => (
                         <button
                           key={opt.value}
                           type="button"
-                          className={`reg-role-option ${role === opt.value ? 'selected' : ''}`}
-                          onClick={() => { setRole(opt.value); setIsRoleDropdownOpen(false); }}
+                          className={`reg-role-option ${role===opt.value? 'selected':''}`}
+                          onClick={() => {setRole(opt.value); setIsRoleDropdownOpen(false);}}
                         >
                           <div>
                             <span>{opt.label}</span>
                             <small>{opt.description}</small>
                           </div>
-                          {role === opt.value && <Check size={14} color="#3b82f6" />}
+                          {role===opt.value&&<Check size={14} color="#3b82f6" />}
                         </button>
                       ))}
                     </div>
@@ -304,7 +332,7 @@ function Register() {
                 <div className="reg-steps-list">
                   {stepInfo.map((text, i) => (
                     <div key={i} className="reg-step-item">
-                      <div className="reg-step-num">{i + 1}</div>
+                      <div className="reg-step-num">{i+1}</div>
                       <span>{text}</span>
                     </div>
                   ))}
@@ -314,7 +342,7 @@ function Register() {
                   Start Process
                 </button>
 
-                <Link to="/" className="reg-back-link" style={{ textDecoration: 'none' }}>
+                <Link to="/" className="reg-back-link" style={{textDecoration: 'none'}}>
                   Cancel registration
                 </Link>
               </div>
@@ -322,12 +350,12 @@ function Register() {
           )}
 
           {/* ── Step 1: Email ────────────────────────────────── */}
-          {step === STEPS.EMAIL && (
+          {step===STEPS.EMAIL&&(
             <motion.div
               key="email"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              initial={{opacity: 0, y: 10}}
+              animate={{opacity: 1, y: 0}}
+              exit={{opacity: 0, y: -10}}
             >
               <div className="register-card">
                 <div className="reg-step-header">
@@ -351,9 +379,9 @@ function Register() {
                 <button
                   className="reg-btn-primary"
                   onClick={handleSendOtp}
-                  disabled={!email || loading}
+                  disabled={!email||loading}
                 >
-                  {loading ? <span className="spinner" /> : 'Send Verification Code'}
+                  {loading? <span className="spinner" />:'Send Verification Code'}
                 </button>
 
                 <button className="reg-back-link" onClick={() => setStep(STEPS.INFO)}>
@@ -364,12 +392,12 @@ function Register() {
           )}
 
           {/* ── Step 2: OTP ──────────────────────────────────── */}
-          {step === STEPS.OTP && (
+          {step===STEPS.OTP&&(
             <motion.div
               key="otp"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              initial={{opacity: 0, y: 10}}
+              animate={{opacity: 1, y: 0}}
+              exit={{opacity: 0, y: -10}}
             >
               <div className="register-card">
                 <div className="reg-step-header">
@@ -377,7 +405,7 @@ function Register() {
                     <KeyRound size={22} />
                   </div>
                   <h2>Enter OTP</h2>
-                  <p>A 6-digit code was sent to <strong style={{ color: 'var(--text-primary)' }}>{email}</strong></p>
+                  <p>A 6-digit code was sent to <strong style={{color: 'var(--text-primary)'}}>{email}</strong></p>
                 </div>
 
                 <div className="reg-form-group">
@@ -394,14 +422,14 @@ function Register() {
                 <button
                   className="reg-btn-primary"
                   onClick={handleVerifyOtp}
-                  disabled={otp.length !== 6 || loading}
+                  disabled={otp.length!==6||loading}
                 >
-                  {loading ? <span className="spinner" /> : 'Verify Code'}
+                  {loading? <span className="spinner" />:'Verify Code'}
                 </button>
 
                 <button
                   className="reg-back-link"
-                  onClick={() => { setOtp(''); handleSendOtp(); }}
+                  onClick={() => {setOtp(''); handleSendOtp();}}
                 >
                   Resend code
                 </button>
@@ -410,16 +438,16 @@ function Register() {
           )}
 
           {/* ── Steps 3-5: Camera ────────────────────────────── */}
-          {step === STEPS.CENTER && renderCameraStep('Primary Angle', 'Look directly into the camera')}
-          {step === STEPS.LEFT && renderCameraStep('Left Profile', 'Turn your head slightly to the left')}
-          {step === STEPS.RIGHT && renderCameraStep('Right Profile', 'Turn your head slightly to the right')}
+          {step===STEPS.CENTER&&renderCameraStep('Primary Angle', 'Look directly into the camera')}
+          {step===STEPS.LEFT&&renderCameraStep('Left Profile', 'Turn your head slightly to the left')}
+          {step===STEPS.RIGHT&&renderCameraStep('Right Profile', 'Turn your head slightly to the right')}
 
           {/* ── Step 6: Final Form ───────────────────────────── */}
-          {step === STEPS.FORM && (
+          {step===STEPS.FORM&&(
             <motion.div
               key="form"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{opacity: 0, y: 10}}
+              animate={{opacity: 1, y: 0}}
             >
               <div className="register-card">
                 <div className="reg-step-header">
@@ -434,7 +462,7 @@ function Register() {
                 <div className="reg-face-previews">
                   {images.map((img, i) => (
                     <div key={i} className="reg-face-thumb">
-                      <img src={img} alt={`scan ${i + 1}`} />
+                      <img src={img} alt={`scan ${i+1}`} />
                     </div>
                   ))}
                 </div>
@@ -481,7 +509,7 @@ function Register() {
                   </div>
 
                   <button type="submit" className="reg-btn-primary" disabled={loading}>
-                    {loading ? <span className="spinner" /> : 'Complete Registration'}
+                    {loading? <span className="spinner" />:'Complete Registration'}
                   </button>
                 </form>
               </div>

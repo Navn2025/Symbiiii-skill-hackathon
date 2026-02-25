@@ -10,28 +10,49 @@ router.post('/generate-question', async (req, res) =>
     {
         const {difficulty, category, customPrompt}=req.body;
 
-        const prompt=customPrompt||`Generate a coding interview question with the following requirements:
+        const topicHint=customPrompt? `\n- Topic/Focus: ${customPrompt}`:'';
+        const prompt=`Generate a coding interview question with the following requirements:
 - Difficulty: ${difficulty||'medium'}
-- Category: ${category||'algorithms'}
+- Category: ${category||'algorithms'}${topicHint}
 
-Provide the response in this exact JSON format:
+IMPORTANT RULES:
+1. The starterCode must contain ONLY the function signature with an empty body (pass/return placeholder). Do NOT include any logic, hints, or partial solutions.
+2. You MUST include testCases with structured input objects and expected output values.
+3. You MUST include a functionName mapping for each language.
+
+You MUST respond with valid JSON only, no other text. Use this exact format:
 {
   "title": "Question Title",
   "difficulty": "${difficulty||'medium'}",
   "category": "${category||'algorithms'}",
   "description": "Detailed description of the problem with clear requirements",
   "examples": [
-    {"input": "example input", "output": "example output"},
+    {"input": "example input description", "output": "expected output"},
     {"input": "another input", "output": "another output"}
   ],
   "constraints": ["constraint 1", "constraint 2"],
   "hints": ["hint 1", "hint 2"],
+  "functionName": {
+    "python": "function_name",
+    "javascript": "functionName",
+    "java": "functionName",
+    "cpp": "functionName"
+  },
+  "testCases": [
+    {"input": {"param1": [1,2,3], "param2": 5}, "output": [0,1], "hidden": false},
+    {"input": {"param1": [3,3], "param2": 6}, "output": [0,1], "hidden": false},
+    {"input": {"param1": [1,5,3], "param2": 4}, "output": [0,2], "hidden": true},
+    {"input": {"param1": [-1,-2], "param2": -3}, "output": [0,1], "hidden": true}
+  ],
   "starterCode": {
-    "python": "def solution():\\n    pass",
-    "javascript": "function solution() {\\n    // your code here\\n}",
-    "java": "public class Solution {\\n    // your code here\\n}"
+    "python": "def function_name(param1, param2):\\n    # Write your solution here\\n    pass",
+    "javascript": "function functionName(param1, param2) {\\n    // Write your solution here\\n}",
+    "java": "class Solution {\\n    public ReturnType functionName(ParamType param1, ParamType param2) {\\n        // Write your solution here\\n        return null;\\n    }\\n}",
+    "cpp": "ReturnType functionName(ParamType param1, ParamType param2) {\\n    // Write your solution here\\n    return {};\\n}"
   }
-}`;
+}
+
+Provide at least 4 test cases (2 visible, 2 hidden). Input must be a JSON object with named parameters matching the function parameters. Output must be the exact expected return value.`;
 
         const completion=await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
@@ -39,13 +60,13 @@ Provide the response in this exact JSON format:
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are an expert technical interviewer. Generate challenging, realistic coding interview questions in valid JSON format only. Include starter code for Python, JavaScript, and Java.'
+                        content: 'You are an expert technical interviewer. Generate coding interview questions with test cases in valid JSON format only. The starterCode MUST be empty function bodies with NO logic or solution hints. Include 4+ test cases with structured input objects and expected outputs. Always include functionName for python, javascript, java, and cpp.'
                     },
                     {role: 'user', content: prompt}
                 ],
                 model: 'llama-3.3-70b-versatile',
                 temperature: 0.7,
-                max_tokens: 1500,
+                max_tokens: 2500,
             },
             {
                 headers: {
@@ -62,14 +83,45 @@ Provide the response in this exact JSON format:
         if (jsonMatch)
         {
             question=JSON.parse(jsonMatch[0]);
-            // Ensure starter code exists
-            if (!question.starterCode)
+            // Ensure required fields exist
+            if (!question.title) question.title=`${(category||'Algorithm').charAt(0).toUpperCase()+(category||'algorithm').slice(1)} Challenge`;
+            if (!question.description) question.description=question.problem||question.statement||question.body||'Solve the given problem.';
+            if (!question.difficulty) question.difficulty=difficulty||'medium';
+            if (!question.category) question.category=category||'algorithms';
+
+            // Sanitize starter code — strip any logic, keep only function signature
+            if (question.starterCode)
             {
+                for (const lang of ['python', 'javascript', 'java', 'cpp'])
+                {
+                    if (question.starterCode[lang])
+                    {
+                        // Unescape double-escaped newlines from JSON
+                        question.starterCode[lang]=question.starterCode[lang].replace(/\\n/g, '\n');
+                    }
+                }
+            } else
+            {
+                const fn=question.functionName?.python||'solution';
+                const fnJs=question.functionName?.javascript||'solution';
                 question.starterCode={
-                    python: 'def solution():\n    pass',
-                    javascript: 'function solution() {\n    // your code here\n}',
-                    java: 'public class Solution {\n    // your code here\n}',
+                    python: `def ${fn}():\n    # Write your solution here\n    pass`,
+                    javascript: `function ${fnJs}() {\n    // Write your solution here\n}`,
+                    java: 'class Solution {\n    // Write your solution here\n}',
+                    cpp: '// Write your solution here',
                 };
+            }
+
+            // Ensure test cases exist
+            if (!question.testCases||!Array.isArray(question.testCases)||question.testCases.length===0)
+            {
+                question.testCases=[];
+            }
+
+            // Ensure functionName exists
+            if (!question.functionName)
+            {
+                question.functionName={python: 'solution', javascript: 'solution', java: 'solution', cpp: 'solution'};
             }
         } else
         {
@@ -85,10 +137,18 @@ Provide the response in this exact JSON format:
                 ],
                 constraints: ['1 <= nums.length <= 10^5', '-10^4 <= nums[i] <= 10^4'],
                 hints: ['Try using dynamic programming', 'Keep track of the current sum'],
+                functionName: {python: 'max_sub_array', javascript: 'maxSubArray', java: 'maxSubArray', cpp: 'maxSubArray'},
+                testCases: [
+                    {input: {nums: [-2, 1, -3, 4, -1, 2, 1, -5, 4]}, output: 6, hidden: false},
+                    {input: {nums: [1]}, output: 1, hidden: false},
+                    {input: {nums: [5, 4, -1, 7, 8]}, output: 23, hidden: true},
+                    {input: {nums: [-1]}, output: -1, hidden: true}
+                ],
                 starterCode: {
-                    python: 'def maxSubArray(nums):\n    pass',
-                    javascript: 'function maxSubArray(nums) {\n    // your code here\n}',
-                    java: 'public int maxSubArray(int[] nums) {\n    // your code here\n}',
+                    python: 'def max_sub_array(nums):\n    # Write your solution here\n    pass',
+                    javascript: 'function maxSubArray(nums) {\n    // Write your solution here\n}',
+                    java: 'class Solution {\n    public int maxSubArray(int[] nums) {\n        // Write your solution here\n        return 0;\n    }\n}',
+                    cpp: 'int maxSubArray(vector<int>& nums) {\n    // Write your solution here\n    return 0;\n}',
                 },
             };
         }
@@ -108,10 +168,18 @@ Provide the response in this exact JSON format:
                     {input: 'nums = [-2,1,-3,4,-1,2,1,-5,4]', output: '6'},
                     {input: 'nums = [1]', output: '1'}
                 ],
+                functionName: {python: 'max_sub_array', javascript: 'maxSubArray', java: 'maxSubArray', cpp: 'maxSubArray'},
+                testCases: [
+                    {input: {nums: [-2, 1, -3, 4, -1, 2, 1, -5, 4]}, output: 6, hidden: false},
+                    {input: {nums: [1]}, output: 1, hidden: false},
+                    {input: {nums: [5, 4, -1, 7, 8]}, output: 23, hidden: true},
+                    {input: {nums: [-1]}, output: -1, hidden: true}
+                ],
                 starterCode: {
-                    python: 'def maxSubArray(nums):\n    pass',
-                    javascript: 'function maxSubArray(nums) {\n    // your code here\n}',
-                    java: 'public int maxSubArray(int[] nums) {\n    // your code here\n}',
+                    python: 'def max_sub_array(nums):\n    # Write your solution here\n    pass',
+                    javascript: 'function maxSubArray(nums) {\n    // Write your solution here\n}',
+                    java: 'class Solution {\n    public int maxSubArray(int[] nums) {\n        // Write your solution here\n        return 0;\n    }\n}',
+                    cpp: 'int maxSubArray(vector<int>& nums) {\n    // Write your solution here\n    return 0;\n}',
                 },
             },
         });

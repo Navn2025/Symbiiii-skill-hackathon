@@ -1,45 +1,79 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import {useState, useEffect} from 'react';
+import {useNavigate} from 'react-router-dom';
+import api, {createInterview} from '../services/api';
 import './RecruiterDashboard.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+function RecruiterDashboard()
+{
+  const navigate=useNavigate();
+  const [interviews, setInterviews]=useState([]);
+  const [candidates, setCandidates]=useState([]);
+  const [loading, setLoading]=useState(true);
+  const [activeTab, setActiveTab]=useState('interviews');
+  const [creatingInterview, setCreatingInterview]=useState(false);
 
-function RecruiterDashboard() {
-  const navigate = useNavigate();
-  const [interviews, setInterviews] = useState([]);
-  const [candidates, setCandidates] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('interviews');
+  const handleCreateInterview=async () =>
+  {
+    if (creatingInterview) return;
+    setCreatingInterview(true);
+    try
+    {
+      const sessionId=`interview-${Date.now()}`;
+      await createInterview({
+        candidateName: 'Pending Candidate',
+        role: 'Software Engineer',
+        experience: 'entry',
+        topics: [],
+        duration: 30,
+        notes: 'Created by recruiter',
+        sessionId,
+      });
+      navigate(`/interview/${sessionId}?mode=recruiter&name=Recruiter&role=recruiter`);
+    } catch (error)
+    {
+      console.error('Failed to create interview:', error);
+      alert('Failed to create interview session. Please try again.');
+    } finally
+    {
+      setCreatingInterview(false);
+    }
+  };
 
-  useEffect(() => {
+  useEffect(() =>
+  {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
-    try {
+  const fetchData=async () =>
+  {
+    try
+    {
       // TODO: Implement actual API calls
       // Mock data for now
       setInterviews([
-        { id: 1, candidate: 'John Doe', role: 'Frontend Developer', status: 'completed', score: 85, date: '2024-01-15' },
-        { id: 2, candidate: 'Jane Smith', role: 'Backend Engineer', status: 'in-progress', score: null, date: '2024-01-16' },
-        { id: 3, candidate: 'Bob Johnson', role: 'Full Stack Developer', status: 'scheduled', score: null, date: '2024-01-17' },
+        {id: 1, candidate: 'John Doe', role: 'Frontend Developer', status: 'completed', score: 85, date: '2024-01-15'},
+        {id: 2, candidate: 'Jane Smith', role: 'Backend Engineer', status: 'in-progress', score: null, date: '2024-01-16'},
+        {id: 3, candidate: 'Bob Johnson', role: 'Full Stack Developer', status: 'scheduled', score: null, date: '2024-01-17'},
       ]);
 
       setCandidates([
-        { id: 1, name: 'John Doe', email: 'john@example.com', role: 'Frontend Developer', appliedDate: '2024-01-10' },
-        { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'Backend Engineer', appliedDate: '2024-01-12' },
-        { id: 3, name: 'Bob Johnson', email: 'bob@example.com', role: 'Full Stack Developer', appliedDate: '2024-01-14' },
+        {id: 1, name: 'John Doe', email: 'john@example.com', role: 'Frontend Developer', appliedDate: '2024-01-10'},
+        {id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'Backend Engineer', appliedDate: '2024-01-12'},
+        {id: 3, name: 'Bob Johnson', email: 'bob@example.com', role: 'Full Stack Developer', appliedDate: '2024-01-14'},
       ]);
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error fetching data:', error);
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
 
-  const getStatusClass = (status) => {
-    switch (status) {
+  const getStatusClass=(status) =>
+  {
+    switch (status)
+    {
       case 'completed': return 'status-completed';
       case 'in-progress': return 'status-in-progress';
       case 'scheduled': return 'status-scheduled';
@@ -47,7 +81,8 @@ function RecruiterDashboard() {
     }
   };
 
-  if (loading) {
+  if (loading)
+  {
     return <div className="loading">Loading dashboard...</div>;
   }
 
@@ -55,26 +90,26 @@ function RecruiterDashboard() {
     <div className="recruiter-dashboard">
       <div className="dashboard-header">
         <h1>Recruiter Dashboard</h1>
-        <button className="create-interview-button">
-          Create New Interview
+        <button className="create-interview-button" onClick={handleCreateInterview} disabled={creatingInterview}>
+          {creatingInterview? 'Creating...':'Create New Interview'}
         </button>
       </div>
 
       <div className="dashboard-tabs">
         <button
-          className={`tab ${activeTab === 'interviews' ? 'active' : ''}`}
+          className={`tab ${activeTab==='interviews'? 'active':''}`}
           onClick={() => setActiveTab('interviews')}
         >
           Interviews
         </button>
         <button
-          className={`tab ${activeTab === 'candidates' ? 'active' : ''}`}
+          className={`tab ${activeTab==='candidates'? 'active':''}`}
           onClick={() => setActiveTab('candidates')}
         >
           Candidates
         </button>
         <button
-          className={`tab ${activeTab === 'analytics' ? 'active' : ''}`}
+          className={`tab ${activeTab==='analytics'? 'active':''}`}
           onClick={() => setActiveTab('analytics')}
         >
           Analytics
@@ -82,7 +117,7 @@ function RecruiterDashboard() {
       </div>
 
       <div className="dashboard-content">
-        {activeTab === 'interviews' && (
+        {activeTab==='interviews'&&(
           <div className="interviews-section">
             <h2>Interview Sessions</h2>
             <div className="table-container">
@@ -108,7 +143,7 @@ function RecruiterDashboard() {
                           {interview.status}
                         </span>
                       </td>
-                      <td>{interview.score || '-'}</td>
+                      <td>{interview.score||'-'}</td>
                       <td>
                         <button className="action-button">View</button>
                       </td>
@@ -120,7 +155,7 @@ function RecruiterDashboard() {
           </div>
         )}
 
-        {activeTab === 'candidates' && (
+        {activeTab==='candidates'&&(
           <div className="candidates-section">
             <h2>Candidate Pool</h2>
             <div className="table-container">
@@ -152,7 +187,7 @@ function RecruiterDashboard() {
           </div>
         )}
 
-        {activeTab === 'analytics' && (
+        {activeTab==='analytics'&&(
           <div className="analytics-section">
             <h2>Analytics Overview</h2>
             <div className="analytics-grid">
@@ -163,26 +198,26 @@ function RecruiterDashboard() {
               <div className="analytics-card">
                 <h3>Completed</h3>
                 <div className="analytics-value">
-                  {interviews.filter(i => i.status === 'completed').length}
+                  {interviews.filter(i => i.status==='completed').length}
                 </div>
               </div>
               <div className="analytics-card">
                 <h3>In Progress</h3>
                 <div className="analytics-value">
-                  {interviews.filter(i => i.status === 'in-progress').length}
+                  {interviews.filter(i => i.status==='in-progress').length}
                 </div>
               </div>
               <div className="analytics-card">
                 <h3>Average Score</h3>
                 <div className="analytics-value">
-                  {interviews.filter(i => i.score).length > 0
+                  {interviews.filter(i => i.score).length>0
                     ? Math.round(
-                        interviews
-                          .filter(i => i.score)
-                          .reduce((acc, i) => acc + i.score, 0) /
-                          interviews.filter(i => i.score).length
-                      )
-                    : 'N/A'}
+                      interviews
+                        .filter(i => i.score)
+                        .reduce((acc, i) => acc+i.score, 0)/
+                      interviews.filter(i => i.score).length
+                    )
+                    :'N/A'}
                 </div>
               </div>
             </div>

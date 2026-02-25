@@ -1,5 +1,8 @@
 import axios from 'axios';
 
+const GROQ_TIMEOUT=15000; // 15s timeout for all AI calls
+const MAX_CONVERSATION_HISTORY=20; // Cap conversation history entries per session
+
 class AIInterviewer
 {
     constructor()
@@ -8,10 +11,9 @@ class AIInterviewer
         this.apiUrl='https://api.groq.com/openai/v1/chat/completions';
         this.model='llama-3.3-70b-versatile';
 
-        // Debug: Log API key status (without exposing full key)
         if (this.apiKey)
         {
-            console.log('✅ Groq API Key loaded:', this.apiKey.substring(0, 8)+'...');
+            console.log('✅ Groq API Key loaded (configured)');
         } else
         {
             console.warn('⚠️  Warning: GROQ_API_KEY not found in environment variables');
@@ -88,12 +90,12 @@ class AIInterviewer
     {
         try
         {
-            const topicStr = topics.length > 0
+            const topicStr=topics.length>0
                 ? `\n- MUST focus on these specific topics: ${topics.join(', ')}`
-                : '';
+                :'';
 
             // Unique seed per interview to guarantee variety
-            const uniqueSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            const uniqueSeed=`${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
             const prompt=`You are an expert technical interviewer at a top tech company, hiring for a ${role} position.
 Session ID: ${uniqueSeed} (use this to ensure unique question generation — NEVER repeat the same set of questions across sessions)
@@ -134,25 +136,28 @@ Make questions conversational, specific, deeply technical, and insightful. Avoid
                     {role: 'user', content: prompt}
                 ],
                 model: this.model,
-                temperature: 0.95,
+                temperature: 0.75,
                 max_tokens: 2500
             }, {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.apiKey}`
-                }
+                },
+                timeout: GROQ_TIMEOUT,
             });
 
             const questionsText=response.data.choices[0].message.content;
             let questions=this.parseQuestionsResponse(questionsText);
 
-            if (questions.length > 0) {
+            if (questions.length>0)
+            {
                 // Shuffle questions to ensure different starting question each time
-                questions = questions.sort(() => Math.random() - 0.5);
+                questions=questions.sort(() => Math.random()-0.5);
                 // Re-assign IDs after shuffle
-                questions = questions.map((q, idx) => ({ ...q, id: idx + 1 }));
+                questions=questions.map((q, idx) => ({...q, id: idx+1}));
                 console.log(`✅ AI generated ${questions.length} unique questions (shuffled)`);
-            } else {
+            } else
+            {
                 console.warn('⚠️ AI returned empty questions, falling back to static bank');
                 return this.getQuestionsForRole(role, count);
             }
@@ -227,7 +232,7 @@ Return ONLY the follow-up question text, nothing else. Keep it concise and conve
             const response=await axios.post(this.apiUrl, {
                 messages: [
                     {role: 'system', content: 'You are an expert technical interviewer. Generate insightful follow-up questions.'},
-                    ...history,
+                    ...history.slice(-MAX_CONVERSATION_HISTORY),
                     {role: 'user', content: prompt}
                 ],
                 model: this.model,
@@ -237,16 +242,22 @@ Return ONLY the follow-up question text, nothing else. Keep it concise and conve
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.apiKey}`
-                }
+                },
+                timeout: GROQ_TIMEOUT,
             });
 
             const followUpQuestion=response.data.choices[0].message.content.trim();
 
-            // Update conversation history
+            // Update conversation history (with cap)
             history.push(
                 {role: 'user', content: prompt},
                 {role: 'assistant', content: followUpQuestion}
             );
+            // Trim history if too long
+            if (history.length>MAX_CONVERSATION_HISTORY)
+            {
+                history.splice(0, history.length-MAX_CONVERSATION_HISTORY);
+            }
             this.conversationHistory.set(sessionId, history);
 
             return followUpQuestion;
@@ -318,7 +329,8 @@ Be fair but thorough in your evaluation.`;
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.apiKey}`
-                }
+                },
+                timeout: GROQ_TIMEOUT,
             });
 
             const evaluationText=response.data.choices[0].message.content;
@@ -452,13 +464,13 @@ Be fair but thorough in your evaluation.`;
 
         questionAnswerPairs.forEach(qa =>
         {
-            const evaluation=qa.evaluation || {};
-            totals.overall += (evaluation.overallScore || 0);
-            totals.technicalKnowledge += (evaluation.technicalKnowledge?.score || evaluation.technicalKnowledge || 0);
-            totals.communication += (evaluation.communication?.score || evaluation.communication || 0);
-            totals.problemSolving += (evaluation.problemSolving?.score || evaluation.problemSolving || 0);
-            totals.confidence += (evaluation.confidence?.score || evaluation.confidence || 0);
-            totals.consistency += (evaluation.consistency?.score || evaluation.consistency || 0);
+            const evaluation=qa.evaluation||{};
+            totals.overall+=(evaluation.overallScore||0);
+            totals.technicalKnowledge+=(evaluation.technicalKnowledge?.score||evaluation.technicalKnowledge||0);
+            totals.communication+=(evaluation.communication?.score||evaluation.communication||0);
+            totals.problemSolving+=(evaluation.problemSolving?.score||evaluation.problemSolving||0);
+            totals.confidence+=(evaluation.confidence?.score||evaluation.confidence||0);
+            totals.consistency+=(evaluation.consistency?.score||evaluation.consistency||0);
         });
 
         const count=questionAnswerPairs.length||1;
@@ -478,17 +490,17 @@ Be fair but thorough in your evaluation.`;
         const strengthsMap=new Map();
         questionAnswerPairs.forEach(qa =>
         {
-            const strengths = qa.evaluation?.strengths || [];
+            const strengths=qa.evaluation?.strengths||[];
             strengths.forEach(strength =>
             {
                 if (strength) strengthsMap.set(strength, (strengthsMap.get(strength)||0)+1);
             });
         });
-        const result = Array.from(strengthsMap.entries())
+        const result=Array.from(strengthsMap.entries())
             .sort((a, b) => b[1]-a[1])
             .slice(0, 5)
             .map(([strength]) => strength);
-        return result.length > 0 ? result : ['Interview completed — strengths analysis pending'];
+        return result.length>0? result:['Interview completed — strengths analysis pending'];
     }
 
     // Aggregate weaknesses from all evaluations
@@ -497,17 +509,17 @@ Be fair but thorough in your evaluation.`;
         const weaknessesMap=new Map();
         questionAnswerPairs.forEach(qa =>
         {
-            const weaknesses = qa.evaluation?.weaknesses || [];
+            const weaknesses=qa.evaluation?.weaknesses||[];
             weaknesses.forEach(weakness =>
             {
                 if (weakness) weaknessesMap.set(weakness, (weaknessesMap.get(weakness)||0)+1);
             });
         });
-        const result = Array.from(weaknessesMap.entries())
+        const result=Array.from(weaknessesMap.entries())
             .sort((a, b) => b[1]-a[1])
             .slice(0, 5)
             .map(([weakness]) => weakness);
-        return result.length > 0 ? result : ['Continue practicing to identify specific areas'];
+        return result.length>0? result:['Continue practicing to identify specific areas'];
     }
 
     // Generate hiring recommendation using AI
@@ -550,7 +562,8 @@ Return ONLY valid JSON, no markdown.`;
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.apiKey}`
-                }
+                },
+                timeout: GROQ_TIMEOUT,
             });
 
             const recommendationText=response.data.choices[0].message.content;

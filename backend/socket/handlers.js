@@ -1,6 +1,7 @@
 import geminiAI from '../services/geminiAI.js';
 import pineconeService from '../services/pineconeService.js';
 import {addMessage, getChatMessages} from '../routes/axiomChat.js';
+import {setupQuizSocketHandlers} from './quizHandlers.js';
 
 export function setupSocketHandlers(io)
 {
@@ -9,6 +10,9 @@ export function setupSocketHandlers(io)
 
     // Store proctor dashboard sockets
     const proctorDashboardSockets=new Set();
+
+    // Track which rooms each socket has joined (for cleanup on disconnect)
+    const socketRooms=new Map(); // socketId -> { interviewId, userName, role }
 
     io.on('connection', (socket) =>
     {
@@ -25,10 +29,33 @@ export function setupSocketHandlers(io)
         // Join interview room
         socket.on('join-interview', (data) =>
         {
-            const {interviewId, userName, role}=data;
+            if (!data||!data.interviewId)
+            {
+                socket.emit('error', {message: 'interviewId is required'});
+                return;
+            }
+            const {interviewId, userName='Anonymous', role='candidate'}=data;
             socket.join(interviewId);
 
+            // Track room membership for cleanup
+            socketRooms.set(socket.id, {interviewId, userName, role});
+
             console.log(`${userName} (${role}) joined interview ${interviewId}`);
+
+            // Send existing room members to the new joiner
+            // so they know who is already in the room
+            const existingUsers=[];
+            for (const [sid, info] of socketRooms.entries())
+            {
+                if (info.interviewId===interviewId&&sid!==socket.id)
+                {
+                    existingUsers.push({userId: sid, userName: info.userName, role: info.role});
+                }
+            }
+            if (existingUsers.length>0)
+            {
+                socket.emit('room-users', {users: existingUsers});
+            }
 
             // Notify others in the room
             socket.to(interviewId).emit('user-joined', {
@@ -49,11 +76,24 @@ export function setupSocketHandlers(io)
         // Leave interview room
         socket.on('leave-interview', (data) =>
         {
-            const {interviewId}=data;
+            const {interviewId}=data||{};
+            if (!interviewId) return;
             socket.leave(interviewId);
+
+            const roomInfo=socketRooms.get(socket.id);
+            socketRooms.delete(socket.id);
 
             socket.to(interviewId).emit('user-left', {
                 userId: socket.id,
+                userName: roomInfo?.userName,
+            });
+
+            // Notify proctor dashboard
+            io.to('proctor-dashboard').emit('session-update', {
+                interviewId,
+                type: 'user-left',
+                userName: roomInfo?.userName,
+                role: roomInfo?.role,
             });
         });
 
@@ -65,6 +105,24 @@ export function setupSocketHandlers(io)
                 offer,
                 from: socket.id,
             });
+        });
+
+        // Recruiter starts the interview — notify candidate(s)
+        socket.on('start-interview', (data) =>
+        {
+            const {interviewId}=data||{};
+            if (!interviewId) return;
+            console.log(`Interview started: ${interviewId}`);
+            socket.to(interviewId).emit('interview-started', {interviewId});
+        });
+
+        // Recruiter ends the interview — notify candidate(s) to redirect
+        socket.on('end-interview', (data) =>
+        {
+            const {interviewId}=data||{};
+            if (!interviewId) return;
+            console.log(`Interview ended by recruiter: ${interviewId}`);
+            socket.to(interviewId).emit('interview-ended', {interviewId});
         });
 
         // WebRTC signaling - answer
@@ -90,7 +148,10 @@ export function setupSocketHandlers(io)
         // Code updates (real-time collaboration)
         socket.on('code-update', (data) =>
         {
+            if (!data||!data.interviewId) return;
             const {interviewId, code, language}=data;
+            // Only broadcast if code is a string and not excessively large (50KB max)
+            if (typeof code!=='string'||code.length>50000) return;
             socket.to(interviewId).emit('code-update', {
                 code,
                 language,
@@ -98,11 +159,36 @@ export function setupSocketHandlers(io)
             });
         });
 
+        // Language change (sync dropdown selection)
+        socket.on('language-update', (data) =>
+        {
+            if (!data||!data.interviewId||!data.language) return;
+            const {interviewId, language, code}=data;
+            socket.to(interviewId).emit('language-update', {
+                language,
+                code,
+                from: socket.id,
+            });
+        });
+
+        // Output updates (sync run/submit results)
+        socket.on('output-update', (data) =>
+        {
+            if (!data||!data.interviewId) return;
+            const {interviewId, output}=data;
+            if (typeof output!=='string'||output.length>100000) return;
+            socket.to(interviewId).emit('output-update', {
+                output,
+                from: socket.id,
+            });
+        });
+
         // Question updates (interviewer changes question)
         socket.on('question-update', (data) =>
         {
+            if (!data||!data.interviewId||!data.question) return;
             const {interviewId, question}=data;
-            console.log(`Question updated in interview ${interviewId}:`, question.title);
+            console.log(`Question updated in interview ${interviewId}:`, question.title||'untitled');
             socket.to(interviewId).emit('question-update', {
                 question,
                 from: socket.id,
@@ -112,7 +198,14 @@ export function setupSocketHandlers(io)
         // Chat messages
         socket.on('chat-message', (data) =>
         {
+            if (!data||!data.interviewId||!data.message||!data.userName) return;
             const {interviewId, message, userName}=data;
+
+            // Validate message length (max 5000 chars)
+            if (typeof message!=='string'||message.length>5000) return;
+            // Validate userName
+            if (typeof userName!=='string'||userName.length>100) return;
+
             io.to(interviewId).emit('chat-message', {
                 message,
                 userName,
@@ -124,7 +217,9 @@ export function setupSocketHandlers(io)
         // Proctoring events
         socket.on('proctoring-event', (data) =>
         {
+            if (!data||!data.interviewId) return;
             const {interviewId, event}=data;
+            if (!event||typeof event!=='object') return;
 
             // Notify recruiter about the event
             socket.to(interviewId).emit('proctoring-alert', {
@@ -176,7 +271,12 @@ export function setupSocketHandlers(io)
         // Secondary camera - receive snapshot
         socket.on('secondary-snapshot', (data) =>
         {
+            if (!data||!data.code) return;
             const {code, snapshot}=data;
+
+            // Limit snapshot size to 500KB (base64 JPEG ~150-300KB typical)
+            if (typeof snapshot!=='string'||snapshot.length>500000) return;
+
             const mapping=secondaryCameraMappings.get(code);
 
             if (mapping)
@@ -192,19 +292,42 @@ export function setupSocketHandlers(io)
                     snapshot,
                     timestamp: new Date()
                 });
-
-                // Remove from proctor dashboard if applicable
-                if (proctorDashboardSockets.has(socket.id))
-                {
-                    proctorDashboardSockets.delete(socket.id);
-                }
             }
         });
 
-        // Disconnect
+        // Disconnect — clean up all state for this socket
         socket.on('disconnect', () =>
         {
             console.log(`User disconnected: ${socket.id}`);
+
+            // Clean up interview room membership
+            const roomInfo=socketRooms.get(socket.id);
+            if (roomInfo)
+            {
+                socket.to(roomInfo.interviewId).emit('user-left', {
+                    userId: socket.id,
+                    userName: roomInfo.userName,
+                });
+                io.to('proctor-dashboard').emit('session-update', {
+                    interviewId: roomInfo.interviewId,
+                    type: 'user-disconnected',
+                    userName: roomInfo.userName,
+                    role: roomInfo.role,
+                });
+                socketRooms.delete(socket.id);
+            }
+
+            // Clean up proctor dashboard membership
+            proctorDashboardSockets.delete(socket.id);
+
+            // Clean up secondary camera mappings (both main and phone sockets)
+            for (const [code, mapping] of secondaryCameraMappings.entries())
+            {
+                if (mapping.mainSocketId===socket.id||mapping.phoneSocketId===socket.id)
+                {
+                    secondaryCameraMappings.delete(code);
+                }
+            }
         });
 
         // ========================================
@@ -324,4 +447,7 @@ export function setupSocketHandlers(io)
             }
         });
     });
+
+    // Quiz real-time events
+    setupQuizSocketHandlers(io);
 }

@@ -10,14 +10,21 @@ function CodeEditor({code, language, onChange})
         c: 'c',
     };
 
+    const handleChange=(value) =>
+    {
+        // Guard: only call onChange if the function is provided
+        if (onChange) onChange(value||'');
+    };
+
     return (
-        <div style={{height: '100%'}}>
+        <div style={{flex: 1, minHeight: 0, overflow: 'hidden'}}>
             <Editor
                 height="100%"
                 language={languageMap[language]||'javascript'}
                 value={code}
-                onChange={onChange}
+                onChange={handleChange}
                 theme="vs-dark"
+                loading={<div style={{padding: '20px', color: '#a3a3a3', textAlign: 'center'}}>Loading editor...</div>}
                 options={{
                     minimap: {enabled: false},
                     fontSize: 14,

@@ -1,6 +1,7 @@
 import {io} from 'socket.io-client';
+import {authService} from './authService.js';
 
-const SOCKET_URL='http://localhost:5000';
+const SOCKET_URL=import.meta.env.VITE_API_URL||'http://localhost:5000';
 
 class SocketService
 {
@@ -13,16 +14,32 @@ class SocketService
     {
         if (!this.socket)
         {
-            this.socket=io(SOCKET_URL);
+            this.socket=io(SOCKET_URL, {
+                withCredentials: true,
+                reconnection: true,
+                reconnectionAttempts: 10,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+            });
 
             this.socket.on('connect', () =>
             {
                 console.log('Socket connected:', this.socket.id);
             });
 
-            this.socket.on('disconnect', () =>
+            this.socket.on('disconnect', (reason) =>
             {
-                console.log('Socket disconnected');
+                console.log('Socket disconnected:', reason);
+            });
+
+            this.socket.on('connect_error', (error) =>
+            {
+                console.error('Socket connection error:', error.message);
+            });
+
+            this.socket.on('reconnect', (attempt) =>
+            {
+                console.log('Socket reconnected after', attempt, 'attempts');
             });
         }
         return this.socket;
@@ -35,6 +52,11 @@ class SocketService
             this.socket.disconnect();
             this.socket=null;
         }
+    }
+
+    getSocket()
+    {
+        return this.socket;
     }
 
     joinInterview(interviewId, userName, role)
@@ -58,6 +80,22 @@ class SocketService
         if (this.socket)
         {
             this.socket.emit('code-update', {interviewId, code, language});
+        }
+    }
+
+    sendLanguageUpdate(interviewId, language, code)
+    {
+        if (this.socket)
+        {
+            this.socket.emit('language-update', {interviewId, language, code});
+        }
+    }
+
+    sendOutputUpdate(interviewId, output)
+    {
+        if (this.socket)
+        {
+            this.socket.emit('output-update', {interviewId, output});
         }
     }
 

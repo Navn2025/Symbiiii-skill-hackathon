@@ -1,64 +1,75 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  ChevronLeft, Shield, AlertTriangle, CheckCircle, XCircle,
-  Briefcase, Target, BarChart3, Clock, FileText, Play,
-  Award, TrendingUp, Lock, Unlock, Eye, ChevronDown,
-  ChevronUp, Layers, Zap, AlertCircle, Info
-} from 'lucide-react';
-import axios from 'axios';
+import {useState, useEffect} from 'react';
+import {useNavigate} from 'react-router-dom';
+import
+  {
+    ChevronLeft, Shield, AlertTriangle, CheckCircle, XCircle,
+    Briefcase, Target, BarChart3, Clock, FileText, Play,
+    Award, TrendingUp, Lock, Unlock, Eye, ChevronDown,
+    ChevronUp, Layers, Zap, AlertCircle, Info
+  } from 'lucide-react';
+import api from '../services/api';
 import './ResumeVerification.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+function ResumeVerification()
+{
+  const navigate=useNavigate();
+  const [user, setUser]=useState(null);
+  const [loading, setLoading]=useState(true);
+  const [running, setRunning]=useState(false);
+  const [jdText, setJdText]=useState('');
+  const [verification, setVerification]=useState(null);
+  const [activeLayer, setActiveLayer]=useState(null);
+  const [assessmentAnswers, setAssessmentAnswers]=useState({});
+  const [submitting, setSubmitting]=useState(false);
+  const [message, setMessage]=useState(null);
+  const [creatingInterview, setCreatingInterview]=useState(false);
 
-function ResumeVerification() {
-  const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [running, setRunning] = useState(false);
-  const [jdText, setJdText] = useState('');
-  const [verification, setVerification] = useState(null);
-  const [activeLayer, setActiveLayer] = useState(null);
-  const [assessmentAnswers, setAssessmentAnswers] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState(null);
-  const [creatingInterview, setCreatingInterview] = useState(false);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (stored) {
-      const u = JSON.parse(stored);
+  useEffect(() =>
+  {
+    const stored=localStorage.getItem('user');
+    if (stored)
+    {
+      const u=JSON.parse(stored);
       setUser(u);
-      fetchResults(u.id || u._id);
-    } else {
+      fetchResults(u.id||u._id);
+    } else
+    {
       navigate('/login');
     }
   }, []);
 
-  const fetchResults = async (userId) => {
-    try {
-      const res = await axios.get(`${API_URL}/api/verification/${userId}/results`);
-      if (res.data.verification) {
+  const fetchResults=async (userId) =>
+  {
+    try
+    {
+      const res=await api.get(`/verification/${userId}/results`);
+      if (res.data.verification)
+      {
         setVerification(res.data.verification);
       }
-    } catch (err) {
+    } catch (err)
+    {
       console.error('Fetch verification error:', err);
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
 
-  const showMsg = (text, type = 'success') => {
-    setMessage({ text, type });
+  const showMsg=(text, type='success') =>
+  {
+    setMessage({text, type});
     setTimeout(() => setMessage(null), 4000);
   };
 
-  const handleRunVerification = async () => {
+  const handleRunVerification=async () =>
+  {
     if (!jdText.trim()) return showMsg('Please paste a job description', 'error');
     setRunning(true);
-    try {
-      const userId = user.id || user._id;
-      const res = await axios.post(`${API_URL}/api/verification/${userId}/run`, { jdText });
+    try
+    {
+      const userId=user.id||user._id;
+      const res=await api.post(`/verification/${userId}/run`, {jdText});
       setVerification({
         layer1: res.data.layer1,
         layer2: res.data.layer2,
@@ -70,30 +81,35 @@ function ResumeVerification() {
       });
       setActiveLayer('layer1');
       showMsg('Verification pipeline started! Review each layer below.');
-    } catch (err) {
-      showMsg(err.response?.data?.error || 'Verification failed', 'error');
-    } finally {
+    } catch (err)
+    {
+      showMsg(err.response?.data?.error||'Verification failed', 'error');
+    } finally
+    {
       setRunning(false);
     }
   };
 
-  const handleSubmitAssessment = async () => {
-    const questions = verification?.layer2?.questions || [];
-    const answers = questions.map(q => ({
+  const handleSubmitAssessment=async () =>
+  {
+    const questions=verification?.layer2?.questions||[];
+    const answers=questions.map(q => ({
       skill: q.skill,
       type: q.type,
       questionId: q.id,
-      score: Number(assessmentAnswers[q.id]) || 0,
+      score: Number(assessmentAnswers[q.id])||0,
     }));
 
-    if (answers.every(a => a.score === 0)) {
+    if (answers.every(a => a.score===0))
+    {
       return showMsg('Please score at least one skill assessment', 'error');
     }
 
     setSubmitting(true);
-    try {
-      const userId = user.id || user._id;
-      const res = await axios.post(`${API_URL}/api/verification/${userId}/submit-assessment`, { answers });
+    try
+    {
+      const userId=user.id||user._id;
+      const res=await api.post(`/verification/${userId}/submit-assessment`, {answers});
       setVerification(prev => ({
         ...prev,
         layer3: res.data.layer3,
@@ -101,47 +117,59 @@ function ResumeVerification() {
       }));
       setActiveLayer('layer3');
       showMsg('Assessment analyzed! View overclaim detection results.');
-    } catch (err) {
-      showMsg(err.response?.data?.error || 'Submission failed', 'error');
-    } finally {
+    } catch (err)
+    {
+      showMsg(err.response?.data?.error||'Submission failed', 'error');
+    } finally
+    {
       setSubmitting(false);
     }
   };
 
-  const handleReset = async () => {
-    try {
-      const userId = user.id || user._id;
-      await axios.delete(`${API_URL}/api/verification/${userId}/reset`);
+  const handleReset=async () =>
+  {
+    try
+    {
+      const userId=user.id||user._id;
+      await api.delete(`/verification/${userId}/reset`);
       setVerification(null);
       setAssessmentAnswers({});
       setActiveLayer(null);
       showMsg('Verification reset.');
-    } catch (err) {
+    } catch (err)
+    {
       showMsg('Reset failed', 'error');
     }
   };
 
-  const handleStartAutoInterview = async () => {
+  const handleStartAutoInterview=async () =>
+  {
     setCreatingInterview(true);
-    try {
-      const userId = user.id || user._id;
-      const res = await axios.post(`${API_URL}/api/verification/${userId}/auto-interview`);
-      if (res.data.sessionId) {
+    try
+    {
+      const userId=user.id||user._id;
+      const res=await api.post(`/verification/${userId}/auto-interview`);
+      if (res.data.sessionId)
+      {
         showMsg('AI Interview created! Redirecting...');
         // Set flag so AIInterviewRoom knows this is from verification
         sessionStorage.setItem('fromVerification', 'true');
-        setTimeout(() => {
+        setTimeout(() =>
+        {
           navigate(`/ai-interview/${res.data.sessionId}`);
         }, 1000);
       }
-    } catch (err) {
-      showMsg(err.response?.data?.error || 'Failed to create AI Interview', 'error');
-    } finally {
+    } catch (err)
+    {
+      showMsg(err.response?.data?.error||'Failed to create AI Interview', 'error');
+    } finally
+    {
       setCreatingInterview(false);
     }
   };
 
-  if (loading) {
+  if (loading)
+  {
     return (
       <div className="rv-page">
         <div className="rv-loading"><div className="rv-spinner" /><p>Loading...</p></div>
@@ -149,24 +177,26 @@ function ResumeVerification() {
     );
   }
 
-  const decisionBadge = (decision) => {
-    const map = {
-      PASS: { icon: <CheckCircle size={14} />, cls: 'pass' },
-      FLAG: { icon: <AlertTriangle size={14} />, cls: 'flag' },
-      REJECT: { icon: <XCircle size={14} />, cls: 'reject' },
+  const decisionBadge=(decision) =>
+  {
+    const map={
+      PASS: {icon: <CheckCircle size={14} />, cls: 'pass'},
+      FLAG: {icon: <AlertTriangle size={14} />, cls: 'flag'},
+      REJECT: {icon: <XCircle size={14} />, cls: 'reject'},
     };
-    const d = map[decision] || map.PASS;
+    const d=map[decision]||map.PASS;
     return <span className={`rv-decision-badge ${d.cls}`}>{d.icon} {decision}</span>;
   };
 
-  const riskBadge = (risk) => {
-    const colors = { NONE: 'green', LOW: 'yellow', MEDIUM: 'orange', HIGH: 'red' };
-    return <span className={`rv-risk-badge ${colors[risk] || 'green'}`}>{risk}</span>;
+  const riskBadge=(risk) =>
+  {
+    const colors={NONE: 'green', LOW: 'yellow', MEDIUM: 'orange', HIGH: 'red'};
+    return <span className={`rv-risk-badge ${colors[risk]||'green'}`}>{risk}</span>;
   };
 
-  const layer1 = verification?.layer1;
-  const layer2 = verification?.layer2;
-  const layer3 = verification?.layer3;
+  const layer1=verification?.layer1;
+  const layer2=verification?.layer2;
+  const layer3=verification?.layer3;
 
   return (
     <div className="rv-page">
@@ -178,7 +208,7 @@ function ResumeVerification() {
           </button>
           <h1><Shield size={24} /> Resume Verification</h1>
           <div className="rv-header-actions">
-            {verification && (
+            {verification&&(
               <button className="rv-reset-btn" onClick={handleReset}>Reset</button>
             )}
           </div>
@@ -186,9 +216,9 @@ function ResumeVerification() {
       </header>
 
       {/* Toast */}
-      {message && (
+      {message&&(
         <div className={`rv-toast ${message.type}`}>
-          {message.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+          {message.type==='success'? <CheckCircle size={16} />:<AlertCircle size={16} />}
           {message.text}
         </div>
       )}
@@ -196,30 +226,30 @@ function ResumeVerification() {
       <div className="rv-container">
         {/* Pipeline Overview */}
         <div className="rv-pipeline-overview">
-          <div className={`rv-pipe-step ${layer1 ? 'done' : ''} ${activeLayer === 'layer1' ? 'active' : ''}`} onClick={() => layer1 && setActiveLayer('layer1')}>
+          <div className={`rv-pipe-step ${layer1? 'done':''} ${activeLayer==='layer1'? 'active':''}`} onClick={() => layer1&&setActiveLayer('layer1')}>
             <div className="rv-pipe-icon"><Lock size={20} /></div>
             <span>Layer 1</span>
             <small>Experience Gate</small>
-            {layer1 && decisionBadge(layer1.decision)}
+            {layer1&&decisionBadge(layer1.decision)}
           </div>
           <div className="rv-pipe-arrow">→</div>
-          <div className={`rv-pipe-step ${layer2 ? 'done' : ''} ${activeLayer === 'layer2' ? 'active' : ''}`} onClick={() => layer2 && setActiveLayer('layer2')}>
+          <div className={`rv-pipe-step ${layer2? 'done':''} ${activeLayer==='layer2'? 'active':''}`} onClick={() => layer2&&setActiveLayer('layer2')}>
             <div className="rv-pipe-icon"><Target size={20} /></div>
             <span>Layer 2</span>
             <small>Skill Proof</small>
-            {layer2 && <span className="rv-pipe-count">{layer2.totalQuestions} Q</span>}
+            {layer2&&<span className="rv-pipe-count">{layer2.totalQuestions} Q</span>}
           </div>
           <div className="rv-pipe-arrow">→</div>
-          <div className={`rv-pipe-step ${layer3 ? 'done' : ''} ${activeLayer === 'layer3' ? 'active' : ''}`} onClick={() => layer3 && setActiveLayer('layer3')}>
+          <div className={`rv-pipe-step ${layer3? 'done':''} ${activeLayer==='layer3'? 'active':''}`} onClick={() => layer3&&setActiveLayer('layer3')}>
             <div className="rv-pipe-icon"><Eye size={20} /></div>
             <span>Layer 3</span>
             <small>Overclaim Detect</small>
-            {layer3 && riskBadge(layer3.riskLevel)}
+            {layer3&&riskBadge(layer3.riskLevel)}
           </div>
         </div>
 
         {/* Start Section (if no verification run yet) */}
-        {!verification && (
+        {!verification&&(
           <div className="rv-start-section">
             <div className="rv-start-card">
               <Layers size={48} />
@@ -263,14 +293,14 @@ function ResumeVerification() {
               </div>
 
               <button className="rv-start-btn" onClick={handleRunVerification} disabled={running}>
-                <Play size={18} /> {running ? 'Running Verification...' : 'Start Verification Pipeline'}
+                <Play size={18} /> {running? 'Running Verification...':'Start Verification Pipeline'}
               </button>
             </div>
           </div>
         )}
 
         {/* Layer 1 Results */}
-        {verification && activeLayer === 'layer1' && layer1 && (
+        {verification&&activeLayer==='layer1'&&layer1&&(
           <div className="rv-layer-section">
             <div className="rv-layer-header">
               <Lock size={22} />
@@ -284,20 +314,20 @@ function ResumeVerification() {
             <div className="rv-exp-comparison">
               <div className="rv-exp-card">
                 <span className="rv-exp-label">JD Requirement</span>
-                <span className="rv-exp-value">{layer1.jdYears ?? 'N/A'}</span>
+                <span className="rv-exp-value">{layer1.jdYears??'N/A'}</span>
                 <span className="rv-exp-unit">years</span>
               </div>
               <div className="rv-exp-vs">VS</div>
               <div className="rv-exp-card">
                 <span className="rv-exp-label">Your Resume</span>
-                <span className="rv-exp-value">{layer1.resumeYears ?? 'N/A'}</span>
+                <span className="rv-exp-value">{layer1.resumeYears??'N/A'}</span>
                 <span className="rv-exp-unit">years</span>
               </div>
             </div>
 
-            {layer1.gap != null && (
-              <div className={`rv-gap-bar ${layer1.decision === 'PASS' ? 'pass' : layer1.decision === 'FLAG' ? 'flag' : 'reject'}`}>
-                <span>Gap: {layer1.gap > 0 ? `${layer1.gap} years short` : `${Math.abs(layer1.gap)} years above`}</span>
+            {layer1.gap!=null&&(
+              <div className={`rv-gap-bar ${layer1.decision==='PASS'? 'pass':layer1.decision==='FLAG'? 'flag':'reject'}`}>
+                <span>Gap: {layer1.gap>0? `${layer1.gap} years short`:`${Math.abs(layer1.gap)} years above`}</span>
               </div>
             )}
 
@@ -306,7 +336,7 @@ function ResumeVerification() {
               <p>{layer1.reason}</p>
             </div>
 
-            {layer1.decision !== 'REJECT' && layer2 && (
+            {layer1.decision!=='REJECT'&&layer2&&(
               <button className="rv-next-btn" onClick={() => setActiveLayer('layer2')}>
                 Proceed to Layer 2: Skill Proof →
               </button>
@@ -315,7 +345,7 @@ function ResumeVerification() {
         )}
 
         {/* Layer 2 Results — Assessment */}
-        {verification && activeLayer === 'layer2' && layer2 && (
+        {verification&&activeLayer==='layer2'&&layer2&&(
           <div className="rv-layer-section">
             <div className="rv-layer-header">
               <Target size={22} />
@@ -328,20 +358,20 @@ function ResumeVerification() {
             <div className="rv-skills-tested">
               <h3>Skills Being Tested</h3>
               <div className="rv-skill-tags">
-                {(layer2.skillsTested || []).map((s, i) => (
+                {(layer2.skillsTested||[]).map((s, i) => (
                   <span key={i} className="rv-skill-tag">{s}</span>
                 ))}
               </div>
             </div>
 
             <div className="rv-questions-list">
-              {(layer2.questions || []).map((q, idx) => (
+              {(layer2.questions||[]).map((q, idx) => (
                 <QuestionCard
                   key={q.id}
                   question={q}
                   index={idx}
                   score={assessmentAnswers[q.id]}
-                  onScoreChange={(score) => setAssessmentAnswers(prev => ({ ...prev, [q.id]: score }))}
+                  onScoreChange={(score) => setAssessmentAnswers(prev => ({...prev, [q.id]: score}))}
                 />
               ))}
             </div>
@@ -349,7 +379,7 @@ function ResumeVerification() {
             <div className="rv-assessment-actions">
               <button className="rv-back-layer" onClick={() => setActiveLayer('layer1')}>← Back to Layer 1</button>
               <button className="rv-submit-btn" onClick={handleSubmitAssessment} disabled={submitting}>
-                <Zap size={16} /> {submitting ? 'Analyzing...' : 'Submit & Analyze Overclaims'}
+                <Zap size={16} /> {submitting? 'Analyzing...':'Submit & Analyze Overclaims'}
               </button>
             </div>
 
@@ -365,21 +395,21 @@ function ResumeVerification() {
                 </div>
 
                 {/* ── Status Banner ── */}
-                {verification?.autoInterview?.status === 'passed' && (
+                {verification?.autoInterview?.status==='passed'&&(
                   <div className="rv-interview-status passed">
                     <CheckCircle size={18} />
                     <span>Verification Passed! Score: <strong>{verification.autoInterview.lastScore}/100</strong></span>
                   </div>
                 )}
 
-                {verification?.autoInterview?.status === 'failed' && (
+                {verification?.autoInterview?.status==='failed'&&(
                   <div className="rv-interview-status failed">
                     <XCircle size={18} />
                     <span>Verification Failed — Score: <strong>{verification.autoInterview.lastScore}/100</strong> (Required: 70)</span>
                   </div>
                 )}
 
-                {verification?.autoInterview?.status === 'incomplete' && (
+                {verification?.autoInterview?.status==='incomplete'&&(
                   <div className="rv-interview-status incomplete">
                     <AlertCircle size={18} />
                     <span>Interview was not completed. All 5 questions must be answered.</span>
@@ -387,12 +417,12 @@ function ResumeVerification() {
                 )}
 
                 {/* ── Attempt Counter ── */}
-                {verification?.autoInterview?.attempts > 0 && (
+                {verification?.autoInterview?.attempts>0&&(
                   <div className="rv-attempt-counter">
                     <Clock size={14} />
                     <span>
-                      Attempts used: <strong>{verification.autoInterview.attempts}</strong> / {verification.autoInterview.maxAttempts || 5}
-                      {verification.autoInterview.remainingAttempts > 0 && verification.autoInterview.status !== 'passed' && (
+                      Attempts used: <strong>{verification.autoInterview.attempts}</strong> / {verification.autoInterview.maxAttempts||5}
+                      {verification.autoInterview.remainingAttempts>0&&verification.autoInterview.status!=='passed'&&(
                         <> &middot; <strong>{verification.autoInterview.remainingAttempts}</strong> remaining</>
                       )}
                     </span>
@@ -400,29 +430,30 @@ function ResumeVerification() {
                 )}
 
                 {/* ── Action Buttons ── */}
-                {verification?.autoInterview?.status === 'passed' ? (
+                {verification?.autoInterview?.status==='passed'? (
                   <button className="rv-interview-btn passed" disabled>
                     <CheckCircle size={16} /> Verification Complete
                   </button>
-                ) : verification?.autoInterview?.remainingAttempts === 0 && verification?.autoInterview?.attempts >= 5 ? (
+                ):verification?.autoInterview?.remainingAttempts===0&&verification?.autoInterview?.attempts>=5? (
                   <div className="rv-interview-status no-attempts">
                     <XCircle size={18} />
                     <span>No more attempts remaining. Maximum 5 attempts reached.</span>
                   </div>
-                ) : verification?.autoInterview?.status === 'in-progress' && verification?.autoInterview?.sessionId ? (
-                  <button className="rv-interview-btn resume" onClick={() => {
+                ):verification?.autoInterview?.status==='in-progress'&&verification?.autoInterview?.sessionId? (
+                  <button className="rv-interview-btn resume" onClick={() =>
+                  {
                     sessionStorage.setItem('fromVerification', 'true');
                     navigate(`/ai-interview/${verification.autoInterview.sessionId}`);
                   }}>
                     <Play size={16} /> Continue Interview
                   </button>
-                ) : verification?.autoInterview?.status === 'failed' || verification?.autoInterview?.status === 'incomplete' ? (
+                ):verification?.autoInterview?.status==='failed'||verification?.autoInterview?.status==='incomplete'? (
                   <button className="rv-interview-btn retry" onClick={handleStartAutoInterview} disabled={creatingInterview}>
-                    <Zap size={16} /> {creatingInterview ? 'Creating New Interview...' : 'Try Again'}
+                    <Zap size={16} /> {creatingInterview? 'Creating New Interview...':'Try Again'}
                   </button>
-                ) : (
+                ):(
                   <button className="rv-interview-btn" onClick={handleStartAutoInterview} disabled={creatingInterview}>
-                    <Zap size={16} /> {creatingInterview ? 'Creating Interview...' : 'Start AI Interview (5 Questions)'}
+                    <Zap size={16} /> {creatingInterview? 'Creating Interview...':'Start AI Interview (5 Questions)'}
                   </button>
                 )}
               </div>
@@ -431,7 +462,7 @@ function ResumeVerification() {
         )}
 
         {/* Layer 3 Results — Overclaim Detection */}
-        {verification && activeLayer === 'layer3' && layer3 && (
+        {verification&&activeLayer==='layer3'&&layer3&&(
           <div className="rv-layer-section">
             <div className="rv-layer-header">
               <Eye size={22} />
@@ -462,23 +493,23 @@ function ResumeVerification() {
             <div className="rv-summary-grid">
               <div className="rv-summary-item verified">
                 <CheckCircle size={20} />
-                <span className="rv-sum-count">{layer3.summary?.verified || 0}</span>
+                <span className="rv-sum-count">{layer3.summary?.verified||0}</span>
                 <span className="rv-sum-label">Verified</span>
               </div>
               <div className="rv-summary-item partial">
                 <AlertTriangle size={20} />
-                <span className="rv-sum-count">{layer3.summary?.partial || 0}</span>
+                <span className="rv-sum-count">{layer3.summary?.partial||0}</span>
                 <span className="rv-sum-label">Partial</span>
               </div>
               <div className="rv-summary-item overclaim">
                 <XCircle size={20} />
-                <span className="rv-sum-count">{layer3.summary?.overclaimed || 0}</span>
+                <span className="rv-sum-count">{layer3.summary?.overclaimed||0}</span>
                 <span className="rv-sum-label">Overclaimed</span>
               </div>
             </div>
 
             {/* Verdict */}
-            <div className={`rv-verdict ${layer3.riskLevel === 'NONE' || layer3.riskLevel === 'LOW' ? 'good' : 'warn'}`}>
+            <div className={`rv-verdict ${layer3.riskLevel==='NONE'||layer3.riskLevel==='LOW'? 'good':'warn'}`}>
               <Shield size={20} />
               <p>{layer3.verdict}</p>
             </div>
@@ -486,20 +517,20 @@ function ResumeVerification() {
             {/* Skill Results */}
             <div className="rv-skill-results">
               <h3>Skill-wise Results</h3>
-              {(layer3.results || []).map((r, i) => (
+              {(layer3.results||[]).map((r, i) => (
                 <div key={i} className={`rv-skill-result ${r.status}`}>
                   <div className="rv-skill-header-row">
                     <span className="rv-skill-name">{r.skill}</span>
                     <span className={`rv-skill-status ${r.status}`}>
-                      {r.status === 'verified' && <><CheckCircle size={14} /> Verified</>}
-                      {r.status === 'partial' && <><AlertTriangle size={14} /> Partial</>}
-                      {r.status === 'overclaim' && <><XCircle size={14} /> Overclaimed</>}
-                      {r.status === 'strong_overclaim' && <><XCircle size={14} /> Strong Overclaim</>}
+                      {r.status==='verified'&&<><CheckCircle size={14} /> Verified</>}
+                      {r.status==='partial'&&<><AlertTriangle size={14} /> Partial</>}
+                      {r.status==='overclaim'&&<><XCircle size={14} /> Overclaimed</>}
+                      {r.status==='strong_overclaim'&&<><XCircle size={14} /> Strong Overclaim</>}
                     </span>
                   </div>
                   <div className="rv-skill-bar-container">
                     <div className="rv-skill-bar">
-                      <div className={`rv-skill-fill ${r.status}`} style={{ width: `${r.score}%` }} />
+                      <div className={`rv-skill-fill ${r.status}`} style={{width: `${r.score}%`}} />
                     </div>
                     <span className="rv-skill-score">{r.score}%</span>
                   </div>
@@ -508,7 +539,7 @@ function ResumeVerification() {
             </div>
 
             {/* Overclaimed Skills Detail */}
-            {layer3.overclaimed_skills?.length > 0 && (
+            {layer3.overclaimed_skills?.length>0&&(
               <div className="rv-alert-box overclaim">
                 <h4><XCircle size={18} /> Overclaimed Skills</h4>
                 <div className="rv-skill-tags">
@@ -520,7 +551,7 @@ function ResumeVerification() {
               </div>
             )}
 
-            {layer3.verified_skills?.length > 0 && (
+            {layer3.verified_skills?.length>0&&(
               <div className="rv-alert-box verified">
                 <h4><CheckCircle size={18} /> Verified Skills</h4>
                 <div className="rv-skill-tags">
@@ -536,24 +567,24 @@ function ResumeVerification() {
         )}
 
         {/* Final summary when pipeline is complete */}
-        {verification?.pipelineComplete && (
+        {verification?.pipelineComplete&&(
           <div className="rv-final-summary">
             <h2><Award size={22} /> Verification Complete</h2>
             <div className="rv-final-grid">
               <div className="rv-final-card" onClick={() => setActiveLayer('layer1')}>
                 <Lock size={24} />
                 <h4>Experience Gate</h4>
-                {layer1 && decisionBadge(layer1.decision)}
+                {layer1&&decisionBadge(layer1.decision)}
               </div>
               <div className="rv-final-card" onClick={() => setActiveLayer('layer2')}>
                 <Target size={24} />
                 <h4>Skill Proof</h4>
-                <span className="rv-final-stat">{layer2?.totalQuestions || 0} skills tested</span>
+                <span className="rv-final-stat">{layer2?.totalQuestions||0} skills tested</span>
               </div>
               <div className="rv-final-card" onClick={() => setActiveLayer('layer3')}>
                 <Eye size={24} />
                 <h4>Overclaim Detect</h4>
-                {layer3 && riskBadge(layer3.riskLevel)}
+                {layer3&&riskBadge(layer3.riskLevel)}
               </div>
             </div>
           </div>
@@ -564,35 +595,36 @@ function ResumeVerification() {
 }
 
 /* ── Question Card Component ── */
-function QuestionCard({ question, index, score, onScoreChange }) {
-  const [expanded, setExpanded] = useState(false);
-  const q = question;
+function QuestionCard({question, index, score, onScoreChange})
+{
+  const [expanded, setExpanded]=useState(false);
+  const q=question;
 
-  const typeColors = {
-    mcq: { bg: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.3)', color: '#3b82f6', label: 'MCQ' },
-    coding: { bg: 'rgba(168, 85, 247, 0.1)', border: 'rgba(168, 85, 247, 0.3)', color: '#a855f7', label: 'Coding' },
-    scenario: { bg: 'rgba(20, 184, 166, 0.1)', border: 'rgba(20, 184, 166, 0.3)', color: '#14b8a6', label: 'Scenario' },
+  const typeColors={
+    mcq: {bg: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.3)', color: '#3b82f6', label: 'MCQ'},
+    coding: {bg: 'rgba(168, 85, 247, 0.1)', border: 'rgba(168, 85, 247, 0.3)', color: '#a855f7', label: 'Coding'},
+    scenario: {bg: 'rgba(20, 184, 166, 0.1)', border: 'rgba(20, 184, 166, 0.3)', color: '#14b8a6', label: 'Scenario'},
   };
 
-  const tc = typeColors[q.type] || typeColors.mcq;
+  const tc=typeColors[q.type]||typeColors.mcq;
 
   return (
     <div className="rv-question-card">
       <div className="rv-q-top" onClick={() => setExpanded(!expanded)}>
         <div className="rv-q-info">
-          <span className="rv-q-number">Q{index + 1}</span>
+          <span className="rv-q-number">Q{index+1}</span>
           <span className="rv-q-skill">{q.skill}</span>
-          <span className="rv-q-type" style={{ background: tc.bg, borderColor: tc.border, color: tc.color }}>{tc.label}</span>
-          {q.priority && <span className={`rv-q-priority ${q.priority}`}>{q.priority}</span>}
+          <span className="rv-q-type" style={{background: tc.bg, borderColor: tc.border, color: tc.color}}>{tc.label}</span>
+          {q.priority&&<span className={`rv-q-priority ${q.priority}`}>{q.priority}</span>}
         </div>
-        {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        {expanded? <ChevronUp size={18} />:<ChevronDown size={18} />}
       </div>
 
-      {expanded && (
+      {expanded&&(
         <div className="rv-q-body">
           <p className="rv-q-question">{q.question}</p>
 
-          {q.options && (
+          {q.options&&(
             <div className="rv-q-options">
               {q.options.map((opt, i) => (
                 <div key={i} className="rv-q-option">{opt}</div>
@@ -600,14 +632,14 @@ function QuestionCard({ question, index, score, onScoreChange }) {
             </div>
           )}
 
-          {q.example_input && (
+          {q.example_input&&(
             <div className="rv-q-example">
               <p><strong>Example Input:</strong> {q.example_input}</p>
               <p><strong>Expected Output:</strong> {q.expected_output}</p>
             </div>
           )}
 
-          {q.key_points && (
+          {q.key_points&&(
             <div className="rv-q-keypoints">
               <p><strong>Key Points to Address:</strong></p>
               <ul>
@@ -624,10 +656,10 @@ function QuestionCard({ question, index, score, onScoreChange }) {
                 min={0}
                 max={100}
                 step={5}
-                value={score || 0}
+                value={score||0}
                 onChange={e => onScoreChange(Number(e.target.value))}
               />
-              <span className="rv-q-score-value">{score || 0}%</span>
+              <span className="rv-q-score-value">{score||0}%</span>
             </div>
             <div className="rv-q-score-labels">
               <span>Can't answer</span>

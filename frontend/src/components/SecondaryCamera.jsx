@@ -9,33 +9,49 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
     const [isConnected, setIsConnected]=useState(false);
     const [connectionCode, setConnectionCode]=useState('');
     const [showQR, setShowQR]=useState(false);
+    const [cameraError, setCameraError]=useState(null);
+    const [linkCopied, setLinkCopied]=useState(false);
     const videoRef=useRef();
+    // Use ref for stream to avoid stale closure in cleanup
+    const streamRef=useRef(null);
+    // Track snapshot interval for cleanup
+    const snapshotIntervalRef=useRef(null);
 
     useEffect(() =>
     {
+        let cleanupSocket=null;
         if (isPhone)
         {
-            // Phone device - start camera and connect
             startPhoneCamera();
         } else
         {
-            // Main device - generate connection code
             generateConnectionCode();
-            listenForSecondaryCamera();
+            cleanupSocket=listenForSecondaryCamera();
         }
 
         return () =>
         {
-            if (stream)
+            // Use ref to avoid stale closure
+            if (streamRef.current)
             {
-                stream.getTracks().forEach(track => track.stop());
+                streamRef.current.getTracks().forEach(track => track.stop());
             }
+            // Clear snapshot interval
+            if (snapshotIntervalRef.current)
+            {
+                clearInterval(snapshotIntervalRef.current);
+            }
+            // Clean up socket listeners
+            if (cleanupSocket) cleanupSocket();
         };
     }, []);
 
     const generateConnectionCode=() =>
     {
-        const code=`${interviewId}-${userName}-${Date.now()}`;
+        // Use crypto for unpredictable connection codes
+        const randomPart=crypto.randomUUID? crypto.randomUUID():
+            `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+        const code=`${interviewId}-${randomPart}`;
         setConnectionCode(code);
 
         // Store in socket for pairing
@@ -57,6 +73,7 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
             });
 
             setStream(mediaStream);
+            streamRef.current=mediaStream;
             if (videoRef.current)
             {
                 videoRef.current.srcObject=mediaStream;
@@ -77,7 +94,7 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
         } catch (error)
         {
             console.error('Failed to start phone camera:', error);
-            alert('Error accessing camera. Please allow camera permissions.');
+            setCameraError('Error accessing camera. Please allow camera permissions.');
         }
     };
 
@@ -86,7 +103,8 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
         const canvas=document.createElement('canvas');
         const context=canvas.getContext('2d');
 
-        setInterval(() =>
+        // Store interval ID for cleanup
+        snapshotIntervalRef.current=setInterval(() =>
         {
             if (videoRef.current&&videoRef.current.readyState===4)
             {
@@ -108,17 +126,26 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
     {
         const socket=socketService.connect();
 
-        socket.on('secondary-camera-connected', (data) =>
+        const handleConnected=(data) =>
         {
             console.log('Secondary camera connected');
             setIsConnected(true);
-        });
+        };
 
-        socket.on('secondary-snapshot', (data) =>
+        const handleSnapshot=(data) =>
         {
             console.log('Received snapshot from secondary camera');
-            // Display snapshot in monitor
-        });
+        };
+
+        socket.on('secondary-camera-connected', handleConnected);
+        socket.on('secondary-snapshot', handleSnapshot);
+
+        // Return cleanup function
+        return () =>
+        {
+            socket.off('secondary-camera-connected', handleConnected);
+            socket.off('secondary-snapshot', handleSnapshot);
+        };
     };
 
     const getQRCodeURL=() =>
@@ -127,11 +154,27 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
         return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(phoneURL)}`;
     };
 
-    const copyLinkToClipboard=() =>
+    const copyLinkToClipboard=async () =>
     {
         const phoneURL=`${window.location.origin}/secondary-camera?code=${connectionCode}`;
-        navigator.clipboard.writeText(phoneURL);
-        alert('Link copied! Open on your phone to connect secondary camera.');
+        try
+        {
+            await navigator.clipboard.writeText(phoneURL);
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 3000);
+        } catch (err)
+        {
+            // Fallback: select text from a temporary input
+            console.warn('Clipboard API unavailable, using fallback');
+            const tempInput=document.createElement('input');
+            tempInput.value=phoneURL;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 3000);
+        }
     };
 
     if (isPhone)
@@ -143,6 +186,9 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
                     <h2><PhoneIcon size={20} /> Secondary Camera</h2>
                     {isConnected&&<span className="connected-badge"><CheckIcon size={14} /> Connected</span>}
                 </div>
+                {cameraError&&(
+                    <div style={{padding: '16px', color: '#ef4444', textAlign: 'center'}}>{cameraError}</div>
+                )}
                 <video
                     ref={videoRef}
                     autoPlay
@@ -205,7 +251,7 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
                             className="btn btn-secondary"
                             onClick={copyLinkToClipboard}
                         >
-                            <ClipboardIcon size={16} /> Copy Connection Link
+                            <ClipboardIcon size={16} /> {linkCopied? 'Link Copied!':'Copy Connection Link'}
                         </button>
                         <p className="method-instruction">Open the link on your phone browser</p>
                     </div>
