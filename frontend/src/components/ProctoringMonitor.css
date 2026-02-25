@@ -57,7 +57,8 @@
   line-height: 1;
 }
 
-.feature-badge:hover {
+.feature-badge:hover,
+.feature-badge.badge-active {
   border-color: var(--accent-primary);
   background: rgba(0, 255, 136, 0.1);
   color: var(--accent-primary);

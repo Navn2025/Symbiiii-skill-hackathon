@@ -309,14 +309,17 @@ export function setupSocketHandlers(io)
 
             if (mapping)
             {
-                // Forward snapshot to main device and recruiter in the room
+                // console.log(`📱 Snapshot from ${code} forwarding to ${mapping.interviewId}`);
+
+                // Forward snapshot to main device and every one in the room (including recruiter)
+                // Use io.to() instead of socket.to() to ensure reliable delivery even if socket paths vary
                 io.to(mapping.mainSocketId).emit('secondary-snapshot', {
                     snapshot,
                     timestamp: new Date()
                 });
 
                 // Also send to interview room for recruiter
-                socket.to(mapping.interviewId).emit('secondary-snapshot', {
+                io.to(mapping.interviewId).emit('secondary-snapshot', {
                     snapshot,
                     timestamp: new Date()
                 });

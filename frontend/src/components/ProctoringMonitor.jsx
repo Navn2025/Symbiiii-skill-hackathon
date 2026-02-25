@@ -2,7 +2,7 @@ import {useState, useEffect} from 'react';
 import {Shield as ShieldIcon, UserX as NoFaceIcon, Users as UsersIcon, Eye as EyeIcon, Moon as SleepIcon, ArrowRightLeft as TabSwitchIcon, Minimize2 as FullscreenExitIcon, Clipboard as ClipboardIcon, Bot as RobotIcon, FileText as DocumentIcon, AlertCircle as AlertIcon, CheckCircle as CheckCircleIcon, X as XIcon, User as UserIcon, Smartphone as PhoneIcon, Circle as RecordIcon} from 'lucide-react';
 import './ProctoringMonitor.css';
 
-function ProctoringMonitor({interviewId, events=[], suspicionScore=0, integrityScore: propIntegrityScore})
+function ProctoringMonitor({interviewId, events=[], suspicionScore=0, integrityScore: propIntegrityScore, secondaryCamActive=false})
 {
     const [integrityScore, setIntegrityScore]=useState(100);
     const [alertCount, setAlertCount]=useState(0);
@@ -98,7 +98,7 @@ function ProctoringMonitor({interviewId, events=[], suspicionScore=0, integrityS
                     <span className="feature-badge" title="Eye tracking"><EyeIcon size={10} /> Eyes</span>
                     <span className="feature-badge" title="AI detection"><RobotIcon size={10} /> AI</span>
                     <span className="feature-badge" title="Tab monitoring"><TabSwitchIcon size={10} /> Focus</span>
-                    <span className="feature-badge" title="Secondary camera"><PhoneIcon size={10} /> Cam2</span>
+                    <span className={`feature-badge ${secondaryCamActive? 'badge-active':''}`} title="Secondary camera"><PhoneIcon size={10} /> Cam2</span>
                 </div>
             </div>
 

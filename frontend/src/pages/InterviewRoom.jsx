@@ -40,6 +40,7 @@ function InterviewRoom()
     const [interviewStarted, setInterviewStarted]=useState(false);
     const [isScreenShareActive, setIsScreenShareActive]=useState(false);
     const [needsFullscreenPrompt, setNeedsFullscreenPrompt]=useState(false);
+    const [secondaryCamActive, setSecondaryCamActive]=useState(false);
     // Recruiter scoring state (all out of 10)
     const [recruiterScores, setRecruiterScores]=useState({
         technical: 0,
@@ -148,7 +149,11 @@ function InterviewRoom()
         // Listen for secondary camera snapshots (recruiter sees candidate's 2nd cam)
         const handleSecondarySnapshot=(data) =>
         {
-            if (data&&data.snapshot) setSecondaryCamSnapshot(data.snapshot);
+            if (data&&data.snapshot)
+            {
+                setSecondaryCamSnapshot(data.snapshot);
+                setSecondaryCamActive(true);
+            }
         };
 
         // Listen for secondary camera disconnect (phone closed/disconnected)
@@ -156,6 +161,7 @@ function InterviewRoom()
         {
             console.log('[Interview] Secondary camera disconnected:', data?.reason);
             setSecondaryCamSnapshot(null);
+            setSecondaryCamActive(false);
         };
 
         // Listen for interview start (recruiter controls when interview begins)
@@ -186,6 +192,14 @@ function InterviewRoom()
         socket.on('interview-started', handleInterviewStarted);
         socket.on('interview-ended', handleInterviewEnded);
 
+        // Ensure we re-join the room on socket reconnection
+        const handleReconnect=() =>
+        {
+            console.log('[Interview] Socket reconnected, re-joining interview room...');
+            socketService.joinInterview(interviewId, userName, role);
+        };
+        socket.on('reconnect', handleReconnect);
+
         // Show non-blocking security notice for candidates
         if (role==='candidate')
         {
@@ -204,6 +218,7 @@ function InterviewRoom()
             socket.off('secondary-camera-disconnected', handleSecondaryCamDisconnected);
             socket.off('interview-started', handleInterviewStarted);
             socket.off('interview-ended', handleInterviewEnded);
+            socket.off('reconnect', handleReconnect);
             socketService.leaveInterview(interviewId);
             proctoringService.stopMonitoring();
             // Clear any pending debounce timer
@@ -834,6 +849,7 @@ function InterviewRoom()
                             events={proctoringEvents}
                             suspicionScore={suspicionScore}
                             integrityScore={integrityScore}
+                            secondaryCamActive={secondaryCamActive}
                         />
                     )}
                 </div>
