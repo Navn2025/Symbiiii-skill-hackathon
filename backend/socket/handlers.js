@@ -236,14 +236,16 @@ export function setupSocketHandlers(io)
         });
 
         // Secondary camera - register mapping
-        socket.on('register-secondary-camera', (data) =>
+        socket.on('register-secondary-camera', (data, ack) =>
         {
             const {interviewId, code}=data;
             secondaryCameraMappings.set(code, {
                 interviewId,
                 mainSocketId: socket.id
             });
-            console.log(`📱 Secondary camera registered: ${code} for interview ${interviewId}`);
+            console.log(`📱 Secondary camera registered: ${code} for interview ${interviewId} (socket: ${socket.id})`);
+            // Send acknowledgment if callback provided
+            if (typeof ack==='function') ack({ok: true});
         });
 
         // Secondary camera - phone connection
@@ -258,13 +260,28 @@ export function setupSocketHandlers(io)
                 mapping.phoneSocketId=socket.id;
                 secondaryCameraMappings.set(code, mapping);
 
-                // Notify main device
+                // Join phone socket into the interview room so it can receive events
+                socket.join(mapping.interviewId);
+
+                // Notify main device directly AND via room (handles stale socket IDs after reconnect)
                 io.to(mapping.mainSocketId).emit('secondary-camera-connected', {
                     status,
                     timestamp: new Date()
                 });
+                // Also broadcast to the interview room so desktop gets it even after reconnect
+                socket.to(mapping.interviewId).emit('secondary-camera-connected', {
+                    status,
+                    timestamp: new Date()
+                });
 
-                console.log(`📱 Secondary camera connected: ${code}`);
+                // Acknowledge to the phone that connection succeeded
+                socket.emit('secondary-camera-ack', {connected: true, interviewId: mapping.interviewId});
+
+                console.log(`📱 Secondary camera connected: ${code} (phone socket: ${socket.id})`);
+            } else
+            {
+                console.warn(`📱 Secondary camera code not found: ${code}`);
+                socket.emit('secondary-camera-ack', {connected: false, error: 'Invalid connection code'});
             }
         });
 

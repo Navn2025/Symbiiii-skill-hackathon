@@ -16,13 +16,62 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
     const streamRef=useRef(null);
     // Track snapshot interval for cleanup
     const snapshotIntervalRef=useRef(null);
+    // Track reconnect cleanup
+    const reconnectCleanupRef=useRef(null);
 
     useEffect(() =>
     {
         let cleanupSocket=null;
         if (isPhone)
         {
-            startPhoneCamera();
+            // Connect socket FIRST, then start camera
+            const socket=socketService.connect();
+            // Wait for socket connection before starting camera
+            if (socket.connected)
+            {
+                startPhoneCamera();
+            } else
+            {
+                socket.once('connect', () =>
+                {
+                    console.log('[SecondaryCamera] Socket connected on phone, starting camera...');
+                    startPhoneCamera();
+                });
+            }
+
+            // Handle phone socket reconnection — re-emit connect event
+            const handlePhoneReconnect=() =>
+            {
+                const urlParams=new URLSearchParams(window.location.search);
+                const code=urlParams.get('code');
+                if (code)
+                {
+                    console.log('[SecondaryCamera] Phone socket reconnected, re-connecting...');
+                    socketService.connectSecondaryCamera(code, 'connected');
+                }
+            };
+            socket.on('reconnect', handlePhoneReconnect);
+
+            // Listen for ack from server
+            const handleAck=(data) =>
+            {
+                if (data.connected)
+                {
+                    setIsConnected(true);
+                    console.log('[SecondaryCamera] Server acknowledged phone connection');
+                } else
+                {
+                    setIsConnected(false);
+                    setCameraError(data.error||'Failed to connect to interview session');
+                }
+            };
+            socket.on('secondary-camera-ack', handleAck);
+
+            cleanupSocket=() =>
+            {
+                socket.off('reconnect', handlePhoneReconnect);
+                socket.off('secondary-camera-ack', handleAck);
+            };
         } else
         {
             generateConnectionCode();
@@ -43,8 +92,13 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
             }
             // Clean up socket listeners
             if (cleanupSocket) cleanupSocket();
+            // Clean up reconnect handler
+            if (reconnectCleanupRef.current) reconnectCleanupRef.current();
         };
     }, []);
+
+    // Ref to store the connection code for re-registration on reconnect
+    const connectionCodeRef=useRef('');
 
     const generateConnectionCode=() =>
     {
@@ -53,9 +107,22 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
             `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
         const code=`${interviewId}-${randomPart}`;
         setConnectionCode(code);
+        connectionCodeRef.current=code;
 
         // Store in socket for pairing
         socketService.registerSecondaryCamera(interviewId, code);
+
+        // Re-register on socket reconnect so the server has the current socket ID
+        const socket=socketService.getSocket()||socketService.connect();
+        const handleReconnect=() =>
+        {
+            console.log('[SecondaryCamera] Desktop socket reconnected, re-registering code...');
+            socketService.registerSecondaryCamera(interviewId, connectionCodeRef.current);
+        };
+        socket.on('reconnect', handleReconnect);
+
+        // Store cleanup for reconnect handler
+        reconnectCleanupRef.current=() => socket.off('reconnect', handleReconnect);
     };
 
     const startPhoneCamera=async () =>
@@ -74,10 +141,28 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
 
             setStream(mediaStream);
             streamRef.current=mediaStream;
-            if (videoRef.current)
+
+            // Set video srcObject — use a small delay to ensure ref is attached
+            const attachStream=() =>
             {
-                videoRef.current.srcObject=mediaStream;
-            }
+                if (videoRef.current)
+                {
+                    videoRef.current.srcObject=mediaStream;
+                    videoRef.current.play().catch(err => console.warn('Video autoplay failed:', err));
+                } else
+                {
+                    // Retry once after a short delay (ref may not be attached yet)
+                    setTimeout(() =>
+                    {
+                        if (videoRef.current)
+                        {
+                            videoRef.current.srcObject=mediaStream;
+                            videoRef.current.play().catch(err => console.warn('Video autoplay retry failed:', err));
+                        }
+                    }, 200);
+                }
+            };
+            attachStream();
 
             // Notify server about secondary camera connection
             const urlParams=new URLSearchParams(window.location.search);
@@ -85,16 +170,45 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
 
             if (code)
             {
-                socketService.connectSecondaryCamera(code, 'connected');
-                setIsConnected(true);
-
-                // Send periodic snapshots for proctoring
-                startSnapshotCapture(mediaStream);
+                // Ensure socket is connected before emitting
+                const socket=socketService.getSocket();
+                if (socket&&socket.connected)
+                {
+                    socketService.connectSecondaryCamera(code, 'connected');
+                    setIsConnected(true);
+                    console.log('[SecondaryCamera] Phone connected with code:', code);
+                    // Send periodic snapshots for proctoring
+                    startSnapshotCapture(mediaStream);
+                } else
+                {
+                    console.warn('[SecondaryCamera] Socket not connected yet, waiting...');
+                    // Wait for socket to connect then emit
+                    const s=socketService.connect();
+                    s.once('connect', () =>
+                    {
+                        socketService.connectSecondaryCamera(code, 'connected');
+                        setIsConnected(true);
+                        console.log('[SecondaryCamera] Phone connected (delayed) with code:', code);
+                        startSnapshotCapture(mediaStream);
+                    });
+                }
+            } else
+            {
+                setCameraError('No connection code found. Please scan the QR code again.');
             }
         } catch (error)
         {
             console.error('Failed to start phone camera:', error);
-            setCameraError('Error accessing camera. Please allow camera permissions.');
+            if (error.name==='NotAllowedError')
+            {
+                setCameraError('Camera permission denied. Please allow camera access in your browser settings and reload.');
+            } else if (error.name==='NotFoundError')
+            {
+                setCameraError('No camera found on this device.');
+            } else
+            {
+                setCameraError(`Error accessing camera: ${error.message}. Please allow camera permissions.`);
+            }
         }
     };
 
