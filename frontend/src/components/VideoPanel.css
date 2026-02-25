@@ -110,14 +110,12 @@
 .video-container.secondary-cam {
   border: 2px solid var(--success);
   flex: 1 1 100%;
-  height: auto;
-  aspect-ratio: 9 / 16; /* Optimize for portrait phone feed */
-  max-height: 550px; /* Keep it within reasonable bounds for the side panel */
+  height: 180px; /* Matching the height of screen-share-main or slightly taller than local */
   margin-top: 4px;
 }
 
 .video-container.secondary-cam .video {
-  object-fit: contain;
+  object-fit: cover; /* Same as the video (no black bars, fills the box) */
   background: #000;
 }
 

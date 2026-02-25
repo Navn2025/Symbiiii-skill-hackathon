@@ -532,8 +532,8 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady, second
                     )}
                 </div>
 
-                {/* Secondary Camera Feed */}
-                {secondaryCamSnapshot&&(
+                {/* Secondary Camera Feed - Only visible to recruiter */}
+                {secondaryCamSnapshot&&role==='recruiter'&&(
                     <div className="video-container secondary-cam">
                         <img
                             src={secondaryCamSnapshot}
