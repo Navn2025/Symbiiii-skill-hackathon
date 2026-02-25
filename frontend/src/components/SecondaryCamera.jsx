@@ -23,10 +23,9 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
     useEffect(() =>
     {
         let cleanupSocket=null;
+        const socket=socketService.connect();
         if (isPhone)
         {
-            // Connect socket FIRST, then start camera
-            const socket=socketService.connect();
             // Wait for socket connection before starting camera
             if (socket.connected)
             {
@@ -39,7 +38,6 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
                     startPhoneCamera();
                 });
             }
-
             // Handle phone socket reconnection — re-emit connect event
             const handlePhoneReconnect=() =>
             {
@@ -52,7 +50,6 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
                 }
             };
             socket.on('reconnect', handlePhoneReconnect);
-
             // Listen for ack from server
             const handleAck=(data) =>
             {
@@ -72,18 +69,15 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
                 }
             };
             socket.on('secondary-camera-ack', handleAck);
-
             // Listen for interview ended — stop camera and show message
             const handleInterviewEnded=(data) =>
             {
                 console.log('[SecondaryCamera] Interview ended, stopping camera');
-                // Stop all camera tracks
                 if (streamRef.current)
                 {
                     streamRef.current.getTracks().forEach(track => track.stop());
                     streamRef.current=null;
                 }
-                // Clear snapshot interval
                 if (snapshotIntervalRef.current)
                 {
                     clearInterval(snapshotIntervalRef.current);
@@ -94,7 +88,6 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
                 setCameraError('Interview has ended. You can close this page.');
             };
             socket.on('interview-ended', handleInterviewEnded);
-
             cleanupSocket=() =>
             {
                 socket.off('reconnect', handlePhoneReconnect);
@@ -103,28 +96,41 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
             };
         } else
         {
-            generateConnectionCode();
+            // Always re-register code on every socket reconnect
+            const connectionCodeRef=useRef('');
+            const registerCode=() =>
+            {
+                // Use crypto for unpredictable connection codes
+                const randomPart=crypto.randomUUID? crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+                const code=`${interviewId}-${randomPart}`;
+                setConnectionCode(code);
+                connectionCodeRef.current=code;
+                socketService.registerSecondaryCamera(interviewId, code);
+            };
+            registerCode();
+            const handleReconnect=() =>
+            {
+                console.log('[SecondaryCamera] Desktop socket reconnected, re-registering code...');
+                socketService.registerSecondaryCamera(interviewId, connectionCodeRef.current);
+            };
+            socket.on('reconnect', handleReconnect);
+            reconnectCleanupRef.current=() => socket.off('reconnect', handleReconnect);
             cleanupSocket=listenForSecondaryCamera();
         }
-
         return () =>
         {
-            // Use ref to avoid stale closure
             if (streamRef.current)
             {
                 streamRef.current.getTracks().forEach(track => track.stop());
             }
-            // Clear snapshot interval
             if (snapshotIntervalRef.current)
             {
                 clearInterval(snapshotIntervalRef.current);
             }
-            // Clean up socket listeners
             if (cleanupSocket) cleanupSocket();
-            // Clean up reconnect handler
             if (reconnectCleanupRef.current) reconnectCleanupRef.current();
         };
-    }, []);
+    }, [interviewId]);
 
     // Ref to store the connection code for re-registration on reconnect
     const connectionCodeRef=useRef('');
