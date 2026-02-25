@@ -67,10 +67,33 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
             };
             socket.on('secondary-camera-ack', handleAck);
 
+            // Listen for interview ended — stop camera and show message
+            const handleInterviewEnded=(data) =>
+            {
+                console.log('[SecondaryCamera] Interview ended, stopping camera');
+                // Stop all camera tracks
+                if (streamRef.current)
+                {
+                    streamRef.current.getTracks().forEach(track => track.stop());
+                    streamRef.current=null;
+                }
+                // Clear snapshot interval
+                if (snapshotIntervalRef.current)
+                {
+                    clearInterval(snapshotIntervalRef.current);
+                    snapshotIntervalRef.current=null;
+                }
+                setIsConnected(false);
+                setStream(null);
+                setCameraError('Interview has ended. You can close this page.');
+            };
+            socket.on('interview-ended', handleInterviewEnded);
+
             cleanupSocket=() =>
             {
                 socket.off('reconnect', handlePhoneReconnect);
                 socket.off('secondary-camera-ack', handleAck);
+                socket.off('interview-ended', handleInterviewEnded);
             };
         } else
         {
@@ -246,18 +269,26 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
             setIsConnected(true);
         };
 
+        const handleDisconnected=(data) =>
+        {
+            console.log('Secondary camera disconnected:', data?.reason);
+            setIsConnected(false);
+        };
+
         const handleSnapshot=(data) =>
         {
             console.log('Received snapshot from secondary camera');
         };
 
         socket.on('secondary-camera-connected', handleConnected);
+        socket.on('secondary-camera-disconnected', handleDisconnected);
         socket.on('secondary-snapshot', handleSnapshot);
 
         // Return cleanup function
         return () =>
         {
             socket.off('secondary-camera-connected', handleConnected);
+            socket.off('secondary-camera-disconnected', handleDisconnected);
             socket.off('secondary-snapshot', handleSnapshot);
         };
     };

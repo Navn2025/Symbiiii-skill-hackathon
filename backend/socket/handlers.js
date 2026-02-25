@@ -123,6 +123,17 @@ export function setupSocketHandlers(io)
             if (!interviewId) return;
             console.log(`Interview ended by recruiter: ${interviewId}`);
             socket.to(interviewId).emit('interview-ended', {interviewId});
+
+            // Also notify any secondary camera phones for this interview
+            for (const [code, mapping] of secondaryCameraMappings.entries())
+            {
+                if (mapping.interviewId===interviewId&&mapping.phoneSocketId)
+                {
+                    io.to(mapping.phoneSocketId).emit('interview-ended', {interviewId});
+                    console.log(`📱 Notified secondary camera phone to stop: ${code}`);
+                    secondaryCameraMappings.delete(code);
+                }
+            }
         });
 
         // WebRTC signaling - answer
@@ -340,8 +351,30 @@ export function setupSocketHandlers(io)
             // Clean up secondary camera mappings (both main and phone sockets)
             for (const [code, mapping] of secondaryCameraMappings.entries())
             {
-                if (mapping.mainSocketId===socket.id||mapping.phoneSocketId===socket.id)
+                if (mapping.phoneSocketId===socket.id)
                 {
+                    // Phone disconnected — notify desktop that secondary camera is gone
+                    io.to(mapping.mainSocketId).emit('secondary-camera-disconnected', {
+                        reason: 'phone-disconnected',
+                        timestamp: new Date()
+                    });
+                    // Also notify via interview room (in case mainSocketId is stale)
+                    io.to(mapping.interviewId).emit('secondary-camera-disconnected', {
+                        reason: 'phone-disconnected',
+                        timestamp: new Date()
+                    });
+                    console.log(`📱 Secondary camera phone disconnected: ${code}`);
+                    secondaryCameraMappings.delete(code);
+                } else if (mapping.mainSocketId===socket.id)
+                {
+                    // Desktop disconnected — notify phone to stop
+                    if (mapping.phoneSocketId)
+                    {
+                        io.to(mapping.phoneSocketId).emit('interview-ended', {
+                            interviewId: mapping.interviewId,
+                            reason: 'main-disconnected'
+                        });
+                    }
                     secondaryCameraMappings.delete(code);
                 }
             }

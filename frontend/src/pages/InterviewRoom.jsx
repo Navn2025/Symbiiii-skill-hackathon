@@ -150,6 +150,13 @@ function InterviewRoom()
             if (data&&data.snapshot) setSecondaryCamSnapshot(data.snapshot);
         };
 
+        // Listen for secondary camera disconnect (phone closed/disconnected)
+        const handleSecondaryCamDisconnected=(data) =>
+        {
+            console.log('[Interview] Secondary camera disconnected:', data?.reason);
+            setSecondaryCamSnapshot(null);
+        };
+
         // Listen for interview start (recruiter controls when interview begins)
         const handleInterviewStarted=() =>
         {
@@ -174,6 +181,7 @@ function InterviewRoom()
         socket.on('question-update', handleQuestionUpdate);
         socket.on('proctoring-alert', handleProctoringAlert);
         socket.on('secondary-snapshot', handleSecondarySnapshot);
+        socket.on('secondary-camera-disconnected', handleSecondaryCamDisconnected);
         socket.on('interview-started', handleInterviewStarted);
         socket.on('interview-ended', handleInterviewEnded);
 
@@ -192,6 +200,7 @@ function InterviewRoom()
             socket.off('question-update', handleQuestionUpdate);
             socket.off('proctoring-alert', handleProctoringAlert);
             socket.off('secondary-snapshot', handleSecondarySnapshot);
+            socket.off('secondary-camera-disconnected', handleSecondaryCamDisconnected);
             socket.off('interview-started', handleInterviewStarted);
             socket.off('interview-ended', handleInterviewEnded);
             socketService.leaveInterview(interviewId);

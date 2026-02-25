@@ -109,6 +109,13 @@
 
 .video-container.secondary-cam {
   border: 2px solid var(--success);
+  flex: 1 1 100%;
+  height: 180px;
+}
+
+.video-container.secondary-cam .video {
+  object-fit: contain;
+  background: #111;
 }
 
 .video {
