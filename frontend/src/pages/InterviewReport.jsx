@@ -269,6 +269,18 @@ function InterviewReport()
                                 <p>{report.notes}</p>
                             </div>
                         )}
+                        {report.hiringDecision&&(
+                            <div className={`hiring-decision-badge decision-${report.hiringDecision}`}>
+                                <strong>Hiring Decision:</strong>
+                                <span className="decision-label">
+                                    {report.hiringDecision==='strong-hire'&&'⭐ Strong Hire'}
+                                    {report.hiringDecision==='hire'&&'✅ Hire'}
+                                    {report.hiringDecision==='maybe'&&'🤔 Maybe'}
+                                    {report.hiringDecision==='no-hire'&&'❌ No Hire'}
+                                    {report.hiringDecision==='strong-no-hire'&&'⛔ Strong No Hire'}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 )}
 

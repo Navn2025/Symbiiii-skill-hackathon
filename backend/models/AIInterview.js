@@ -139,6 +139,11 @@ const aiInterviewSchema=new mongoose.Schema({
     aptitude: {type: Number, default: 0},
     overallScore: {type: Number, default: 0},
   },
+  hiringDecision: {
+    type: String,
+    enum: ['', 'strong-hire', 'hire', 'maybe', 'no-hire', 'strong-no-hire'],
+    default: '',
+  },
   greeting: String,
   useAI: {
     type: Boolean,

@@ -10,7 +10,7 @@ import SecondaryCamera from '../components/SecondaryCamera';
 import ChatPanel from '../components/ChatPanel';
 import QuestionPanel from '../components/QuestionPanel';
 import QuestionSelector from '../components/QuestionSelector';
-import {Target as TargetIcon, FileText as DocumentIcon, Lock as LockIcon, MessageCircle as ChatIcon, AlertCircle as AlertIcon, FlaskConical as BeakerIcon, Play as PlayIcon, Check as CheckIcon, LogOut as EndIcon, Star as StarIcon} from 'lucide-react';
+import {Target as TargetIcon, FileText as DocumentIcon, Lock as LockIcon, MessageCircle as ChatIcon, AlertCircle as AlertIcon, FlaskConical as BeakerIcon, Play as PlayIcon, Check as CheckIcon, LogOut as EndIcon, Star as StarIcon, ThumbsUp as ThumbsUpIcon, ThumbsDown as ThumbsDownIcon, HelpCircle as MaybeIcon} from 'lucide-react';
 import './InterviewRoom.css';
 
 function InterviewRoom()
@@ -51,6 +51,7 @@ function InterviewRoom()
     });
     const [recruiterFeedback, setRecruiterFeedback]=useState('');
     const [recruiterNotes, setRecruiterNotes]=useState('');
+    const [hiringDecision, setHiringDecision]=useState('');
     const videoRef=useRef(null);
     // Ref to track latest language for use inside socket callbacks (avoids stale closure)
     const languageRef=useRef(language);
@@ -444,6 +445,7 @@ function InterviewRoom()
                 score: totalScore,
                 rating: recruiterScores.overallScore,
                 recruiterScores,
+                hiringDecision,
             });
 
             // Broadcast end to all participants in the room
@@ -660,6 +662,52 @@ function InterviewRoom()
                                 placeholder="Hiring recommendation, internal notes..."
                                 rows={2}
                             />
+                        </div>
+
+                        <div className="hiring-decision-section">
+                            <label>Hiring Recommendation</label>
+                            <div className="hiring-decision-options">
+                                <button
+                                    type="button"
+                                    className={`hiring-option hire ${hiringDecision==='strong-hire'? 'selected':''}`}
+                                    onClick={() => setHiringDecision('strong-hire')}
+                                >
+                                    <ThumbsUpIcon size={18} />
+                                    <span>Strong Hire</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`hiring-option hire ${hiringDecision==='hire'? 'selected':''}`}
+                                    onClick={() => setHiringDecision('hire')}
+                                >
+                                    <ThumbsUpIcon size={16} />
+                                    <span>Hire</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`hiring-option maybe ${hiringDecision==='maybe'? 'selected':''}`}
+                                    onClick={() => setHiringDecision('maybe')}
+                                >
+                                    <MaybeIcon size={16} />
+                                    <span>Maybe</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`hiring-option no-hire ${hiringDecision==='no-hire'? 'selected':''}`}
+                                    onClick={() => setHiringDecision('no-hire')}
+                                >
+                                    <ThumbsDownIcon size={16} />
+                                    <span>No Hire</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`hiring-option no-hire ${hiringDecision==='strong-no-hire'? 'selected':''}`}
+                                    onClick={() => setHiringDecision('strong-no-hire')}
+                                >
+                                    <ThumbsDownIcon size={18} />
+                                    <span>Strong No</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div className="confirm-actions">

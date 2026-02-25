@@ -10,6 +10,7 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
     const [connectionCode, setConnectionCode]=useState('');
     const [showQR, setShowQR]=useState(false);
     const [cameraError, setCameraError]=useState(null);
+    const [invalidCode, setInvalidCode]=useState(false);
     const [linkCopied, setLinkCopied]=useState(false);
     const videoRef=useRef();
     // Use ref for stream to avoid stale closure in cleanup
@@ -58,11 +59,16 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
                 if (data.connected)
                 {
                     setIsConnected(true);
+                    setInvalidCode(false);
                     console.log('[SecondaryCamera] Server acknowledged phone connection');
                 } else
                 {
                     setIsConnected(false);
                     setCameraError(data.error||'Failed to connect to interview session');
+                    if (data.error==='Invalid connection code')
+                    {
+                        setInvalidCode(true);
+                    }
                 }
             };
             socket.on('secondary-camera-ack', handleAck);
@@ -333,6 +339,15 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
                 </div>
                 {cameraError&&(
                     <div style={{padding: '16px', color: '#ef4444', textAlign: 'center'}}>{cameraError}</div>
+                )}
+                {invalidCode&&(
+                    <div style={{padding: '16px', color: '#ef4444', textAlign: 'center'}}>
+                        Invalid connection code.<br />
+                        <button style={{marginTop: '8px'}} onClick={() => window.location.reload()}>Retry</button>
+                        <div style={{marginTop: '8px', fontSize: '14px'}}>
+                            Please rescan the QR code or reload the desktop page.
+                        </div>
+                    </div>
                 )}
                 <video
                     ref={videoRef}

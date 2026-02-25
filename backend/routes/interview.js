@@ -349,6 +349,7 @@ router.post('/:id/end', verifyAuth, validateRequest(interviewSchemas.end), async
         interview.notes=req.body.notes||'';
         interview.rating=req.body.rating??null;
         interview.score=req.body.score??0;
+        interview.hiringDecision=req.body.hiringDecision||'';
 
         // Save recruiter's manual scores if provided (all out of 10)
         if (req.body.recruiterScores)
@@ -381,6 +382,12 @@ router.post('/:id/end', verifyAuth, validateRequest(interviewSchemas.end), async
                 };
                 report.overallScore=(rs.overallScore||0)*10;
                 report.grade=interviewReportGenerator.assignGrade(report.overallScore);
+            }
+
+            // Save hiring decision into the report object
+            if (req.body.hiringDecision)
+            {
+                report.hiringDecision=req.body.hiringDecision;
             }
 
             interview.report=report;
@@ -510,6 +517,7 @@ router.get('/:id/report', verifyAuth, async (req, res) =>
                 feedback: interview.feedback||'',
                 notes: interview.notes||'',
                 rating: interview.rating,
+                hiringDecision: interview.hiringDecision||'',
             };
             return APIResponse.success(res, reportData);
         }
@@ -534,6 +542,7 @@ router.get('/:id/report', verifyAuth, async (req, res) =>
                 feedback: interview.feedback||'',
                 notes: interview.notes||'',
                 rating: interview.rating,
+                hiringDecision: interview.hiringDecision||'',
             };
             return APIResponse.success(res, reportData);
         }
