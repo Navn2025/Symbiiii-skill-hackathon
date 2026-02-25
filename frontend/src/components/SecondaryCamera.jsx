@@ -96,22 +96,29 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
             };
         } else
         {
-            // Always re-register code on every socket reconnect
-            const connectionCodeRef=useRef('');
-            const registerCode=() =>
+            // Desktop logic
+            if (interviewId&&!connectionCodeRef.current)
             {
-                // Use crypto for unpredictable connection codes
+                // Generate code only if we don't have one for this component instance
                 const randomPart=crypto.randomUUID? crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
                 const code=`${interviewId}-${randomPart}`;
                 setConnectionCode(code);
                 connectionCodeRef.current=code;
+                console.log('[SecondaryCamera] Generated stable connection code:', code);
                 socketService.registerSecondaryCamera(interviewId, code);
-            };
-            registerCode();
+            } else if (connectionCodeRef.current)
+            {
+                // Re-register existing code (e.g. on interviewId change if we kept component)
+                socketService.registerSecondaryCamera(interviewId, connectionCodeRef.current);
+            }
+
             const handleReconnect=() =>
             {
-                console.log('[SecondaryCamera] Desktop socket reconnected, re-registering code...');
-                socketService.registerSecondaryCamera(interviewId, connectionCodeRef.current);
+                if (connectionCodeRef.current)
+                {
+                    console.log('[SecondaryCamera] Desktop socket reconnected, re-registering code...');
+                    socketService.registerSecondaryCamera(interviewId, connectionCodeRef.current);
+                }
             };
             socket.on('reconnect', handleReconnect);
             reconnectCleanupRef.current=() => socket.off('reconnect', handleReconnect);

@@ -375,7 +375,9 @@ export function setupSocketHandlers(io)
                             reason: 'main-disconnected'
                         });
                     }
-                    secondaryCameraMappings.delete(code);
+                    // Don't delete mapping immediately — desktop might reconnect and re-register
+                    // Mappings are cleaned up on 'end-interview'
+                    // secondaryCameraMappings.delete(code);
                 }
             }
         });
