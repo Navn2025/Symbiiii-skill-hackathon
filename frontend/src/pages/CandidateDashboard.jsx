@@ -1421,9 +1421,9 @@ function LiveQuizTab({user})
     try
     {
       const res=await fetch(`${API_URL}/api/quiz/browse`, {credentials: 'include'});
-      if (res.ok) { const data=await res.json(); setQuizzes(data.quizzes||[]); }
-    } catch (e) { console.error('Fetch quizzes error:', e); }
-    finally { setLoading(false); }
+      if (res.ok) {const data=await res.json(); setQuizzes(data.quizzes||[]);}
+    } catch (e) {console.error('Fetch quizzes error:', e);}
+    finally {setLoading(false);}
   }, [API_URL]);
 
   // Auto-refresh every 8 seconds to show newly started quizzes
@@ -1501,7 +1501,7 @@ function LiveQuizTab({user})
               <div key={q.id} style={{background: 'var(--bg-secondary, #161b27)', border: '1px solid var(--border-color, #2a2d3e)', borderRadius: '14px', padding: '20px', transition: 'border-color 0.2s'}} onMouseEnter={e => e.currentTarget.style.borderColor='#6366f1'} onMouseLeave={e => e.currentTarget.style.borderColor='var(--border-color, #2a2d3e)'}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
                   <span style={{fontSize: '0.75rem', fontFamily: 'monospace', color: '#818cf8', background: 'rgba(99,102,241,0.1)', padding: '3px 8px', borderRadius: '4px'}}>#{q.code}</span>
-                  <span style={{fontSize: '0.7rem', padding: '3px 8px', borderRadius: '12px', fontWeight: 600, textTransform: 'uppercase', background: q.status==='waiting'?'rgba(59,130,246,0.15)':'rgba(34,197,94,0.15)', color: q.status==='waiting'?'#93c5fd':'#86efac'}}>
+                  <span style={{fontSize: '0.7rem', padding: '3px 8px', borderRadius: '12px', fontWeight: 600, textTransform: 'uppercase', background: q.status==='waiting'? 'rgba(59,130,246,0.15)':'rgba(34,197,94,0.15)', color: q.status==='waiting'? '#93c5fd':'#86efac'}}>
                     {statusLabel[q.status]||q.status}
                   </span>
                 </div>
@@ -1515,11 +1515,11 @@ function LiveQuizTab({user})
                 </div>
                 <button
                   onClick={() => handleJoinQuiz(q.code)}
-                  style={{width: '100%', padding: '10px', background: q.status==='waiting'?'#6366f1':'#22c55e', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem', transition: 'opacity 0.2s'}}
+                  style={{width: '100%', padding: '10px', background: q.status==='waiting'? '#6366f1':'#22c55e', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem', transition: 'opacity 0.2s'}}
                   onMouseEnter={e => e.target.style.opacity='0.85'}
                   onMouseLeave={e => e.target.style.opacity='1'}
                 >
-                  {['active','question_open','question_closed'].includes(q.status)?'🔴 Join Live Quiz':'🎮 Join Quiz'}
+                  {['active', 'question_open', 'question_closed'].includes(q.status)? '🔴 Join Live Quiz':'🎮 Join Quiz'}
                 </button>
               </div>
             ))}

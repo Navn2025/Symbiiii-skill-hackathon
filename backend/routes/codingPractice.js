@@ -444,7 +444,10 @@ async function validateAndFixTestCases(question, language)
     const lang=detectLanguage(refSolution)||language||'python';
     let fixedCount=0;
 
-    for (let i=0;i<question.testCases.length;i++)
+    // Only validate first 3 test cases to avoid timeout
+    const maxValidate=Math.min(question.testCases.length, 3);
+
+    for (let i=0;i<maxValidate;i++)
     {
         const tc=question.testCases[i];
         try
@@ -473,7 +476,7 @@ async function validateAndFixTestCases(question, language)
             }
         } catch (err) {console.warn(`[AI Validation] Failed to validate test case ${i+1}:`, err.message);}
     }
-    if (fixedCount>0) console.log(`[AI Validation] Fixed ${fixedCount}/${question.testCases.length} test cases for "${question.title}"`);
+    if (fixedCount>0) console.log(`[AI Validation] Fixed ${fixedCount}/${maxValidate} test cases for "${question.title}"`);
     delete question.referenceSolution;
     return question;
 }

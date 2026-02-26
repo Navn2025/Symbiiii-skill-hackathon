@@ -31,7 +31,7 @@ import verificationRoutes from './routes/verification.js';
 import aiCallingRoutes from './routes/aiCalling.js';
 import quizRoutes from './routes/quiz.js';
 import {setupSocketHandlers} from './socket/handlers.js';
-import {timeoutMiddleware} from './middleware/timeout.js';
+import {timeoutMiddleware, aiTimeoutMiddleware} from './middleware/timeout.js';
 import {apiRateLimiter, authRateLimiter, aiRateLimiter, codeExecutionRateLimiter} from './middleware/rateLimit.js';
 import {requestLoggingMiddleware, errorLoggingMiddleware} from './middleware/logger.js';
 import {securityHeadersMiddleware} from './middleware/securityHeaders.js';
@@ -123,6 +123,10 @@ app.use('/api/ai-interview/', aiRateLimiter);
 // Code execution gets strict limits for security
 app.use('/api/code-execution/', codeExecutionRateLimiter);
 app.use('/api/coding-practice/', codeExecutionRateLimiter);
+
+// AI generation endpoints need longer timeout (120s) as they call Groq + validate test cases
+app.use('/api/coding-practice/generate', aiTimeoutMiddleware);
+app.use('/api/coding-practice/hint', aiTimeoutMiddleware);
 
 // General API rate limiting
 app.use('/api/', apiRateLimiter);
