@@ -243,7 +243,7 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady, second
 
     const setupWebRTC=() =>
     {
-        const socket=socketService.socket;
+        const socket=socketService.getSocket()||socketService.connect();
         if (!socket) {console.warn('[WebRTC] No socket available'); return null;}
 
         const handleUserJoined=(data) =>
@@ -309,6 +309,20 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady, second
             }
         };
 
+        const handleUserLeft=(data) =>
+        {
+            console.log('[WebRTC] User left:', data?.userId);
+            setRemoteStream(null);
+            setRemotePeerId(null);
+            remotePeerIdRef.current=null;
+            setConnectionStatus('waiting');
+            if (peerRef.current)
+            {
+                peerRef.current.destroy();
+                peerRef.current=null;
+            }
+        };
+
         // Handle list of users already in the room (sent on join)
         const handleRoomUsers=(data) =>
         {
@@ -340,6 +354,7 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady, second
         socket.on('webrtc-offer', handleWebRTCOffer);
         socket.on('webrtc-answer', handleWebRTCAnswer);
         socket.on('webrtc-ice-candidate', handleICECandidate);
+        socket.on('user-left', handleUserLeft);
 
         return () =>
         {
@@ -348,6 +363,7 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady, second
             socket.off('webrtc-offer', handleWebRTCOffer);
             socket.off('webrtc-answer', handleWebRTCAnswer);
             socket.off('webrtc-ice-candidate', handleICECandidate);
+            socket.off('user-left', handleUserLeft);
         };
     };
 
@@ -367,11 +383,22 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady, second
             {
                 try
                 {
-                    const senders=peerRef.current._pc?.getSenders();
-                    const videoSender=senders?.find(s => s.track?.kind==='video'||s.track===null);
-                    if (videoSender) await videoSender.replaceTrack(camTrack);
+                    const currentVideoTrack=localStreamRef.current?.getVideoTracks()?.[0]||null;
+                    if (currentVideoTrack)
+                    {
+                        peerRef.current.replaceTrack(currentVideoTrack, camTrack, localStreamRef.current);
+                    }
                 }
                 catch (e) {console.error('[ScreenShare] replaceTrack restore error:', e);}
+            }
+            if (localStreamRef.current&&camTrack)
+            {
+                const tracks=localStreamRef.current.getVideoTracks();
+                if (tracks.length>0)
+                {
+                    localStreamRef.current.removeTrack(tracks[0]);
+                }
+                localStreamRef.current.addTrack(camTrack);
             }
             // Restore local video to camera
             if (localVideoRef.current&&localStreamRef.current) localVideoRef.current.srcObject=localStreamRef.current;
@@ -421,11 +448,23 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady, second
                 {
                     try
                     {
-                        const senders=peerRef.current._pc?.getSenders();
-                        const videoSender=senders?.find(s => s.track?.kind==='video');
-                        if (videoSender) await videoSender.replaceTrack(screenTrack);
+                        const currentVideoTrack=localStreamRef.current?.getVideoTracks()?.[0]||null;
+                        if (currentVideoTrack)
+                        {
+                            peerRef.current.replaceTrack(currentVideoTrack, screenTrack, localStreamRef.current);
+                        }
                     }
                     catch (e) {console.error('[ScreenShare] replaceTrack error:', e);}
+                }
+
+                if (localStreamRef.current)
+                {
+                    const tracks=localStreamRef.current.getVideoTracks();
+                    if (tracks.length>0)
+                    {
+                        localStreamRef.current.removeTrack(tracks[0]);
+                    }
+                    localStreamRef.current.addTrack(screenTrack);
                 }
 
                 // Set state first — useEffect will attach stream to video element after render
