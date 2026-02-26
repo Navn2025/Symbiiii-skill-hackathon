@@ -7,7 +7,9 @@ import
   BookOpen, Target, Award, Clock, MapPin, Building2, Users,
   BarChart3, ChevronDown, Send, Trash2, Play, Upload,
   Video, UserCheck, CheckCircle, XCircle, ExternalLink, Trophy, Calendar,
-  Phone, PhoneCall, PhoneOff, Mic, Volume2, Filter, Columns3, List
+  Phone, PhoneCall, PhoneOff, Mic, Volume2, Filter, Columns3, List,
+  Palette, Server, Layers, Wrench, Smartphone, Monitor, MessageSquare, Terminal, Zap,
+  Smile, Minus, Flame, Lightbulb, ClipboardList
 } from 'lucide-react';
 import api, {getMyInterviews} from '../services/api';
 import CodeEditor from '../components/CodeEditor';
@@ -980,10 +982,10 @@ function RecruiterInterviewTab({user})
   };
 
   const tips=[
-    {icon: '🎯', title: 'Be Prepared', desc: 'Review the job description and company background before the interview'},
-    {icon: '💡', title: 'Test Your Setup', desc: 'Check camera, microphone and internet connection before joining'},
-    {icon: '📝', title: 'Have Notes Ready', desc: 'Keep a pen and paper handy for any notes during the interview'},
-    {icon: '🕐', title: 'Join Early', desc: 'Try to join the interview 2-3 minutes before the scheduled time'},
+    {icon: <Target size={24} />, title: 'Be Prepared', desc: 'Review the job description and company background before the interview'},
+    {icon: <Lightbulb size={24} />, title: 'Test Your Setup', desc: 'Check camera, microphone and internet connection before joining'},
+    {icon: <ClipboardList size={24} />, title: 'Have Notes Ready', desc: 'Keep a pen and paper handy for any notes during the interview'},
+    {icon: <Clock size={24} />, title: 'Join Early', desc: 'Try to join the interview 2-3 minutes before the scheduled time'},
   ];
 
   const features=[
@@ -1109,32 +1111,32 @@ function PracticeTab({user})
   });
 
   const roles=[
-    {id: 'frontend', name: 'Frontend Developer', icon: '🎨'},
-    {id: 'backend', name: 'Backend Developer', icon: '⚙️'},
-    {id: 'fullstack', name: 'Full Stack Developer', icon: '🚀'},
-    {id: 'data-science', name: 'Data Scientist', icon: '📊'},
-    {id: 'devops', name: 'DevOps Engineer', icon: '🔧'},
-    {id: 'mobile', name: 'Mobile Developer', icon: '📱'},
+    {id: 'frontend', name: 'Frontend Developer', icon: <Palette size={24} />},
+    {id: 'backend', name: 'Backend Developer', icon: <Server size={24} />},
+    {id: 'fullstack', name: 'Full Stack Developer', icon: <Layers size={24} />},
+    {id: 'data-science', name: 'Data Scientist', icon: <BarChart3 size={24} />},
+    {id: 'devops', name: 'DevOps Engineer', icon: <Wrench size={24} />},
+    {id: 'mobile', name: 'Mobile Developer', icon: <Smartphone size={24} />},
   ];
 
   const interviewTypes=[
-    {id: 'technical', name: 'Technical Interview', desc: 'Technical concepts and problem solving', icon: '💻'},
-    {id: 'behavioral', name: 'Behavioral Interview', desc: 'Behavioral questions and soft skills', icon: '💬'},
-    {id: 'coding', name: 'Coding Round', desc: 'Live coding challenges', icon: '⌨️'},
-    {id: 'system-design', name: 'System Design', desc: 'Architecture and design discussions', icon: '🏗️'},
+    {id: 'technical', name: 'Technical Interview', desc: 'Technical concepts and problem solving', icon: <Monitor size={24} />},
+    {id: 'behavioral', name: 'Behavioral Interview', desc: 'Behavioral questions and soft skills', icon: <MessageSquare size={24} />},
+    {id: 'coding', name: 'Coding Round', desc: 'Live coding challenges', icon: <Code size={24} />},
+    {id: 'system-design', name: 'System Design', desc: 'Architecture and design discussions', icon: <Building2 size={24} />},
   ];
 
   const modes=[
     {
-      id: 'quick', name: 'Quick Practice', desc: '5 questions, 10-15 min', duration: 15, icon: '⚡',
+      id: 'quick', name: 'Quick Practice', desc: '5 questions, 10-15 min', duration: 15, icon: <Zap size={24} />,
       features: ['Fast feedback', 'No strict scoring', 'Basic evaluation']
     },
     {
-      id: 'real', name: 'Real Interview Simulation', desc: '10-15 questions, 30-40 min', duration: 35, icon: '🎯',
+      id: 'real', name: 'Real Interview Simulation', desc: '10-15 questions, 30-40 min', duration: 35, icon: <Target size={24} />,
       features: ['Timed session', 'Adaptive difficulty', 'Detailed scorecard', 'Follow-up questions']
     },
     {
-      id: 'coding', name: 'Coding Challenge', desc: '2-3 problems, 45-60 min', duration: 50, icon: '👨‍💻',
+      id: 'coding', name: 'Coding Challenge', desc: '2-3 problems, 45-60 min', duration: 50, icon: <Terminal size={24} />,
       features: ['Code editor', 'Run & test', 'Time complexity analysis', 'Code quality review']
     },
   ];
@@ -1149,7 +1151,7 @@ function PracticeTab({user})
 
   return (
     <div className="cd-container cd-tab-content">
-      <div className="cd-welcome"><h1>AI Interview Practice</h1><p>Practice with AI-powered interviews tailored to your needs</p></div>
+      <div className="cd-welcome"><h1>Interview Practice</h1><p>Practice with AI-powered interviews tailored to your needs</p></div>
 
       <div className="cdt-section">
         <h2>1. Select Your Target Role</h2>
@@ -1181,7 +1183,7 @@ function PracticeTab({user})
         <div className="cdt-diff-grid">
           {['easy', 'medium', 'hard'].map(d => (
             <button key={d} className={`cdt-diff-btn ${d} ${config.difficulty===d? 'selected':''}`} onClick={() => setConfig({...config, difficulty: d})}>
-              <span className="cdt-diff-emoji">{d==='easy'? '😊':d==='medium'? '😐':'😤'}</span>
+              <span className="cdt-diff-emoji">{d==='easy'? <Smile size={24} />:d==='medium'? <Minus size={24} />:<Flame size={24} />}</span>
               <strong>{d.charAt(0).toUpperCase()+d.slice(1)}</strong>
               <span>{d==='easy'? 'Entry level':d==='medium'? 'Intermediate':'Advanced'}</span>
             </button>

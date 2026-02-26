@@ -16,7 +16,6 @@
 .cp-ide.cp-ide-embedded {
   height: calc(100vh - 60px);
   border-radius: 8px;
-  margin: -2rem 0 0 0;
 }
 
 /* ── Sidebar ── */
@@ -1665,4 +1664,285 @@
 }
 .cp-analysis-smells h4 {
   color: #f97316;
+}
+
+/* ═══════════════════════════════════════════
+   AI Custom Prompt Input
+   ═══════════════════════════════════════════ */
+.cp-ai-prompt-section {
+  margin-bottom: 0.6rem;
+}
+
+.cp-ai-prompt-input {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font-size: 0.75rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 50px;
+  transition: border-color 0.2s;
+}
+
+.cp-ai-prompt-input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+}
+
+.cp-ai-prompt-input::placeholder {
+  color: #6e7681;
+}
+
+/* ═══════════════════════════════════════════
+   Enhanced Responsiveness
+   ═══════════════════════════════════════════ */
+
+/* Make AI panel scrollable */
+.cp-ai-panel {
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+/* Improve topic buttons wrapping */
+.cp-ai-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+  max-height: 140px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Better toolbar on smaller screens */
+@media (max-width: 1400px) {
+  .cp-ide-toolbar-right {
+    gap: 0.35rem;
+  }
+  
+  .cp-toolbar-detect-btn,
+  .cp-toolbar-analyze-btn {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.72rem;
+  }
+  
+  .cp-ide-run-btn,
+  .cp-ide-submit-btn {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 1100px) {
+  .cp-ide {
+    grid-template-columns: 220px 1fr;
+  }
+  
+  .cp-ide-sidebar {
+    min-width: 220px;
+  }
+  
+  .cp-ide-main {
+    grid-template-columns: 1fr;
+  }
+  
+  .cp-ide-problem {
+    max-height: 280px;
+    border-right: none;
+    border-bottom: 1px solid #21262d;
+    overflow-y: auto;
+  }
+  
+  /* Hide text on toolbar buttons, show only icons */
+  .cp-toolbar-detect-btn span,
+  .cp-toolbar-analyze-btn span {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .cp-ide {
+    grid-template-columns: 200px 1fr;
+  }
+  
+  .cp-ide-toolbar {
+    flex-wrap: wrap;
+    padding: 0.4rem 0.6rem;
+    gap: 0.4rem;
+  }
+  
+  .cp-ide-toolbar-left,
+  .cp-ide-toolbar-right {
+    flex-wrap: wrap;
+  }
+  
+  .cp-ai-panel {
+    max-height: 45vh;
+  }
+  
+  .cp-ai-topics {
+    max-height: 100px;
+  }
+}
+
+@media (max-width: 768px) {
+  .cp-ide {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100vh - 70px);
+  }
+
+  .cp-ide-sidebar {
+    max-height: 50vh;
+    border-right: none;
+    border-bottom: 1px solid #21262d;
+    overflow-y: auto;
+  }
+
+  .cp-sidebar-controls {
+    flex-direction: column;
+  }
+  
+  .cp-ai-gen-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .cp-filter-select {
+    width: 100%;
+  }
+
+  .cp-ide-questions {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    max-height: 80px;
+  }
+
+  .cp-ide-question {
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 160px;
+  }
+
+  .cp-ide-toolbar {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0.4rem;
+  }
+  
+  .cp-ide-toolbar-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .cp-ide-toolbar-right {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  
+  .cp-ide-problem {
+    max-height: 200px;
+    padding: 1rem;
+  }
+  
+  .cp-ide-problem-header h1 {
+    font-size: 1rem;
+  }
+  
+  .cp-ide-output {
+    height: 180px;
+    min-height: 100px;
+  }
+  
+  .cp-ide-output-tabs {
+    flex-wrap: wrap;
+    gap: 0.2rem;
+  }
+  
+  .cp-ide-tab {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.7rem;
+  }
+  
+  .cp-ai-panel {
+    max-height: 40vh;
+  }
+  
+  .cp-ai-topics {
+    max-height: 80px;
+  }
+  
+  .cp-ai-topic-btn {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.45rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .cp-ide-toolbar-right {
+    gap: 0.25rem;
+  }
+  
+  .cp-ide-run-btn,
+  .cp-ide-submit-btn {
+    padding: 0.28rem 0.5rem;
+    font-size: 0.7rem;
+  }
+  
+  .cp-toolbar-detect-btn,
+  .cp-toolbar-analyze-btn {
+    padding: 0.28rem 0.4rem;
+  }
+  
+  .cp-ide-tab {
+    padding: 0.3rem 0.4rem;
+    font-size: 0.65rem;
+  }
+  
+  .cp-ai-diff-btns {
+    gap: 0.25rem;
+  }
+  
+  .cp-ai-diff-btn {
+    padding: 0.28rem;
+    font-size: 0.65rem;
+  }
+}
+
+/* Toolbar button styles */
+.cp-toolbar-detect-btn,
+.cp-toolbar-analyze-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  padding: 0.32rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.cp-toolbar-detect-btn:hover:not(:disabled),
+.cp-toolbar-analyze-btn:hover:not(:disabled) {
+  color: #e6edf3;
+  border-color: #484f58;
+  background: #30363d;
+}
+
+.cp-toolbar-detect-btn:disabled,
+.cp-toolbar-analyze-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

@@ -230,7 +230,7 @@ router.post('/submit', verifyAuthOptional, async (req, res) =>
 // ═══════════════════════════════════════════════════════
 router.post('/generate', verifyAuthOptional, async (req, res) =>
 {
-    const {difficulty, topics, language}=req.body;
+    const {difficulty, topics, language, customPrompt}=req.body;
 
     try
     {
@@ -239,8 +239,9 @@ router.post('/generate', verifyAuthOptional, async (req, res) =>
         const difficultyLevel=difficulty||'Medium';
         const topicList=topics&&topics.length>0? topics.join(', '):'algorithms and data structures';
         const lang=language||'python';
+        const customReq=customPrompt? `\nAdditional requirements: ${customPrompt}`:'';
 
-        const prompt=`Generate a unique ${difficultyLevel} coding problem focused on ${topicList}.
+        const prompt=`Generate a unique ${difficultyLevel} coding problem focused on ${topicList}.${customReq}
 
 CRITICAL RULES:
 - The problem must have ONE clear, unambiguous algorithm.

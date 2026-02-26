@@ -33,6 +33,7 @@ function CodingPractice({embedded})
     const [aiDifficulty, setAiDifficulty]=useState('Medium');
     const [aiTopics, setAiTopics]=useState([]);
     const [generating, setGenerating]=useState(false);
+    const [aiCustomPrompt, setAiCustomPrompt]=useState('');
 
     // Hint
     const [hint, setHint]=useState('');
@@ -194,7 +195,8 @@ function CodingPractice({embedded})
             const response=await api.post('/coding-practice/generate', {
                 difficulty: aiDifficulty,
                 topics: aiTopics.length>0? aiTopics:undefined,
-                language
+                language,
+                customPrompt: aiCustomPrompt.trim()||undefined
             });
             if (response.data.success&&response.data.question)
             {
@@ -361,6 +363,15 @@ function CodingPractice({embedded})
                                             onClick={() => toggleAiTopic(t)}>{t}</button>
                                     ))}
                                 </div>
+                                <div className="cp-ai-prompt-section">
+                                    <textarea
+                                        className="cp-ai-prompt-input"
+                                        value={aiCustomPrompt}
+                                        onChange={e => setAiCustomPrompt(e.target.value)}
+                                        placeholder="Optional: Add custom requirements... e.g. 'Include recursion' or 'Focus on edge cases'"
+                                        rows={2}
+                                    />
+                                </div>
                                 <button className="cp-ai-generate-btn" onClick={handleGenerate} disabled={generating}>
                                     {generating? <><Loader2 size={14} className="cp-spin" /> Generating...</>:<><Sparkles size={14} /> Generate Question</>}
                                 </button>
@@ -518,9 +529,6 @@ function CodingPractice({embedded})
                                     </button>
                                 </div>
                                 <div className="cp-ide-toolbar-right">
-                                    <button className="cp-toolbar-ai-btn" onClick={() => {setSidebarCollapsed(false); setShowAIPanel(true);}} title="Generate AI Question">
-                                        <Sparkles size={14} /> AI Generate
-                                    </button>
                                     <button className="cp-toolbar-detect-btn" onClick={handleDetect} disabled={detectLoading} title="Check if code is AI-generated">
                                         <Shield size={14} /> {detectLoading? '...':'Detect AI'}
                                     </button>

@@ -24,12 +24,12 @@ const practiceSessionSchema=new mongoose.Schema({
     },
     interviewType: {
         type: String,
-        enum: ['technical', 'behavioral', 'coding'],
+        enum: ['technical', 'behavioral', 'coding', 'system-design'],
         default: 'technical',
     },
     mode: {
         type: String,
-        enum: ['practice', 'mock', 'full'],
+        enum: ['practice', 'mock', 'full', 'quick', 'real', 'coding'],
         default: 'practice',
     },
     status: {
