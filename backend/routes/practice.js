@@ -130,7 +130,7 @@ JSON format: {"greeting": "your message"}`;
         return APIResponse.success(res, {sessionId, greeting}, 'Practice session started');
     } catch (error)
     {
-        console.error('[PRACTICE] Start error:', error.message);
+        console.error('[PRACTICE] Start error:', error.message, error.stack);
         return APIResponse.serverError(res, 'Failed to start session');
     }
 });
