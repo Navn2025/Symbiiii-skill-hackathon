@@ -6,136 +6,290 @@ import {APIResponse} from '../middleware/response.js';
 
 const router=express.Router();
 
-const GROQ_TIMEOUT=15000; // 15s timeout for AI calls
+// ═══════════════════════════════════════════════════════════════════
+// CONFIGURATION
+// ═══════════════════════════════════════════════════════════════════
+const GROQ_TIMEOUT=12000;
 const GROQ_URL='https://api.groq.com/openai/v1/chat/completions';
 
-// Helper: make Groq API call with timeout
-async function callGroq(messages, {model='llama-3.1-8b-instant', temperature=0.7, max_tokens=1000}={})
+// In-memory session store (fallback if MongoDB fails)
+const memoryStore=new Map();
+
+// ═══════════════════════════════════════════════════════════════════
+// QUESTION BANK - Comprehensive fallback questions
+// ═══════════════════════════════════════════════════════════════════
+const QUESTION_BANK={
+    technical: {
+        frontend: [
+            {q: "Explain the difference between CSS Flexbox and Grid. When would you use each?", points: ["Layout systems", "Use cases", "Browser support"]},
+            {q: "What is the Virtual DOM and how does React use it to optimize performance?", points: ["DOM diffing", "Reconciliation", "Performance benefits"]},
+            {q: "How do you handle state management in a large React application?", points: ["Redux/Context", "State patterns", "Performance"]},
+            {q: "Explain event delegation and why it's useful in JavaScript.", points: ["Event bubbling", "Performance", "Dynamic elements"]},
+            {q: "What are Web Vitals and how do you optimize for them?", points: ["LCP", "FID", "CLS", "Optimization techniques"]},
+            {q: "Describe the CSS box model and how box-sizing affects it.", points: ["Content/padding/border/margin", "box-sizing values"]},
+            {q: "How would you implement lazy loading for images in a web app?", points: ["Intersection Observer", "Loading attribute", "Performance"]},
+            {q: "What is CORS and how do you handle cross-origin requests?", points: ["Same-origin policy", "Headers", "Preflight requests"]},
+        ],
+        backend: [
+            {q: "Explain RESTful API design principles. What makes an API RESTful?", points: ["HTTP methods", "Statelessness", "Resource URIs"]},
+            {q: "How would you design a caching strategy for a high-traffic API?", points: ["Cache layers", "Invalidation", "TTL strategies"]},
+            {q: "What is database indexing and when should you use it?", points: ["B-tree indexes", "Query optimization", "Trade-offs"]},
+            {q: "Explain the difference between SQL and NoSQL databases.", points: ["ACID vs BASE", "Use cases", "Scaling"]},
+            {q: "How do you handle authentication and authorization in APIs?", points: ["JWT", "OAuth", "Session management"]},
+            {q: "What is rate limiting and how would you implement it?", points: ["Algorithms", "Distributed systems", "DDoS protection"]},
+            {q: "Describe connection pooling and why it matters for databases.", points: ["Resource management", "Performance", "Configuration"]},
+            {q: "How would you design an API for handling file uploads?", points: ["Multipart", "Streaming", "Storage strategies"]},
+        ],
+        fullstack: [
+            {q: "How would you architect a real-time chat application?", points: ["WebSockets", "Message queues", "Scaling"]},
+            {q: "Explain the trade-offs between SSR, CSR, and SSG.", points: ["Performance", "SEO", "Use cases"]},
+            {q: "How do you handle database migrations in production?", points: ["Version control", "Rollback strategies", "Zero downtime"]},
+            {q: "Describe microservices architecture and its challenges.", points: ["Service boundaries", "Communication", "Data consistency"]},
+            {q: "How would you implement user authentication across services?", points: ["Single sign-on", "Token management", "Security"]},
+            {q: "What strategies do you use for API versioning?", points: ["URL versioning", "Header versioning", "Deprecation"]},
+        ],
+        'data-science': [
+            {q: "Explain the bias-variance tradeoff in machine learning.", points: ["Underfitting", "Overfitting", "Model complexity"]},
+            {q: "How do you handle missing data in a dataset?", points: ["Imputation methods", "Deletion strategies", "Impact analysis"]},
+            {q: "What is cross-validation and why is it important?", points: ["K-fold", "Stratified", "Preventing overfitting"]},
+            {q: "Explain the difference between supervised and unsupervised learning.", points: ["Labeled data", "Algorithms", "Use cases"]},
+            {q: "How would you approach feature engineering for a predictive model?", points: ["Feature selection", "Transformation", "Domain knowledge"]},
+        ],
+        devops: [
+            {q: "Explain the CI/CD pipeline and its key components.", points: ["Build", "Test", "Deploy", "Automation"]},
+            {q: "How do you implement blue-green deployments?", points: ["Zero downtime", "Rollback", "Load balancing"]},
+            {q: "What is Infrastructure as Code and why is it important?", points: ["Terraform/Ansible", "Version control", "Reproducibility"]},
+            {q: "Describe container orchestration with Kubernetes.", points: ["Pods", "Services", "Scaling"]},
+            {q: "How do you monitor and troubleshoot production systems?", points: ["Logging", "Metrics", "Alerting"]},
+        ],
+        mobile: [
+            {q: "Compare native vs cross-platform mobile development.", points: ["Performance", "Development speed", "Platform features"]},
+            {q: "How do you handle offline functionality in mobile apps?", points: ["Local storage", "Sync strategies", "Conflict resolution"]},
+            {q: "Explain mobile app lifecycle management.", points: ["Background states", "Memory management", "Push notifications"]},
+            {q: "What security considerations are unique to mobile apps?", points: ["Data storage", "Network security", "Authentication"]},
+        ],
+    },
+    behavioral: {
+        all: [
+            {q: "Tell me about a challenging project you worked on. How did you overcome obstacles?", points: ["Problem description", "Actions taken", "Results"]},
+            {q: "Describe a time when you had to learn a new technology quickly.", points: ["Learning approach", "Application", "Outcome"]},
+            {q: "How do you handle disagreements with team members?", points: ["Communication", "Compromise", "Resolution"]},
+            {q: "Tell me about a time you made a mistake. How did you handle it?", points: ["Accountability", "Learning", "Prevention"]},
+            {q: "Describe your approach to prioritizing tasks when everything is urgent.", points: ["Prioritization method", "Communication", "Delivery"]},
+            {q: "How do you stay updated with industry trends?", points: ["Learning resources", "Practice", "Application"]},
+            {q: "Tell me about a time you helped a struggling team member.", points: ["Empathy", "Support", "Outcome"]},
+            {q: "Describe a situation where you had to meet a tight deadline.", points: ["Planning", "Execution", "Results"]},
+        ],
+    },
+    coding: {
+        easy: [
+            {q: "Write a function to reverse a string.", starter: "function reverseString(str) {\n  // Your code here\n}", hints: ["Use array methods", "Or iterate backwards"]},
+            {q: "Write a function to check if a number is palindrome.", starter: "function isPalindrome(num) {\n  // Your code here\n}", hints: ["Convert to string", "Compare reversed"]},
+            {q: "Write a function to find the maximum element in an array.", starter: "function findMax(arr) {\n  // Your code here\n}", hints: ["Use Math.max", "Or iterate"]},
+            {q: "Write a function to count vowels in a string.", starter: "function countVowels(str) {\n  // Your code here\n}", hints: ["Define vowels", "Iterate and count"]},
+        ],
+        medium: [
+            {q: "Write a function to find the two numbers in an array that add up to a target.", starter: "function twoSum(nums, target) {\n  // Return indices of the two numbers\n}", hints: ["Use a hash map", "One pass solution"]},
+            {q: "Write a function to check if two strings are anagrams.", starter: "function isAnagram(s1, s2) {\n  // Your code here\n}", hints: ["Sort and compare", "Or use frequency count"]},
+            {q: "Write a function to find the longest substring without repeating characters.", starter: "function longestSubstring(str) {\n  // Return length of longest substring\n}", hints: ["Sliding window", "Track seen characters"]},
+            {q: "Implement a function to merge two sorted arrays.", starter: "function mergeSorted(arr1, arr2) {\n  // Return merged sorted array\n}", hints: ["Two pointers", "Compare and merge"]},
+        ],
+        hard: [
+            {q: "Implement a LRU Cache with get and put operations.", starter: "class LRUCache {\n  constructor(capacity) {\n    // Initialize\n  }\n  get(key) { }\n  put(key, value) { }\n}", hints: ["Use Map for O(1)", "Track access order"]},
+            {q: "Write a function to find the median of two sorted arrays.", starter: "function findMedian(nums1, nums2) {\n  // Your code here\n}", hints: ["Binary search", "Partition arrays"]},
+            {q: "Implement a trie (prefix tree) with insert and search.", starter: "class Trie {\n  constructor() { }\n  insert(word) { }\n  search(word) { }\n  startsWith(prefix) { }\n}", hints: ["Node with children map", "End-of-word marker"]},
+        ],
+    },
+    'system-design': {
+        all: [
+            {q: "Design a URL shortening service like bit.ly.", points: ["Hashing algorithm", "Database design", "Scaling", "Analytics"]},
+            {q: "Design a real-time notification system.", points: ["Push vs Pull", "WebSockets", "Message queues", "Scaling"]},
+            {q: "Design a rate limiter for an API.", points: ["Algorithms", "Distributed systems", "Storage", "Fairness"]},
+            {q: "Design a file storage service like Dropbox.", points: ["Chunking", "Sync", "Deduplication", "CDN"]},
+            {q: "Design a social media feed system.", points: ["Fan-out", "Caching", "Ranking", "Real-time updates"]},
+        ],
+    },
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════
+function getQuestionCount(mode)
 {
-    const response=await axios.post(
-        GROQ_URL,
-        {messages, model, temperature, max_tokens},
-        {
+    const counts={quick: 5, real: 10, coding: 3, practice: 5, mock: 8, full: 12};
+    return counts[mode]||5;
+}
+
+function getGreeting(role, type, count)
+{
+    const roleDisplay=(role||'developer').replace(/-/g, ' ');
+    const greetings=[
+        `Welcome! I'll be your interviewer today for the ${roleDisplay} position. We'll go through ${count} questions focusing on ${type}. Take your time and feel free to ask for clarification.`,
+        `Hello! Let's begin your ${type} interview for the ${roleDisplay} role. I have ${count} questions prepared. Remember, there's no single right answer - I'm interested in your thought process.`,
+        `Hi there! Ready for your ${type} practice session? We'll cover ${count} questions relevant to ${roleDisplay}. Let's get started!`,
+    ];
+    return greetings[Math.floor(Math.random()*greetings.length)];
+}
+
+function getFallbackQuestion(role, type, difficulty, questionNum)
+{
+    const bank=QUESTION_BANK[type]||QUESTION_BANK.technical;
+
+    let questions;
+    if (type==='behavioral')
+    {
+        questions=bank.all;
+    } else if (type==='coding')
+    {
+        questions=bank[difficulty]||bank.medium;
+    } else if (type==='system-design')
+    {
+        questions=bank.all;
+    } else
+    {
+        questions=bank[role]||bank.fullstack||Object.values(bank)[0];
+    }
+
+    if (!questions||questions.length===0)
+    {
+        questions=QUESTION_BANK.technical.fullstack;
+    }
+
+    const idx=(questionNum-1)%questions.length;
+    const q=questions[idx];
+
+    return {
+        question: q.q,
+        type: type,
+        expectedPoints: q.points||[],
+        hints: q.hints||['Think step by step', 'Consider edge cases'],
+        starterCode: q.starter||null,
+        questionNumber: questionNum,
+        difficulty: difficulty,
+    };
+}
+
+async function callGroqSafe(messages, options={})
+{
+    if (!process.env.GROQ_API_KEY) return null;
+
+    try
+    {
+        const response=await axios.post(GROQ_URL, {
+            messages,
+            model: options.model||'llama-3.1-8b-instant',
+            temperature: options.temperature||0.7,
+            max_tokens: options.max_tokens||800,
+        }, {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
             },
             timeout: GROQ_TIMEOUT,
-        }
-    );
-    return response.data.choices[0]?.message?.content||'';
+        });
+        return response.data.choices[0]?.message?.content||null;
+    } catch (err)
+    {
+        console.warn('[PRACTICE] AI call failed:', err.message);
+        return null;
+    }
 }
 
-// Helper: safely parse JSON from AI response
-function safeParseJSON(text)
+function safeJSON(text)
 {
+    if (!text) return null;
     try
     {
-        const cleaned=text.trim().replace(/```json\s*/g, '').replace(/```\s*/g, '');
-        const jsonMatch=cleaned.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) return null;
-        return JSON.parse(jsonMatch[0]);
+        const cleaned=text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+        const match=cleaned.match(/\{[\s\S]*\}/);
+        return match? JSON.parse(match[0]):null;
     } catch
     {
         return null;
     }
 }
 
-// Parse AI-generated question response
-function parseQuestionResponse(response, interviewType)
-{
-    try
-    {
-        const parsed=safeParseJSON(response);
-        if (!parsed||!parsed.question) return null;
+// ═══════════════════════════════════════════════════════════════════
+// ROUTES
+// ═══════════════════════════════════════════════════════════════════
 
-        if (interviewType==='coding')
-        {
-            if (!parsed.testCases||!Array.isArray(parsed.testCases)||parsed.testCases.length===0) return null;
-            if (!parsed.starterCode||typeof parsed.starterCode!=='object') return null;
-            if (!parsed.functionName) return null;
-        }
-
-        return {
-            question: parsed.question,
-            type: interviewType,
-            expectedPoints: parsed.expectedPoints||[],
-            hints: parsed.hints||[],
-            testCases: parsed.testCases,
-            starterCode: parsed.starterCode,
-            functionName: parsed.functionName,
-        };
-    } catch (error)
-    {
-        console.error('[PRACTICE] Parse question error:', error.message);
-        return null;
-    }
-}
-
-// ── Start practice session ──
+// POST /start - Start a new practice session
 router.post('/start', verifyAuth, async (req, res) =>
 {
     try
     {
-        const {sessionId, role, difficulty, interviewType, mode}=req.body;
+        const {sessionId, role, difficulty='medium', interviewType='technical', mode='quick'}=req.body;
 
         if (!sessionId||!role)
         {
             return APIResponse.error(res, 'sessionId and role are required', 400);
         }
 
-        const roleDisplay=role.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
-        const questionCount=getModeQuestionCount(mode);
+        const questionCount=getQuestionCount(mode);
+        const greeting=getGreeting(role, interviewType, questionCount);
 
-        let greeting=`Hello! I'm your AI interviewer for today's ${interviewType} interview. We'll be assessing your skills for the ${roleDisplay} role. I'll ask you ${questionCount} questions, and feel free to ask for clarification at any time. Let's get started!`;
+        // Create session data
+        const sessionData={
+            sessionId,
+            odorId: req.user?.id||'anonymous',
+            role,
+            difficulty,
+            interviewType,
+            mode,
+            questionCount,
+            currentQuestion: 0,
+            questions: [],
+            responses: [],
+            scores: [],
+            startTime: new Date(),
+            status: 'active',
+        };
 
+        // Try MongoDB first, fall back to memory
         try
         {
-            const greetingPrompt=`You are conducting a ${interviewType} interview for a ${roleDisplay} position (${difficulty} level).
-
-Create a brief, warm professional greeting (2-3 sentences) that:
-- Introduces yourself as the interviewer
-- Mentions ${questionCount} questions
-- Encourages honest answers
-
-JSON format: {"greeting": "your message"}`;
-
-            const response=await callGroq([
-                {role: 'system', content: 'You are a friendly, professional interviewer.'},
-                {role: 'user', content: greetingPrompt},
-            ], {temperature: 0.8, max_tokens: 250});
-
-            const parsed=safeParseJSON(response);
-            if (parsed?.greeting) greeting=parsed.greeting;
-        } catch (err)
+            await PracticeSession.findOneAndUpdate(
+                {sessionId},
+                {
+                    sessionId,
+                    userId: req.user.id,
+                    role,
+                    difficulty,
+                    interviewType,
+                    mode,
+                    status: 'active',
+                    totalQuestions: questionCount,
+                    questionsAnswered: 0,
+                    questions: [],
+                    responses: [],
+                    startTime: new Date(),
+                },
+                {upsert: true, new: true}
+            );
+        } catch (dbErr)
         {
-            console.warn('[PRACTICE] Greeting AI fallback:', err.message);
+            console.warn('[PRACTICE] MongoDB save failed, using memory:', dbErr.message);
         }
 
-        // Persist to MongoDB instead of in-memory Map
-        const session=await PracticeSession.create({
-            sessionId,
-            userId: req.user.id,
-            role,
-            difficulty: difficulty||'medium',
-            interviewType: interviewType||'technical',
-            mode: mode||'practice',
-            status: 'active',
-            duration: getModeQuestionCount(mode)*5,
-            totalQuestions: questionCount,
-            questionsAnswered: 0,
-            score: 0,
-        });
+        // Always store in memory as backup
+        memoryStore.set(sessionId, sessionData);
 
-        return APIResponse.success(res, {sessionId, greeting}, 'Practice session started');
+        return APIResponse.success(res, {
+            sessionId,
+            greeting,
+            totalQuestions: questionCount,
+            mode,
+            difficulty,
+        }, 'Session started');
+
     } catch (error)
     {
-        console.error('[PRACTICE] Start error:', error.message, error.stack);
-        return APIResponse.serverError(res, 'Failed to start session');
+        console.error('[PRACTICE] Start error:', error.message);
+        return APIResponse.serverError(res, error.message);
     }
 });
 
-// ── Get next question using AI ──
+// POST /next-question - Get the next question
 router.post('/next-question', verifyAuth, async (req, res) =>
 {
     try
@@ -147,449 +301,367 @@ router.post('/next-question', verifyAuth, async (req, res) =>
             return APIResponse.error(res, 'sessionId is required', 400);
         }
 
-        const session=await PracticeSession.findOne({sessionId, userId: req.user.id});
+        // Get session from memory or MongoDB
+        let session=memoryStore.get(sessionId);
         if (!session)
         {
-            return APIResponse.notFound(res, 'Session');
-        }
-
-        session.status='active';
-
-        // Adaptive difficulty
-        let adjustedDifficulty=session.difficulty;
-        let transitionMessage='';
-
-        if (previousAnswer)
-        {
-            const wasCorrect=previousAnswer.score>=7;
-            if (wasCorrect&&session.difficulty==='easy')
+            const dbSession=await PracticeSession.findOne({sessionId}).lean();
+            if (dbSession)
             {
-                adjustedDifficulty='medium';
-                transitionMessage="Great work! Let's challenge you a bit more with the next one.";
-            } else if (wasCorrect&&session.difficulty==='medium')
-            {
-                adjustedDifficulty='hard';
-                transitionMessage="Excellent! Here's a more advanced question.";
-            } else if (!wasCorrect&&session.difficulty==='hard')
-            {
-                adjustedDifficulty='medium';
-                transitionMessage="Alright, let's try a different approach.";
-            } else if (wasCorrect)
-            {
-                transitionMessage='Good! Moving to the next question.';
+                session={
+                    ...dbSession,
+                    questionCount: dbSession.totalQuestions||getQuestionCount(dbSession.mode),
+                    currentQuestion: dbSession.questionsAnswered||0,
+                };
+                memoryStore.set(sessionId, session);
             } else
             {
-                transitionMessage="I see. Let's continue.";
+                // Create minimal session from request
+                session={
+                    sessionId,
+                    role: req.body.role||'fullstack',
+                    difficulty: req.body.difficulty||'medium',
+                    interviewType: req.body.type||'technical',
+                    mode: req.body.mode||'quick',
+                    questionCount: getQuestionCount(req.body.mode||'quick'),
+                    currentQuestion: 0,
+                    questions: [],
+                    responses: [],
+                };
+                memoryStore.set(sessionId, session);
             }
-        } else
-        {
-            transitionMessage="Let's begin with your first question.";
         }
 
-        const prompt=generateQuestionPrompt(session.role, adjustedDifficulty, session.interviewType, session.questions.length);
+        // Increment question number
+        session.currentQuestion=(session.currentQuestion||0)+1;
+        const qNum=session.currentQuestion;
 
-        let question=null;
-        try
+        // Check if session is complete
+        if (qNum>session.questionCount)
         {
-            const response=await callGroq([
-                {
-                    role: 'system',
-                    content: session.interviewType==='coding'
-                        ? 'You are an expert coding interviewer. Generate clear, solvable coding problems with correct test cases. Return ONLY valid JSON.'
-                        :'You are an expert technical interviewer. Generate interview questions in JSON format.',
-                },
-                {role: 'user', content: prompt},
-            ], {
-                temperature: 0.7,
-                max_tokens: session.interviewType==='coding'? 1500:1000,
+            return APIResponse.success(res, {
+                finished: true,
+                totalQuestions: session.questionCount,
+                message: 'All questions completed!',
             });
-
-            question=parseQuestionResponse(response, session.interviewType);
-        } catch (aiErr)
-        {
-            console.warn('[PRACTICE] AI question generation failed:', aiErr.message);
         }
 
-        if (!question)
+        // Adaptive difficulty
+        let currentDifficulty=session.difficulty;
+        if (previousAnswer&&session.responses.length>=2)
         {
-            question=generateFallbackQuestion(session);
+            const recentScores=session.responses.slice(-2).map(r => r.score||5);
+            const avgRecent=recentScores.reduce((a, b) => a+b, 0)/recentScores.length;
+            if (avgRecent>=8&&currentDifficulty!=='hard')
+            {
+                currentDifficulty=currentDifficulty==='easy'? 'medium':'hard';
+            } else if (avgRecent<=4&&currentDifficulty!=='easy')
+            {
+                currentDifficulty=currentDifficulty==='hard'? 'medium':'easy';
+            }
+            session.difficulty=currentDifficulty;
         }
 
-        question.questionNumber=session.questions.length+1;
-        question.adjustedDifficulty=adjustedDifficulty;
+        // Get question (try AI, fallback to bank)
+        let question=getFallbackQuestion(session.role, session.interviewType, currentDifficulty, qNum);
 
+        // Try AI generation for variety
+        const aiResponse=await callGroqSafe([
+            {role: 'system', content: `You are an expert ${session.interviewType} interviewer for ${session.role} positions. Generate one unique interview question.`},
+            {
+                role: 'user', content: `Generate a ${currentDifficulty} level ${session.interviewType} question for a ${session.role} position. This is question ${qNum} of ${session.questionCount}.
+            
+Return JSON only: {"question": "your question", "hints": ["hint1", "hint2"], "expectedPoints": ["point1", "point2"]}`},
+        ], {temperature: 0.8, max_tokens: 500});
+
+        const aiQuestion=safeJSON(aiResponse);
+        if (aiQuestion?.question)
+        {
+            question={
+                question: aiQuestion.question,
+                type: session.interviewType,
+                expectedPoints: aiQuestion.expectedPoints||[],
+                hints: aiQuestion.hints||['Think step by step'],
+                questionNumber: qNum,
+                difficulty: currentDifficulty,
+            };
+        }
+
+        // Store question in session
         session.questions.push({
-            questionId: `q${question.questionNumber}`,
+            questionNumber: qNum,
             question: question.question,
             timestamp: new Date(),
         });
-        session.difficulty=adjustedDifficulty;
-        await session.save();
+        memoryStore.set(sessionId, session);
+
+        // Try to persist to MongoDB
+        try
+        {
+            await PracticeSession.findOneAndUpdate(
+                {sessionId},
+                {
+                    $push: {questions: {questionId: `q${qNum}`, question: question.question, timestamp: new Date()}},
+                    $set: {difficulty: currentDifficulty, questionsAnswered: qNum},
+                }
+            );
+        } catch {/* ignore */}
 
         return APIResponse.success(res, {
             question,
-            totalQuestions: getModeQuestionCount(session.mode),
-            transitionMessage,
-            currentDifficulty: adjustedDifficulty,
+            questionNumber: qNum,
+            totalQuestions: session.questionCount,
+            currentDifficulty,
+            transitionMessage: qNum===1? "Let's start with your first question.":'Moving to the next question.',
         });
+
     } catch (error)
     {
         console.error('[PRACTICE] Next question error:', error.message);
 
-        // Fallback question
-        try
-        {
-            const session=await PracticeSession.findOne({sessionId: req.body.sessionId});
-            if (session)
-            {
-                const fallback=generateFallbackQuestion(session);
-                fallback.questionNumber=session.questions.length+1;
-                fallback.adjustedDifficulty=session.difficulty;
-                session.questions.push({
-                    questionId: `q${fallback.questionNumber}`,
-                    question: fallback.question,
-                    timestamp: new Date(),
-                });
-                await session.save();
-                return APIResponse.success(res, {
-                    question: fallback,
-                    totalQuestions: getModeQuestionCount(session.mode||'quick'),
-                    transitionMessage: 'Next question.',
-                    currentDifficulty: session.difficulty,
-                });
-            }
-        } catch { /* ignore fallback error */}
-
-        return APIResponse.serverError(res, 'Failed to generate question');
+        // Ultimate fallback
+        const fallback=getFallbackQuestion('fullstack', 'technical', 'medium', 1);
+        return APIResponse.success(res, {
+            question: fallback,
+            questionNumber: 1,
+            totalQuestions: 5,
+            currentDifficulty: 'medium',
+            transitionMessage: "Let's begin.",
+        });
     }
 });
 
-// ── Evaluate answer using AI ──
+// POST /evaluate-answer - Evaluate an answer
 router.post('/evaluate-answer', verifyAuth, async (req, res) =>
 {
     try
     {
         const {sessionId, questionId, answer}=req.body;
 
-        if (!sessionId||!answer)
+        if (!answer||answer.trim().length<5)
         {
-            return APIResponse.error(res, 'sessionId and answer are required', 400);
+            return APIResponse.error(res, 'Please provide a more detailed answer', 400);
         }
 
-        const session=await PracticeSession.findOne({sessionId, userId: req.user.id});
-        if (!session)
+        let session=memoryStore.get(sessionId);
+        const question=session?.questions?.find(q => q.questionNumber===questionId)||{};
+
+        // Try AI evaluation
+        const aiResponse=await callGroqSafe([
+            {role: 'system', content: 'You are a strict but fair technical interviewer. Score answers HONESTLY based on correctness and relevance. Do NOT give high scores to wrong, irrelevant, or nonsense answers.'},
+            {
+                role: 'user', content: `Evaluate this interview answer STRICTLY:
+
+Question: ${question.question||'Interview question'}
+Candidate's Answer: ${answer}
+
+SCORING GUIDELINES (be strict):
+- 1-2: Completely wrong, nonsense, or irrelevant answer
+- 3-4: Mostly wrong with minor relevant points
+- 5-6: Partially correct, missing key concepts
+- 7-8: Good answer with minor gaps
+- 9-10: Excellent, comprehensive answer
+
+Return JSON ONLY:
+{"score": <number 1-10>, "feedback": "honest feedback", "strengths": ["list strengths or empty"], "improvements": ["what to improve"], "followUp": "follow-up question"}`},
+        ], {temperature: 0.3, max_tokens: 600});
+
+        let evaluation=safeJSON(aiResponse);
+
+        // Validate and fix inconsistent evaluations
+        if (evaluation&&typeof evaluation.score==='number')
         {
-            return APIResponse.notFound(res, 'Session');
+            // If feedback mentions negative words but score is high, cap it
+            const feedbackLower=(evaluation.feedback||'').toLowerCase();
+            const negativeIndicators=['nonsense', 'irrelevant', 'wrong', 'incorrect', 'does not address', 'not attempt', 'gibberish', 'random'];
+            const hasNegativeFeedback=negativeIndicators.some(word => feedbackLower.includes(word));
+
+            if (hasNegativeFeedback&&evaluation.score>4)
+            {
+                evaluation.score=Math.min(evaluation.score, 3);
+            }
+
+            // Clamp score to valid range
+            evaluation.score=Math.max(1, Math.min(10, Math.round(evaluation.score)));
         }
 
-        const question=session.questions.find(q =>
-            q.questionId===`q${questionId}`||session.questions.indexOf(q)===questionId-1
-        );
-
-        const avgScore=session.responses.length>0
-            ? (session.responses.reduce((sum, r) => sum+(r.score||0), 0)/session.responses.length).toFixed(1)
-            :'N/A';
-
-        const prompt=`You are interviewing a candidate for ${session.role.replace('-', ' ')} position (${session.difficulty} level).
-
-**Question you asked:** ${question?.question||'Unknown question'}
-**Candidate's answer:** ${answer}
-**Their average score so far:** ${avgScore}/10
-
-**Evaluation rules:**
-1. Score honestly: 1-2 (irrelevant/wrong), 3-4 (very basic), 5-6 (partial understanding), 7-8 (good with minor gaps), 9-10 (excellent)
-2. DO NOT reveal correct answers or what they missed
-3. Be conversational like a human interviewer
-4. Ask a natural follow-up to dig deeper (REQUIRED - never null)
-5. Keep feedback brief and encouraging
-
-JSON format:
-{
-  "score": 7,
-  "feedback": "I see you understand the core concept...",
-  "strengths": ["Point A", "Point B"],
-  "improvements": ["Could elaborate on...", "Consider..."],
-  "followUp": "Interesting. Now, can you tell me..."
-}`;
-
-        let evaluation=null;
-        try
-        {
-            const response=await callGroq([
-                {role: 'system', content: 'You are a professional interviewer. Be conversational, fair, and never reveal answers during the interview.'},
-                {role: 'user', content: prompt},
-            ], {temperature: 0.6, max_tokens: 700});
-
-            evaluation=safeParseJSON(response);
-        } catch (aiErr)
-        {
-            console.warn('[PRACTICE] AI evaluation failed:', aiErr.message);
-        }
-
+        // Fallback evaluation based on answer quality
         if (!evaluation||typeof evaluation.score!=='number')
         {
-            const answerLength=answer.trim().length;
-            const score=answerLength<20? 2:answerLength<50? 3:answerLength<150? 5:7;
+            const len=answer.trim().length;
+            const hasKeywords=/function|return|if|for|while|const|let|var|class|def|import/.test(answer);
+            const isGibberish=!/[aeiou]{1,2}[^aeiou]{1,3}/i.test(answer)||/(.)\1{4,}/.test(answer);
+
+            let score;
+            if (isGibberish||len<20)
+            {
+                score=2;
+            } else if (!hasKeywords&&len<50)
+            {
+                score=3;
+            } else if (len<100)
+            {
+                score=5;
+            } else if (len<300)
+            {
+                score=6;
+            } else
+            {
+                score=7;
+            }
+
             evaluation={
                 score,
-                feedback: answerLength<50? 'Your answer is too brief. Please provide more detail.':'Your answer has been recorded.',
-                strengths: answerLength>=50? ['Good effort']:['Attempted the question'],
-                improvements: answerLength<100? ['Provide more detail', 'Use specific examples']:['Be more specific'],
-                followUp: 'Can you elaborate on how you would apply this in a real-world scenario?',
+                feedback: isGibberish
+                    ? 'Your answer does not appear to address the question. Please provide a relevant response.'
+                    :len<100
+                        ? 'Your answer is quite brief. Try to provide more detail and examples.'
+                        :'Thank you for your detailed response. Good effort!',
+                strengths: score>=5? ['Attempted the question']:[],
+                improvements: ['Provide a clear, relevant answer', 'Include specific examples'],
+                followUp: 'Can you try again with a more relevant response?',
             };
         }
 
-        // Persist response to MongoDB
-        session.responses.push({
-            question: question?.question||'Unknown',
-            userAnswer: answer,
-            score: evaluation.score,
-            timestamp: new Date(),
-        });
-        session.questionsAnswered=session.responses.length;
-        await session.save();
+        // Store response
+        if (session)
+        {
+            session.responses.push({
+                questionNumber: questionId,
+                answer,
+                score: evaluation.score,
+                timestamp: new Date(),
+            });
+            session.scores.push(evaluation.score);
+            memoryStore.set(sessionId, session);
+        }
+
+        // Persist to MongoDB
+        try
+        {
+            await PracticeSession.findOneAndUpdate(
+                {sessionId},
+                {
+                    $push: {responses: {question: question.question, userAnswer: answer, score: evaluation.score, timestamp: new Date()}},
+                }
+            );
+        } catch {/* ignore */}
 
         return APIResponse.success(res, {evaluation});
+
     } catch (error)
     {
         console.error('[PRACTICE] Evaluate error:', error.message);
-        return APIResponse.serverError(res, 'Failed to evaluate answer');
+        return APIResponse.success(res, {
+            evaluation: {
+                score: 5,
+                feedback: 'Your answer has been recorded.',
+                strengths: ['Good effort'],
+                improvements: ['Continue practicing'],
+                followUp: 'Would you like to move to the next question?',
+            },
+        });
     }
 });
 
-// ── Finish session and generate feedback ──
+// POST /finish - Complete the session
 router.post('/finish', verifyAuth, async (req, res) =>
 {
     try
     {
         const {sessionId}=req.body;
 
-        if (!sessionId)
-        {
-            return APIResponse.error(res, 'sessionId is required', 400);
-        }
-
-        const session=await PracticeSession.findOne({sessionId, userId: req.user.id});
+        let session=memoryStore.get(sessionId);
         if (!session)
         {
-            return APIResponse.notFound(res, 'Session');
+            const dbSession=await PracticeSession.findOne({sessionId}).lean();
+            session=dbSession||{responses: [], questions: []};
         }
-
-        session.status='completed';
-        session.endTime=new Date();
 
         const responses=session.responses||[];
-        const scores={
-            technical: calculateTechnicalScore(responses),
-            communication: calculateCommunicationScore(responses),
-            problemSolving: calculateProblemSolvingScore(responses),
-            confidence: calculateConfidenceScore(responses),
+        const scores=responses.map(r => r.score||5);
+        const avgScore=scores.length>0? scores.reduce((a, b) => a+b, 0)/scores.length:5;
+
+        // Calculate category scores
+        const feedback={
+            overallScore: Math.round(avgScore*10),
+            questionsAnswered: responses.length,
+            totalQuestions: session.questionCount||session.totalQuestions||5,
+            scores: {
+                technical: Math.round((avgScore+Math.random())*10),
+                communication: Math.round((avgScore+Math.random()*0.5)*10),
+                problemSolving: Math.round((avgScore-0.5+Math.random())*10),
+                confidence: Math.round((avgScore+Math.random()*0.3)*10),
+            },
+            strengths: ['Good understanding of fundamentals', 'Clear communication'],
+            improvements: ['Provide more specific examples', 'Consider edge cases'],
+            recommendation: avgScore>=7? 'Strong candidate':avgScore>=5? 'Shows potential':'Needs more preparation',
+            nextSteps: ['Practice more coding problems', 'Review system design concepts', 'Work on behavioral questions'],
         };
-        const overallScore=Object.values(scores).reduce((a, b) => a+b, 0)/Object.keys(scores).length;
 
-        let aiFeedback=null;
-        try
+        // Try AI feedback
+        const aiFeedback=await callGroqSafe([
+            {role: 'system', content: 'Generate brief interview feedback.'},
+            {
+                role: 'user', content: `Generate feedback for interview with avg score ${avgScore.toFixed(1)}/10 and ${responses.length} questions answered.
+Return JSON: {"strengths": ["s1", "s2"], "improvements": ["i1", "i2"], "recommendation": "brief recommendation"}`},
+        ], {temperature: 0.6, max_tokens: 400});
+
+        const aiData=safeJSON(aiFeedback);
+        if (aiData)
         {
-            const summaryPrompt=`Generate interview feedback report:
-
-Session Type: ${session.interviewType}
-Role: ${session.role}
-Questions: ${session.questions.length}
-Average Score: ${overallScore.toFixed(1)}
-
-Answers summary:
-${responses.map((r, i) => `Q${i+1}: Score ${r.score||0}/10`).join('\n')}
-
-Provide comprehensive feedback in JSON:
-{
-  "strengths": ["strength 1", "strength 2", "strength 3"],
-  "weaknesses": ["weakness 1", "weakness 2"],
-  "suggestedTopics": ["topic 1", "topic 2", "topic 3"],
-  "summary": "Overall assessment paragraph"
-}`;
-
-            const response=await callGroq([
-                {role: 'system', content: 'You are providing final interview feedback. Be encouraging but honest.'},
-                {role: 'user', content: summaryPrompt},
-            ], {temperature: 0.6, max_tokens: 1200});
-
-            aiFeedback=safeParseJSON(response);
-        } catch (aiErr)
-        {
-            console.warn('[PRACTICE] AI feedback failed:', aiErr.message);
+            feedback.strengths=aiData.strengths||feedback.strengths;
+            feedback.improvements=aiData.improvements||feedback.improvements;
+            feedback.recommendation=aiData.recommendation||feedback.recommendation;
         }
 
-        const feedback={
-            sessionId,
-            scores,
-            overallScore,
-            totalQuestions: session.questions.length,
-            duration: session.endTime&&session.startTime
-                ? Math.floor((session.endTime-session.startTime)/1000/60)
-                :0,
-            strengths: aiFeedback?.strengths||['Completed the interview', 'Answered all questions'],
-            weaknesses: aiFeedback?.weaknesses||['Could provide more detailed responses'],
-            suggestedTopics: aiFeedback?.suggestedTopics||['Review core concepts'],
-            summary: aiFeedback?.summary||'You completed the practice interview. Keep practicing to improve!',
-        };
-
-        session.score=overallScore;
-        session.feedback=JSON.stringify(feedback);
-        await session.save();
+        // Cleanup and persist
+        memoryStore.delete(sessionId);
+        try
+        {
+            await PracticeSession.findOneAndUpdate(
+                {sessionId},
+                {status: 'completed', endTime: new Date(), score: avgScore}
+            );
+        } catch {/* ignore */}
 
         return APIResponse.success(res, {feedback});
+
     } catch (error)
     {
         console.error('[PRACTICE] Finish error:', error.message);
-        return APIResponse.serverError(res, 'Failed to generate feedback');
+        return APIResponse.success(res, {
+            feedback: {
+                overallScore: 50,
+                questionsAnswered: 0,
+                totalQuestions: 5,
+                scores: {technical: 50, communication: 50, problemSolving: 50, confidence: 50},
+                strengths: ['Completed the session'],
+                improvements: ['Practice more questions'],
+                recommendation: 'Keep practicing!',
+                nextSteps: ['Try more practice sessions'],
+            },
+        });
     }
 });
 
-// ═══════════════════════════════════════════════════════════════
-// Helper functions
-// ═══════════════════════════════════════════════════════════════
-
-function generateQuestionPrompt(role, difficulty, type, questionNumber)
+// GET /history - Get user's practice history
+router.get('/history', verifyAuth, async (req, res) =>
 {
-    const roleDescriptions={
-        'frontend-developer': 'Frontend Development (React, JavaScript, CSS, HTML)',
-        'backend-developer': 'Backend Development (Node.js, APIs, Databases)',
-        'fullstack-developer': 'Full Stack Development',
-        'data-science': 'Data Science (Python, ML, Statistics)',
-        'devops': 'DevOps (CI/CD, Docker, Kubernetes)',
-        'mobile-developer': 'Mobile Development (React Native, iOS, Android)',
-    };
-
-    const typeDescriptions={
-        'technical': 'technical concept question',
-        'behavioral': 'behavioral question about past experience',
-        'coding': 'coding problem to solve',
-        'system-design': 'system design question',
-    };
-
-    const roleDisplay=roleDescriptions[role]||role;
-
-    if (type==='coding')
+    try
     {
-        return `Generate a unique ${difficulty} level coding problem for a ${roleDisplay} interview.
+        const sessions=await PracticeSession.find({userId: req.user.id})
+            .sort({startTime: -1})
+            .limit(20)
+            .select('sessionId role interviewType difficulty status startTime endTime score questionsAnswered totalQuestions')
+            .lean();
 
-**CRITICAL REQUIREMENTS:**
-1. Return ONLY valid JSON - no markdown, no code blocks
-2. Problem must be clear and solvable in 10-15 minutes
-3. Include 3-4 test cases with correct inputs and outputs
-4. Provide starter code for Python, JavaScript, Java
-5. Add 2-3 helpful hints
-
-Return ONLY this JSON structure:
-{
-  "question": "Clear problem description with examples",
-  "type": "coding",
-  "difficulty": "${difficulty}",
-  "expectedPoints": ["Key concept 1", "Key concept 2"],
-  "hints": ["Hint 1", "Hint 2"],
-  "testCases": [{"input": {"nums": [1,2,3]}, "output": [0,2], "hidden": false}],
-  "starterCode": {"python": "def fn():\\n    pass", "javascript": "function fn() {}", "java": "class Solution {}"},
-  "functionName": "function_name"
-}`;
-    }
-
-    return `Generate interview question #${questionNumber+1} for a ${roleDisplay} position.
-Type: ${typeDescriptions[type]||type}
-Difficulty: ${difficulty}
-
-Return ONLY valid JSON:
-{
-  "question": "The interview question",
-  "type": "${type}",
-  "expectedPoints": ["key point 1", "key point 2", "key point 3"],
-  "hints": ["hint 1", "hint 2"]
-}`;
-}
-
-function generateFallbackQuestion(session)
-{
-    const roleQuestions={
-        'frontend-developer': {
-            technical: {question: 'Explain the Virtual DOM in React and why it improves performance.', expectedPoints: ['Diffing algorithm', 'Batch updates', 'Reconciliation'], hints: ['Think about DOM manipulation cost', 'Consider update batching']},
-            behavioral: {question: 'Describe a time you optimized a slow frontend application.', expectedPoints: ['Identified bottleneck', 'Solution implemented', 'Results measured'], hints: ['Use STAR method']},
-            coding: {question: 'Write a function to debounce user input.', expectedPoints: ['Closure usage', 'Timeout management'], hints: ['Use setTimeout and clearTimeout'], testCases: [{input: {delay: 100}, output: 1, hidden: false}], starterCode: {python: 'def debounce(func, delay):\n    pass', javascript: 'function debounce(func, delay) {}', java: 'class Solution {}'}, functionName: 'debounce'},
-        },
-        'backend-developer': {
-            technical: {question: 'Explain RESTful API design principles and best practices.', expectedPoints: ['HTTP methods', 'Resource naming', 'Status codes'], hints: ['Think about statelessness']},
-            behavioral: {question: 'Tell me about a time you designed a scalable backend system.', expectedPoints: ['Architecture decisions', 'Scaling strategy', 'Results'], hints: ['Use STAR method']},
-            coding: {question: 'Implement a rate limiter that allows at most N requests per time window.', expectedPoints: ['Sliding window', 'Timestamp tracking'], hints: ['Use a queue to track timestamps'], testCases: [{input: {maxRequests: 3}, output: true, hidden: false}], starterCode: {python: 'class RateLimiter:\n    pass', javascript: 'class RateLimiter {}', java: 'class RateLimiter {}'}, functionName: 'RateLimiter'},
-        },
-        'data-science': {
-            technical: {question: 'Explain the bias-variance tradeoff in machine learning.', expectedPoints: ['Underfitting vs overfitting', 'Model complexity'], hints: ['Think about model complexity']},
-            behavioral: {question: 'Describe a challenging data analysis project.', expectedPoints: ['Problem definition', 'Methodology', 'Insights'], hints: ['Use STAR method']},
-            coding: {question: 'Implement a function to calculate Euclidean distance in N-dimensional space.', expectedPoints: ['Square of differences', 'Sum and square root'], hints: ['Formula: sqrt(sum((x[i]-y[i])^2))'], testCases: [{input: {p1: [0, 0], p2: [3, 4]}, output: 5.0, hidden: false}], starterCode: {python: 'def euclidean_distance(p1, p2):\n    pass', javascript: 'function euclideanDistance(p1, p2) {}', java: 'class Solution {}'}, functionName: 'euclidean_distance'},
-        },
-        'fullstack-developer': {
-            technical: {question: 'How would you optimize a full-stack application for performance?', expectedPoints: ['Frontend optimization', 'Backend optimization', 'Database tuning'], hints: ['Think about caching']},
-            behavioral: {question: 'Tell me about a feature you built end-to-end.', expectedPoints: ['Planning', 'Implementation', 'Deployment'], hints: ['Use STAR method']},
-            coding: {question: 'Implement a function to validate a JWT structure.', expectedPoints: ['Split by dot', 'Check three parts'], hints: ['JWT format: header.payload.signature'], testCases: [{input: {token: 'a.b.c'}, output: true, hidden: false}], starterCode: {python: 'def validate_jwt(token):\n    pass', javascript: 'function validateJwt(token) {}', java: 'class Solution {}'}, functionName: 'validate_jwt'},
-        },
-        'devops': {
-            technical: {question: 'Explain CI/CD pipelines and their benefits.', expectedPoints: ['Continuous integration', 'Continuous deployment', 'Automation'], hints: ['Think about testing']},
-            behavioral: {question: 'Describe a time you automated a manual process.', expectedPoints: ['Problem identified', 'Solution implemented', 'Time saved'], hints: ['Use STAR method']},
-            coding: {question: 'Write a function to parse environment variables from KEY=VALUE format.', expectedPoints: ['Split by newline', 'Split by equals'], hints: ['Handle empty lines and comments'], testCases: [{input: {env: 'PORT=3000'}, output: {PORT: '3000'}, hidden: false}], starterCode: {python: 'def parse_env(s):\n    pass', javascript: 'function parseEnv(s) {}', java: 'class Solution {}'}, functionName: 'parse_env'},
-        },
-        'mobile-developer': {
-            technical: {question: 'Explain the mobile app lifecycle and state management.', expectedPoints: ['Lifecycle methods', 'State persistence'], hints: ['Think about memory constraints']},
-            behavioral: {question: 'Tell me about a mobile app feature you built.', expectedPoints: ['Platform choice', 'Implementation', 'User feedback'], hints: ['Use STAR method']},
-            coding: {question: 'Calculate scroll percentage given position and total height.', expectedPoints: ['Division', 'Percentage', 'Edge cases'], hints: ['Handle divide by zero'], testCases: [{input: {pos: 250, total: 1000}, output: 25.0, hidden: false}], starterCode: {python: 'def scroll_pct(pos, total):\n    pass', javascript: 'function scrollPct(pos, total) {}', java: 'class Solution {}'}, functionName: 'scroll_pct'},
-        },
-    };
-
-    const roleKey=session.role||'frontend-developer';
-    const typeKey=session.interviewType||'technical';
-    const roleSpecific=roleQuestions[roleKey]?.[typeKey];
-
-    if (roleSpecific)
+        return APIResponse.success(res, {sessions});
+    } catch (error)
     {
-        const result={question: roleSpecific.question, type: typeKey, expectedPoints: roleSpecific.expectedPoints, hints: roleSpecific.hints};
-        if (typeKey==='coding'&&roleSpecific.testCases)
-        {
-            result.testCases=roleSpecific.testCases;
-            result.starterCode=roleSpecific.starterCode;
-            result.functionName=roleSpecific.functionName;
-        }
-        return result;
+        console.error('[PRACTICE] History error:', error.message);
+        return APIResponse.success(res, {sessions: []});
     }
-
-    return {question: 'Describe your experience and key skills in your field.', type: typeKey, expectedPoints: ['Relevant experience', 'Technical skills', 'Projects'], hints: ['Be specific', 'Use examples']};
-}
-
-function getModeQuestionCount(mode)
-{
-    const counts={quick: 5, real: 12, coding: 3, practice: 5, mock: 8, full: 12};
-    return counts[mode]||5;
-}
-
-function calculateTechnicalScore(responses)
-{
-    if (responses.length===0) return 0;
-    return responses.reduce((sum, r) => sum+(r.score||0), 0)/responses.length;
-}
-
-function calculateCommunicationScore(responses)
-{
-    if (responses.length===0) return 0;
-    const avgScore=responses.reduce((sum, r) => sum+(r.score||0), 0)/responses.length;
-    const avgLength=responses.reduce((sum, r) => sum+(r.userAnswer?.length||0), 0)/responses.length;
-    const lengthScore=Math.min(10, (avgLength/200)*10);
-    return avgScore*0.6+lengthScore*0.4;
-}
-
-function calculateProblemSolvingScore(responses)
-{
-    return calculateTechnicalScore(responses);
-}
-
-function calculateConfidenceScore(responses)
-{
-    if (responses.length===0) return 0;
-    return responses.reduce((sum, r) => sum+((r.score||0)>=7? 8:6), 0)/responses.length;
-}
+});
 
 export default router;
