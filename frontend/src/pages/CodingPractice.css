@@ -7,7 +7,8 @@
   height: calc(100vh - 70px);
   background: #0d1117;
   color: #e6edf3;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   overflow: hidden;
 }
 
@@ -17,8 +18,11 @@
   border-right: 1px solid #21262d;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  transition: width 0.25s ease, min-width 0.25s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition:
+    width 0.25s ease,
+    min-width 0.25s ease;
 }
 
 .cp-ide-sidebar.collapsed {
@@ -65,7 +69,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s, background 0.2s;
+  transition:
+    color 0.2s,
+    background 0.2s;
   flex-shrink: 0;
 }
 
@@ -200,7 +206,7 @@
   border: 1px solid #21262d;
   border-radius: 6px;
   padding: 0.85rem 1rem;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 0.82rem;
   color: #c9d1d9;
   line-height: 1.7;
@@ -328,7 +334,9 @@
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition:
+    background 0.2s,
+    transform 0.1s;
 }
 
 .cp-ide-run-btn:hover:not(:disabled) {
@@ -353,7 +361,10 @@
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+  transition:
+    opacity 0.2s,
+    transform 0.1s,
+    box-shadow 0.2s;
 }
 
 .cp-ide-submit-btn:hover:not(:disabled) {
@@ -424,7 +435,9 @@
   font-size: 0.78rem;
   font-weight: 500;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
   margin-bottom: -1px;
 }
 
@@ -482,7 +495,9 @@
   border-radius: 4px;
   display: flex;
   align-items: center;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .cp-ide-expand-btn:hover {
@@ -504,7 +519,7 @@
 
 .cp-ide-output-content pre {
   margin: 0;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 0.82rem;
   color: #c9d1d9;
   line-height: 1.55;
@@ -546,7 +561,9 @@
 }
 
 @keyframes cp-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ── Test results ── */
@@ -632,7 +649,7 @@
 }
 
 .cp-ide-test-detail code {
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 0.78rem;
   color: #c9d1d9;
   background: #161b22;
@@ -689,9 +706,10 @@
   }
 
   .cp-ide-sidebar {
-    max-height: 120px;
+    max-height: 45vh;
     border-right: none;
     border-bottom: 1px solid #21262d;
+    overflow-y: auto;
   }
 
   .cp-ide-questions {
@@ -728,19 +746,25 @@
 .cp-ai-gen-btn {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.4rem 0.7rem;
-  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 50%, #6d28d9 100%);
   color: #fff;
   border: none;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.35);
+  letter-spacing: 0.02em;
 }
-.cp-ai-gen-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.cp-ai-gen-btn:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: 0 0 18px rgba(139, 92, 246, 0.55);
+}
 
 .cp-filter-select {
   flex: 1;
@@ -752,7 +776,10 @@
   font-size: 0.75rem;
   cursor: pointer;
 }
-.cp-filter-select:focus { outline: none; border-color: #58a6ff; }
+.cp-filter-select:focus {
+  outline: none;
+  border-color: #58a6ff;
+}
 
 /* ── AI Panel ── */
 .cp-ai-panel {
@@ -762,8 +789,14 @@
   animation: cpSlideDown 0.2s ease;
 }
 @keyframes cpSlideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .cp-ai-panel h4 {
@@ -791,7 +824,9 @@
   transition: all 0.2s;
   background: transparent;
 }
-.cp-ai-diff-btn:hover { opacity: 0.85; }
+.cp-ai-diff-btn:hover {
+  opacity: 0.85;
+}
 
 .cp-ai-topics {
   display: flex;
@@ -809,7 +844,10 @@
   cursor: pointer;
   transition: all 0.15s;
 }
-.cp-ai-topic-btn:hover { border-color: #58a6ff; color: #c9d1d9; }
+.cp-ai-topic-btn:hover {
+  border-color: #58a6ff;
+  color: #c9d1d9;
+}
 .cp-ai-topic-btn.active {
   background: #1f3a5f;
   border-color: #58a6ff;
@@ -832,16 +870,29 @@
   gap: 0.4rem;
   transition: opacity 0.2s;
 }
-.cp-ai-generate-btn:hover:not(:disabled) { opacity: 0.9; }
-.cp-ai-generate-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.cp-ai-generate-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.cp-ai-generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 @keyframes cpSpinAnim {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
-.cp-spin { animation: cpSpinAnim 1s linear infinite; }
+.cp-spin {
+  animation: cpSpinAnim 1s linear infinite;
+}
 
 /* ── AI Icon marker ── */
-.cp-ai-icon { color: #c9a0ff; margin-right: 0.25rem; flex-shrink: 0; }
+.cp-ai-icon {
+  color: #c9a0ff;
+  margin-right: 0.25rem;
+  flex-shrink: 0;
+}
 
 /* ── No Questions state ── */
 .cp-no-questions {
@@ -849,7 +900,10 @@
   text-align: center;
   color: #8b949e;
 }
-.cp-no-questions p { margin: 0 0 0.8rem 0; font-size: 0.82rem; }
+.cp-no-questions p {
+  margin: 0 0 0.8rem 0;
+  font-size: 0.82rem;
+}
 .cp-no-questions button {
   padding: 0.45rem 0.9rem;
   background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
@@ -874,8 +928,15 @@
   gap: 0.8rem;
   text-align: center;
 }
-.cp-ide-empty h2 { margin: 0; font-size: 1.3rem; color: #c9d1d9; }
-.cp-ide-empty p { margin: 0; font-size: 0.88rem; }
+.cp-ide-empty h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #c9d1d9;
+}
+.cp-ide-empty p {
+  margin: 0;
+  font-size: 0.88rem;
+}
 
 .cp-ai-gen-btn-big {
   margin-top: 0.5rem;
@@ -890,9 +951,14 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  transition: transform 0.2s, opacity 0.2s;
+  transition:
+    transform 0.2s,
+    opacity 0.2s;
 }
-.cp-ai-gen-btn-big:hover { transform: translateY(-2px); opacity: 0.9; }
+.cp-ai-gen-btn-big:hover {
+  transform: translateY(-2px);
+  opacity: 0.9;
+}
 
 /* ── Tags ── */
 .cp-ide-tags {
@@ -925,7 +991,9 @@
   font-size: 0.78rem;
   color: #8b949e;
 }
-.cp-ide-constraints li { margin-bottom: 0.15rem; }
+.cp-ide-constraints li {
+  margin-bottom: 0.15rem;
+}
 
 /* ── Test case info ── */
 .cp-ide-tc-info {
@@ -956,8 +1024,14 @@
   margin-bottom: 0.5rem;
   transition: all 0.2s;
 }
-.cp-hint-btn:hover:not(:disabled) { border-color: #f0c040; background: #262c36; }
-.cp-hint-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.cp-hint-btn:hover:not(:disabled) {
+  border-color: #f0c040;
+  background: #262c36;
+}
+.cp-hint-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .cp-hint-box {
   padding: 0.6rem 0.8rem;
@@ -1033,10 +1107,122 @@
   height: 22px;
   border-radius: 4px;
 }
-.cp-hidden-dot.pass { color: #22c55e; background: rgba(34, 197, 94, 0.1); }
-.cp-hidden-dot.fail { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+.cp-hidden-dot.pass {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+}
+.cp-hidden-dot.fail {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
 .cp-hidden-count {
   font-size: 0.72rem;
   color: #8b949e;
   margin-left: 0.4rem;
+}
+
+/* ── Visible Test Cases Display (Problem Area) ── */
+.cp-ide-testcases {
+  margin: 0.8rem 0;
+  border: 1px solid #21262d;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.cp-ide-testcases h4 {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  color: #e6edf3;
+  background: #161b22;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-bottom: 1px solid #21262d;
+}
+.cp-ide-tc-box {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #21262d;
+}
+.cp-ide-tc-box:last-of-type {
+  border-bottom: none;
+}
+.cp-ide-tc-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #8b949e;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.cp-ide-tc-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  margin-bottom: 0.15rem;
+}
+.cp-ide-tc-row code {
+  background: #0d1117;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.76rem;
+  color: #79c0ff;
+  word-break: break-all;
+}
+.cp-ide-tc-hidden-note {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.73rem;
+  color: #8b949e;
+  background: #161b22;
+  font-style: italic;
+}
+
+/* ── Active AI button state ── */
+.cp-ai-gen-btn.active {
+  background: linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
+}
+
+/* ── Toolbar AI Generate button ── */
+.cp-toolbar-ai-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.85rem;
+  background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 50%, #6d28d9 100%);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+}
+.cp-toolbar-ai-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.5);
+  opacity: 0.95;
+}
+
+/* ── Retry button ── */
+.cp-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  background: #21262d;
+  color: #c9d1d9;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  margin-top: 0.4rem;
+}
+.cp-retry-btn:hover {
+  border-color: #58a6ff;
+  color: #58a6ff;
 }
