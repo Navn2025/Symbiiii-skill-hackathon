@@ -91,7 +91,8 @@ function PracticeInterviewRoom()
             if (!response.ok)
             {
                 const err=await response.json().catch(() => ({}));
-                throw new Error(err.error||`Server error ${response.status}`);
+                console.error('Practice start error details:', err, 'Status:', response.status);
+                throw new Error(err.error||err.message||`Server error ${response.status}`);
             }
             const data=await response.json();
             const payload=data.data||data;
