@@ -77,6 +77,15 @@ function VideoPanel({interviewId, userName, role, videoRef, onVideoReady, second
         };
     }, []);
 
+    // Attach remote stream to remoteVideoRef after React renders the <video>
+    useEffect(() =>
+    {
+        if (remoteVideoRef.current&&remoteStream)
+        {
+            remoteVideoRef.current.srcObject=remoteStream;
+        }
+    }, [remoteStream]);
+
     // Attach screen stream to screenVideoRef once it renders
     useEffect(() =>
     {

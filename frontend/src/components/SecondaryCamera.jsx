@@ -3,6 +3,9 @@ import socketService from '../services/socket';
 import {Smartphone as PhoneIcon, AlertCircle as AlertIcon, Clipboard as ClipboardIcon, Check as CheckIcon} from 'lucide-react';
 import './SecondaryCamera.css';
 
+// Module-level cache: survives component remounts so QR code stays valid
+const connectionCodeCache=new Map();
+
 function SecondaryCamera({interviewId, userName, isPhone=false})
 {
     const [stream, setStream]=useState(null);
@@ -19,6 +22,8 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
     const snapshotIntervalRef=useRef(null);
     // Track reconnect cleanup
     const reconnectCleanupRef=useRef(null);
+    // Ref to store the connection code for re-registration on reconnect
+    const connectionCodeRef=useRef('');
 
     useEffect(() =>
     {
@@ -138,34 +143,6 @@ function SecondaryCamera({interviewId, userName, isPhone=false})
             if (reconnectCleanupRef.current) reconnectCleanupRef.current();
         };
     }, [interviewId]);
-
-    // Ref to store the connection code for re-registration on reconnect
-    const connectionCodeRef=useRef('');
-
-    const generateConnectionCode=() =>
-    {
-        // Use crypto for unpredictable connection codes
-        const randomPart=crypto.randomUUID? crypto.randomUUID():
-            `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-        const code=`${interviewId}-${randomPart}`;
-        setConnectionCode(code);
-        connectionCodeRef.current=code;
-
-        // Store in socket for pairing
-        socketService.registerSecondaryCamera(interviewId, code);
-
-        // Re-register on socket reconnect so the server has the current socket ID
-        const socket=socketService.getSocket()||socketService.connect();
-        const handleReconnect=() =>
-        {
-            console.log('[SecondaryCamera] Desktop socket reconnected, re-registering code...');
-            socketService.registerSecondaryCamera(interviewId, connectionCodeRef.current);
-        };
-        socket.on('reconnect', handleReconnect);
-
-        // Store cleanup for reconnect handler
-        reconnectCleanupRef.current=() => socket.off('reconnect', handleReconnect);
-    };
 
     const startPhoneCamera=async () =>
     {
