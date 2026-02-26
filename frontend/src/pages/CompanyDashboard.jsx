@@ -7,7 +7,7 @@ import
   Calendar, Clock, MapPin, Building2, CheckCircle2, XCircle,
   Timer, PlayCircle, Settings, Award, Target, Filter,
   ArrowUpRight, PieChart, Activity, Percent, Trophy,
-  Bot, Loader, Check, X, Sparkles, RefreshCw, Trash2
+  Bot, Loader, Check, X, Sparkles, RefreshCw, Trash2, Terminal, Code
 } from 'lucide-react';
 import api, {createInterview, scheduleInterview, getJobInterviews} from '../services/api';
 import './CompanyDashboard.css';
@@ -17,6 +17,7 @@ const TABS=[
   {key: 'jobs', label: 'Job Postings', icon: <Briefcase size={16} />},
   {key: 'candidates', label: 'Candidates', icon: <Users size={16} />},
   {key: 'quiz', label: 'Live Quiz', icon: <Zap size={16} />},
+  {key: 'contest', label: 'Coding Contest', icon: <Terminal size={16} />},
   {key: 'interviews', label: 'Interviews', icon: <Video size={16} />},
   {key: 'reports', label: 'Analytics', icon: <PieChart size={16} />},
 ];
@@ -50,6 +51,17 @@ function CompanyDashboard()
   const [copiedLink, setCopiedLink]=useState(null);
   const [jobWiseCandidates, setJobWiseCandidates]=useState({});
   const [loadingAllCandidates, setLoadingAllCandidates]=useState(false);
+  // Contest state
+  const [contests, setContests]=useState([]);
+  const [loadingContests, setLoadingContests]=useState(false);
+  const [showCreateContest, setShowCreateContest]=useState(false);
+  const [contestForm, setContestForm]=useState({title: '', topic: '', description: '', difficulty: 'medium', duration: 60, challengeCount: 3});
+  const [creatingContest, setCreatingContest]=useState(false);
+  const [contestWizardStep, setContestWizardStep]=useState(1);
+  const [generatingContestAI, setGeneratingContestAI]=useState(false);
+  const [generatedChallenges, setGeneratedChallenges]=useState([]);
+  const [contestError, setContestError]=useState('');
+  const [createdContestId, setCreatedContestId]=useState(null);
 
   const fetchCompanyQuizzes=async () =>
   {
@@ -57,14 +69,15 @@ function CompanyDashboard()
     try
     {
       const res=await fetch(`${import.meta.env.VITE_API_URL||'http://localhost:5000'}/api/quiz/my-quizzes`, {credentials: 'include'});
-      if (res.ok) { const data=await res.json(); setQuizzes(data.quizzes||[]); }
-    } catch (e) { console.error('Fetch quizzes error:', e); }
-    finally { setLoadingQuizzes(false); }
+      if (res.ok) {const data=await res.json(); setQuizzes(data.quizzes||[]);}
+    } catch (e) {console.error('Fetch quizzes error:', e);}
+    finally {setLoadingQuizzes(false);}
   };
 
   const API_URL=import.meta.env.VITE_API_URL||'http://localhost:5000';
 
-  const resetQuizWizard=() => {
+  const resetQuizWizard=() =>
+  {
     setShowCreateQuiz(false);
     setWizardStep(1);
     setQuizForm({title: '', topic: '', description: '', difficulty: 'medium', questionTimeLimit: 20, questionCount: 5});
@@ -88,13 +101,13 @@ function CompanyDashboard()
         body: JSON.stringify(quizForm),
       });
       const data=await res.json();
-      if (res.ok && data.success)
+      if (res.ok&&data.success)
       {
         setCreatedQuizId(data.quiz.id);
         setWizardStep(2);
-      } else { setQuizError(data.error||'Failed to create quiz. Check your connection.'); }
-    } catch (e) { setQuizError('Network error — is the backend running?'); }
-    finally { setCreatingQuiz(false); }
+      } else {setQuizError(data.error||'Failed to create quiz. Check your connection.');}
+    } catch (e) {setQuizError('Network error — is the backend running?');}
+    finally {setCreatingQuiz(false);}
   };
 
   // Step 2: Generate questions with AI
@@ -115,13 +128,13 @@ function CompanyDashboard()
         }),
       });
       const data=await res.json();
-      if (res.ok && data.success)
+      if (res.ok&&data.success)
       {
         setGeneratedQuestions(prev => [...prev, ...data.questions]);
         setWizardStep(3);
-      } else { setQuizError(data.error||'AI generation failed. Try again.'); }
-    } catch (e) { setQuizError('Network error calling AI.'); }
-    finally { setGeneratingAI(false); }
+      } else {setQuizError(data.error||'AI generation failed. Try again.');}
+    } catch (e) {setQuizError('Network error calling AI.');}
+    finally {setGeneratingAI(false);}
   };
 
   // Step 3 → Finish: Save questions to quiz and optionally publish
@@ -137,7 +150,7 @@ function CompanyDashboard()
         method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include',
         body: JSON.stringify({questions: generatedQuestions, replace: true}),
       });
-      if (!addRes.ok) { const e=await addRes.json().catch(() => ({})); setQuizError(e.error||'Failed to save questions'); return; }
+      if (!addRes.ok) {const e=await addRes.json().catch(() => ({})); setQuizError(e.error||'Failed to save questions'); return;}
 
       // Optionally publish
       if (publish)
@@ -145,20 +158,123 @@ function CompanyDashboard()
         const pubRes=await fetch(`${API_URL}/api/quiz/${createdQuizId}/publish`, {
           method: 'POST', credentials: 'include',
         });
-        if (!pubRes.ok) { const e=await pubRes.json().catch(() => ({})); setQuizError(e.error||'Failed to publish'); return; }
+        if (!pubRes.ok) {const e=await pubRes.json().catch(() => ({})); setQuizError(e.error||'Failed to publish'); return;}
       }
 
       resetQuizWizard();
       fetchCompanyQuizzes();
       if (publish) navigate(`/quiz/host/${createdQuizId}`);
-    } catch (e) { setQuizError('Network error'); }
-    finally { setCreatingQuiz(false); }
+    } catch (e) {setQuizError('Network error');}
+    finally {setCreatingQuiz(false);}
   };
 
   const removeQuestion=(idx) => setGeneratedQuestions(prev => prev.filter((_, i) => i!==idx));
 
   // Fetch quizzes when tab switches to quiz
-  useEffect(() => { if (activeTab==='quiz') fetchCompanyQuizzes(); }, [activeTab]);
+  useEffect(() => {if (activeTab==='quiz') fetchCompanyQuizzes();}, [activeTab]);
+
+  // ═══ Contest Functions ═══
+  const fetchCompanyContests=async () =>
+  {
+    setLoadingContests(true);
+    try
+    {
+      const res=await fetch(`${API_URL}/api/contest/my-contests`, {credentials: 'include'});
+      if (res.ok) {const data=await res.json(); setContests(data.contests||[]);}
+    } catch (e) {console.error('Fetch contests error:', e);}
+    finally {setLoadingContests(false);}
+  };
+
+  const resetContestWizard=() =>
+  {
+    setShowCreateContest(false);
+    setContestWizardStep(1);
+    setContestForm({title: '', topic: '', description: '', difficulty: 'medium', duration: 60, challengeCount: 3});
+    setGeneratedChallenges([]);
+    setContestError('');
+    setCreatedContestId(null);
+    setCreatingContest(false);
+    setGeneratingContestAI(false);
+  };
+
+  // Step 1 → Step 2: Create the contest shell in DB
+  const handleCreateContestShell=async () =>
+  {
+    if (!contestForm.title.trim()||!contestForm.topic.trim()) return;
+    setCreatingContest(true);
+    setContestError('');
+    try
+    {
+      const res=await fetch(`${API_URL}/api/contest/create`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include',
+        body: JSON.stringify(contestForm),
+      });
+      const data=await res.json();
+      if (res.ok&&data.success)
+      {
+        setCreatedContestId(data.contest.id);
+        setContestWizardStep(2);
+      } else {setContestError(data.error||'Failed to create contest.');}
+    } catch (e) {setContestError('Network error — is the backend running?');}
+    finally {setCreatingContest(false);}
+  };
+
+  // Step 2: Generate challenges with AI
+  const handleContestAIGenerate=async () =>
+  {
+    setGeneratingContestAI(true);
+    setContestError('');
+    try
+    {
+      const res=await fetch(`${API_URL}/api/contest/generate-challenges`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include',
+        body: JSON.stringify({topic: contestForm.topic, difficulty: contestForm.difficulty, count: contestForm.challengeCount}),
+      });
+      const data=await res.json();
+      if (res.ok&&data.success)
+      {
+        setGeneratedChallenges(prev => [...prev, ...data.challenges]);
+        setContestWizardStep(3);
+      } else {setContestError(data.error||'Failed to generate challenges');}
+    } catch (e) {setContestError('Network error while generating challenges');}
+    finally {setGeneratingContestAI(false);}
+  };
+
+  // Step 3: Save challenges and optionally publish
+  const handleFinishContest=async (publish) =>
+  {
+    if (!createdContestId||generatedChallenges.length===0) return;
+    setCreatingContest(true);
+    setContestError('');
+    try
+    {
+      // Add challenges
+      const addRes=await fetch(`${API_URL}/api/contest/${createdContestId}/challenges`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include',
+        body: JSON.stringify({challenges: generatedChallenges, replace: true}),
+      });
+      if (!addRes.ok) {const e=await addRes.json().catch(() => ({})); setContestError(e.error||'Failed to save challenges'); return;}
+
+      // Optionally publish
+      if (publish)
+      {
+        const pubRes=await fetch(`${API_URL}/api/contest/${createdContestId}/publish`, {
+          method: 'POST', credentials: 'include',
+        });
+        if (!pubRes.ok) {const e=await pubRes.json().catch(() => ({})); setContestError(e.error||'Failed to publish'); return;}
+      }
+
+      resetContestWizard();
+      fetchCompanyContests();
+      if (publish) navigate(`/contest/host/${createdContestId}`);
+    } catch (e) {setContestError('Network error');}
+    finally {setCreatingContest(false);}
+  };
+
+  const removeChallenge=(idx) => setGeneratedChallenges(prev => prev.filter((_, i) => i!==idx));
+
+  // Fetch contests when tab switches to contest
+  useEffect(() => {if (activeTab==='contest') fetchCompanyContests();}, [activeTab]);
 
   const handleStartInterview=async () =>
   {
@@ -716,12 +832,12 @@ function CompanyDashboard()
 
               {/* Create Quiz Wizard Modal */}
               {showCreateQuiz&&(
-                <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999}} onClick={e => { if (e.target===e.currentTarget && !creatingQuiz && !generatingAI) resetQuizWizard(); }}>
+                <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999}} onClick={e => {if (e.target===e.currentTarget&&!creatingQuiz&&!generatingAI) resetQuizWizard();}}>
                   <div style={{background: 'var(--bg-secondary, #1a1a2e)', border: '1px solid var(--border-color, #2a2a3a)', borderRadius: '16px', padding: '28px', width: '94%', maxWidth: wizardStep===3? '720px':'520px', maxHeight: '88vh', overflowY: 'auto', transition: 'max-width 0.3s'}}>
 
                     {/* Step indicator */}
                     <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px'}}>
-                      {[1,2,3].map(s => (
+                      {[1, 2, 3].map(s => (
                         <div key={s} style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
                           <div style={{width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700, background: wizardStep>=s? '#6366f1':'var(--bg-primary, #0f0f1a)', color: wizardStep>=s? '#fff':'#64748b', border: `2px solid ${wizardStep>=s? '#6366f1':'#334155'}`, transition: 'all 0.3s'}}>{wizardStep>s? '✓':s}</div>
                           <span style={{fontSize: '0.78rem', color: wizardStep===s? '#e2e8f0':'#64748b', fontWeight: wizardStep===s? 600:400}}>{s===1? 'Details':s===2? 'Questions':'Review'}</span>
@@ -794,7 +910,7 @@ function CompanyDashboard()
                           <div
                             onClick={!generatingAI? handleAIGenerate:undefined}
                             style={{background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1))', border: '2px solid rgba(99,102,241,0.3)', borderRadius: '14px', padding: '24px', cursor: generatingAI? 'wait':'pointer', textAlign: 'center', transition: 'all 0.2s'}}
-                            onMouseEnter={e => { if (!generatingAI) e.currentTarget.style.borderColor='#6366f1'; }}
+                            onMouseEnter={e => {if (!generatingAI) e.currentTarget.style.borderColor='#6366f1';}}
                             onMouseLeave={e => e.currentTarget.style.borderColor='rgba(99,102,241,0.3)'}
                           >
                             {generatingAI? (
@@ -814,7 +930,7 @@ function CompanyDashboard()
 
                           {/* Manual / Quiz Dashboard Card */}
                           <div
-                            onClick={() => { resetQuizWizard(); navigate('/quiz/dashboard'); }}
+                            onClick={() => {resetQuizWizard(); navigate('/quiz/dashboard');}}
                             style={{background: 'var(--bg-primary, #0f0f1a)', border: '2px solid var(--border-color, #2a2a3a)', borderRadius: '14px', padding: '24px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s'}}
                             onMouseEnter={e => e.currentTarget.style.borderColor='#6366f1'}
                             onMouseLeave={e => e.currentTarget.style.borderColor='var(--border-color, #2a2a3a)'}
@@ -915,17 +1031,253 @@ function CompanyDashboard()
                       {q.status==='draft'&&(
                         <>
                           <button className="cmpd-btn-secondary cmpd-btn-sm" onClick={() => navigate('/quiz/dashboard')}><Settings size={14} /> Edit</button>
-                          {q.questionCount>0&&<button className="cmpd-btn-primary cmpd-btn-sm" onClick={async () => { try { await fetch(`${import.meta.env.VITE_API_URL||'http://localhost:5000'}/api/quiz/${q.id}/publish`, {method:'POST',credentials:'include'}); fetchCompanyQuizzes(); } catch {} }}>Publish</button>}
+                          {q.questionCount>0&&<button className="cmpd-btn-primary cmpd-btn-sm" onClick={async () => {try {await fetch(`${import.meta.env.VITE_API_URL||'http://localhost:5000'}/api/quiz/${q.id}/publish`, {method: 'POST', credentials: 'include'}); fetchCompanyQuizzes();} catch {} }}>Publish</button>}
                         </>
                       )}
                       {q.status==='waiting'&&(
                         <button className="cmpd-btn-primary cmpd-btn-sm" onClick={() => navigate(`/quiz/host/${q.id}`)}><PlayCircle size={14} /> Open Lobby</button>
                       )}
-                      {['active','question_open','question_closed'].includes(q.status)&&(
+                      {['active', 'question_open', 'question_closed'].includes(q.status)&&(
                         <button className="cmpd-btn-primary cmpd-btn-sm" onClick={() => navigate(`/quiz/host/${q.id}`)}><PlayCircle size={14} /> Rejoin Live</button>
                       )}
                       {q.status==='completed'&&(
                         <button className="cmpd-btn-secondary cmpd-btn-sm" onClick={() => navigate(`/quiz/results/${q.id}`)}><BarChart3 size={14} /> View Results</button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* CONTEST TAB */}
+          {activeTab==='contest'&&(
+            <>
+              <div className="cmpd-welcome">
+                <div>
+                  <h1>Coding Contest Management</h1>
+                  <p>Create and manage live coding contests with real-time code execution</p>
+                </div>
+                <div style={{display: 'flex', gap: '10px'}}>
+                  <button className="cmpd-btn-secondary" onClick={() => navigate('/contest/dashboard')}>
+                    <Settings size={16} /> Full Contest Manager
+                  </button>
+                  <button className="cmpd-btn-primary" onClick={() => setShowCreateContest(true)}>
+                    <Plus size={16} /> Create Contest
+                  </button>
+                </div>
+              </div>
+
+              {/* Create Contest Wizard Modal */}
+              {showCreateContest&&(
+                <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999}} onClick={e => { if (e.target===e.currentTarget && !creatingContest && !generatingContestAI) resetContestWizard(); }}>
+                  <div style={{background: 'var(--bg-secondary, #1a1a2e)', border: '1px solid var(--border-color, #2a2a3a)', borderRadius: '16px', padding: '28px', width: '94%', maxWidth: contestWizardStep===3? '720px':'520px', maxHeight: '88vh', overflowY: 'auto', transition: 'max-width 0.3s'}}>
+
+                    {/* Step indicator */}
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px'}}>
+                      {[1,2,3].map(s => (
+                        <div key={s} style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                          <div style={{width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700, background: contestWizardStep>=s? '#10b981':'var(--bg-primary, #0f0f1a)', color: contestWizardStep>=s? '#fff':'#64748b', border: `2px solid ${contestWizardStep>=s? '#10b981':'#334155'}`, transition: 'all 0.3s'}}>{contestWizardStep>s? '✓':s}</div>
+                          <span style={{fontSize: '0.78rem', color: contestWizardStep===s? '#e2e8f0':'#64748b', fontWeight: contestWizardStep===s? 600:400}}>{s===1? 'Details':s===2? 'Challenges':'Review'}</span>
+                          {s<3&&<div style={{width: '30px', height: '2px', background: contestWizardStep>s? '#10b981':'#334155', borderRadius: '1px'}} />}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Error banner */}
+                    {contestError&&(
+                      <div style={{background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#fca5a5'}}>
+                        <XCircle size={16} /> {contestError}
+                        <button onClick={() => setContestError('')} style={{marginLeft: 'auto', background: 'none', border: 'none', color: '#fca5a5', cursor: 'pointer'}}><X size={14} /></button>
+                      </div>
+                    )}
+
+                    {/* ─── Step 1: Contest Details ─── */}
+                    {contestWizardStep===1&&(
+                      <>
+                        <h2 style={{margin: '0 0 18px', fontSize: '1.25rem'}}>💻 Contest Details</h2>
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '14px'}}>
+                          <div>
+                            <label style={{fontSize: '0.82rem', color: '#94a3b8', display: 'block', marginBottom: '4px'}}>Title *</label>
+                            <input value={contestForm.title} onChange={e => setContestForm(f => ({...f, title: e.target.value}))} placeholder="e.g. JavaScript Coding Challenge" style={{width: '100%', padding: '10px 12px', background: 'var(--bg-primary, #0f0f1a)', border: '1px solid var(--border-color, #2a2a3a)', borderRadius: '8px', color: '#e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box'}} />
+                          </div>
+                          <div>
+                            <label style={{fontSize: '0.82rem', color: '#94a3b8', display: 'block', marginBottom: '4px'}}>Topic *</label>
+                            <input value={contestForm.topic} onChange={e => setContestForm(f => ({...f, topic: e.target.value}))} placeholder="e.g. Arrays, Dynamic Programming, Trees..." style={{width: '100%', padding: '10px 12px', background: 'var(--bg-primary, #0f0f1a)', border: '1px solid var(--border-color, #2a2a3a)', borderRadius: '8px', color: '#e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box'}} />
+                          </div>
+                          <div>
+                            <label style={{fontSize: '0.82rem', color: '#94a3b8', display: 'block', marginBottom: '4px'}}>Description</label>
+                            <textarea value={contestForm.description} onChange={e => setContestForm(f => ({...f, description: e.target.value}))} rows={2} placeholder="Optional description" style={{width: '100%', padding: '10px 12px', background: 'var(--bg-primary, #0f0f1a)', border: '1px solid var(--border-color, #2a2a3a)', borderRadius: '8px', color: '#e2e8f0', fontSize: '0.9rem', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box'}} />
+                          </div>
+                          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px'}}>
+                            <div>
+                              <label style={{fontSize: '0.82rem', color: '#94a3b8', display: 'block', marginBottom: '4px'}}>Difficulty</label>
+                              <select value={contestForm.difficulty} onChange={e => setContestForm(f => ({...f, difficulty: e.target.value}))} style={{width: '100%', padding: '10px 12px', background: 'var(--bg-primary, #0f0f1a)', border: '1px solid var(--border-color, #2a2a3a)', borderRadius: '8px', color: '#e2e8f0', fontSize: '0.9rem'}}>
+                                <option value="easy">Easy</option>
+                                <option value="medium">Medium</option>
+                                <option value="hard">Hard</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label style={{fontSize: '0.82rem', color: '#94a3b8', display: 'block', marginBottom: '4px'}}>Duration (min)</label>
+                              <input type="number" min={15} max={180} value={contestForm.duration} onChange={e => setContestForm(f => ({...f, duration: Number(e.target.value)}))} style={{width: '100%', padding: '10px 12px', background: 'var(--bg-primary, #0f0f1a)', border: '1px solid var(--border-color, #2a2a3a)', borderRadius: '8px', color: '#e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box'}} />
+                            </div>
+                            <div>
+                              <label style={{fontSize: '0.82rem', color: '#94a3b8', display: 'block', marginBottom: '4px'}}># Challenges</label>
+                              <input type="number" min={1} max={10} value={contestForm.challengeCount} onChange={e => setContestForm(f => ({...f, challengeCount: Math.min(10, Math.max(1, Number(e.target.value)))}))} style={{width: '100%', padding: '10px 12px', background: 'var(--bg-primary, #0f0f1a)', border: '1px solid var(--border-color, #2a2a3a)', borderRadius: '8px', color: '#e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box'}} />
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{display: 'flex', gap: '10px', marginTop: '22px', justifyContent: 'flex-end'}}>
+                          <button className="cmpd-btn-secondary" onClick={resetContestWizard}>Cancel</button>
+                          <button className="cmpd-btn-primary" onClick={handleCreateContestShell} disabled={creatingContest||!contestForm.title.trim()||!contestForm.topic.trim()} style={{background: '#10b981'}}>
+                            {creatingContest? <><Loader size={14} style={{animation: 'spin 1s linear infinite'}} /> Creating...</>:'Next → Add Challenges'}
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* ─── Step 2: Generate / Add Challenges ─── */}
+                    {contestWizardStep===2&&(
+                      <>
+                        <h2 style={{margin: '0 0 6px', fontSize: '1.25rem'}}>🧠 Add Challenges</h2>
+                        <p style={{color: '#94a3b8', fontSize: '0.85rem', margin: '0 0 20px'}}>Choose how to add coding challenges to your contest</p>
+
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
+                          {/* AI Generate Card */}
+                          <div
+                            onClick={!generatingContestAI? handleContestAIGenerate:undefined}
+                            style={{background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.1))', border: '2px solid rgba(16,185,129,0.3)', borderRadius: '14px', padding: '24px', cursor: generatingContestAI? 'wait':'pointer', textAlign: 'center', transition: 'all 0.2s'}}
+                            onMouseEnter={e => { if (!generatingContestAI) e.currentTarget.style.borderColor='#10b981'; }}
+                            onMouseLeave={e => e.currentTarget.style.borderColor='rgba(16,185,129,0.3)'}
+                          >
+                            {generatingContestAI? (
+                              <>
+                                <Loader size={36} style={{color: '#10b981', marginBottom: '12px', animation: 'spin 1s linear infinite'}} />
+                                <h3 style={{fontSize: '1rem', margin: '0 0 6px', color: '#86efac'}}>AI is thinking...</h3>
+                                <p style={{fontSize: '0.8rem', color: '#94a3b8', margin: 0}}>Generating {contestForm.challengeCount} {contestForm.difficulty} challenges about {contestForm.topic}</p>
+                              </>
+                            ):(
+                              <>
+                                <Sparkles size={36} style={{color: '#10b981', marginBottom: '12px'}} />
+                                <h3 style={{fontSize: '1rem', margin: '0 0 6px'}}>✨ Generate with AI</h3>
+                                <p style={{fontSize: '0.8rem', color: '#94a3b8', margin: 0}}>{contestForm.challengeCount} coding challenges about "{contestForm.topic}" • {contestForm.difficulty}</p>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Manual / Contest Dashboard Card */}
+                          <div
+                            onClick={() => { resetContestWizard(); navigate('/contest/dashboard'); }}
+                            style={{background: 'var(--bg-primary, #0f0f1a)', border: '2px solid var(--border-color, #2a2a3a)', borderRadius: '14px', padding: '24px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s'}}
+                            onMouseEnter={e => e.currentTarget.style.borderColor='#10b981'}
+                            onMouseLeave={e => e.currentTarget.style.borderColor='var(--border-color, #2a2a3a)'}
+                          >
+                            <Code size={36} style={{color: '#64748b', marginBottom: '12px'}} />
+                            <h3 style={{fontSize: '1rem', margin: '0 0 6px'}}>Add Manually</h3>
+                            <p style={{fontSize: '0.8rem', color: '#94a3b8', margin: 0}}>Open the contest editor to write your own challenges</p>
+                          </div>
+                        </div>
+
+                        <div style={{display: 'flex', gap: '10px', marginTop: '20px'}}>
+                          <button className="cmpd-btn-secondary" onClick={resetContestWizard}>Cancel</button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* ─── Step 3: Review AI Challenges ─── */}
+                    {contestWizardStep===3&&(
+                      <>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+                          <div>
+                            <h2 style={{margin: '0 0 4px', fontSize: '1.25rem'}}>✅ Review Challenges ({generatedChallenges.length})</h2>
+                            <p style={{color: '#94a3b8', fontSize: '0.82rem', margin: 0}}>Review, remove unwanted challenges, or generate more</p>
+                          </div>
+                          <button
+                            className="cmpd-btn-secondary"
+                            onClick={handleContestAIGenerate}
+                            disabled={generatingContestAI}
+                            style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem'}}
+                          >
+                            {generatingContestAI? <Loader size={14} style={{animation: 'spin 1s linear infinite'}} />:<RefreshCw size={14} />}
+                            {generatingContestAI? 'Generating...':'+ Generate More'}
+                          </button>
+                        </div>
+
+                        <div style={{maxHeight: '42vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px'}}>
+                          {generatedChallenges.map((c, i) => (
+                            <div key={i} style={{background: 'var(--bg-primary, #0f0f1a)', border: '1px solid var(--border-color, #2a2a3a)', borderRadius: '10px', padding: '14px'}}>
+                              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px'}}>
+                                <span style={{fontSize: '0.82rem', color: '#10b981', fontWeight: 600, flexShrink: 0}}>#{i+1}</span>
+                                <div style={{flex: 1}}>
+                                  <p style={{fontSize: '0.92rem', color: '#e2e8f0', margin: '0 0 4px', fontWeight: 600}}>{c.title}</p>
+                                  <p style={{fontSize: '0.8rem', color: '#94a3b8', margin: 0}}>{c.description?.slice(0, 150) || ''}...</p>
+                                </div>
+                                <button onClick={() => removeChallenge(i)} style={{background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', flexShrink: 0, padding: '2px'}}><Trash2 size={14} /></button>
+                              </div>
+                              <div style={{display: 'flex', gap: '12px', marginTop: '10px', marginLeft: '24px', fontSize: '0.75rem', color: '#64748b'}}>
+                                <span style={{color: c.difficulty==='easy'? '#22c55e':c.difficulty==='hard'? '#ef4444':'#f59e0b'}}>● {c.difficulty}</span>
+                                <span>📊 {c.points || 100} pts</span>
+                                <span>🧪 {c.testCases?.length || 0} test cases</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end', flexWrap: 'wrap'}}>
+                          <button className="cmpd-btn-secondary" onClick={resetContestWizard} style={{marginRight: 'auto'}}>Cancel</button>
+                          <button className="cmpd-btn-secondary" onClick={() => handleFinishContest(false)} disabled={creatingContest||generatedChallenges.length===0}>
+                            {creatingContest? 'Saving...':'Save as Draft'}
+                          </button>
+                          <button className="cmpd-btn-primary" onClick={() => handleFinishContest(true)} disabled={creatingContest||generatedChallenges.length===0} style={{display: 'flex', alignItems: 'center', gap: '6px', background: '#10b981'}}>
+                            {creatingContest? <><Loader size={14} style={{animation: 'spin 1s linear infinite'}} /> Publishing...</>:<><Terminal size={14} /> Publish & Go Live</>}
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                  </div>
+                </div>
+              )}
+
+              <div className="cmpd-quiz-grid">
+                {loadingContests? (
+                  <div style={{padding: '40px', textAlign: 'center', color: '#737373', gridColumn: '1 / -1'}}>Loading contests...</div>
+                ):contests.length===0? (
+                  <div style={{padding: '40px', textAlign: 'center', color: '#737373', gridColumn: '1 / -1'}}>
+                    <Terminal size={40} style={{marginBottom: 12, opacity: 0.3}} />
+                    <h3 style={{color: '#a3a3a3'}}>No coding contests created yet</h3>
+                    <p>Click "Create Contest" to set up a live coding contest for candidates</p>
+                  </div>
+                ):contests.map((c) => (
+                  <div className="cmpd-quiz-card" key={c.id||c._id} style={{borderColor: 'rgba(16,185,129,0.2)'}}>
+                    <div className="cmpd-quiz-top">
+                      <div className="cmpd-quiz-icon" style={{background: 'rgba(16,185,129,0.1)', color: '#10b981'}}><Terminal size={20} /></div>
+                      <span className={`cmpd-status-pill ${c.status}`}>{c.status}</span>
+                    </div>
+                    <h3>{c.title}</h3>
+                    <span className="cmpd-quiz-round">{c.topic} · {c.difficulty}</span>
+                    <div className="cmpd-quiz-meta">
+                      <span><Code size={13} /> {c.challengeCount} challenges</span>
+                      <span><Timer size={13} /> {c.duration} min</span>
+                      <span><Users size={13} /> {c.participantCount} joined</span>
+                    </div>
+                    <div style={{fontSize: '0.78rem', color: '#10b981', fontFamily: 'monospace', margin: '6px 0'}}>Code: {c.code}</div>
+                    <div className="cmpd-quiz-actions">
+                      {c.status==='draft'&&(
+                        <>
+                          <button className="cmpd-btn-secondary cmpd-btn-sm" onClick={() => navigate('/contest/dashboard')}><Settings size={14} /> Edit</button>
+                          {c.challengeCount>0&&<button className="cmpd-btn-primary cmpd-btn-sm" style={{background: '#10b981'}} onClick={async () => { try { await fetch(`${API_URL}/api/contest/${c.id}/publish`, {method:'POST',credentials:'include'}); fetchCompanyContests(); } catch {} }}>Publish</button>}
+                        </>
+                      )}
+                      {c.status==='waiting'&&(
+                        <button className="cmpd-btn-primary cmpd-btn-sm" style={{background: '#10b981'}} onClick={() => navigate(`/contest/host/${c.id}`)}><PlayCircle size={14} /> Open Lobby</button>
+                      )}
+                      {c.status==='active'&&(
+                        <button className="cmpd-btn-primary cmpd-btn-sm" style={{background: '#10b981'}} onClick={() => navigate(`/contest/host/${c.id}`)}><PlayCircle size={14} /> Rejoin Live</button>
+                      )}
+                      {c.status==='completed'&&(
+                        <button className="cmpd-btn-secondary cmpd-btn-sm" onClick={() => navigate(`/contest/results/${c.id}`)}><BarChart3 size={14} /> View Results</button>
                       )}
                     </div>
                   </div>
