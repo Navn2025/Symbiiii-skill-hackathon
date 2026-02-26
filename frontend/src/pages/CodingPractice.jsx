@@ -69,12 +69,22 @@ function CodingPractice({embedded})
         try
         {
             const response=await api.get('/coding-practice/questions');
-            const qs=response.data.questions||[];
+            const qs=(response.data.questions||[]).map(q =>
+            {
+                const allTC=q.testCases||[];
+                return {
+                    ...q,
+                    _allTestCases: allTC,
+                    testCases: allTC.filter(tc => !tc.hidden),
+                    totalTestCases: allTC.length,
+                    hiddenTestCases: allTC.filter(tc => tc.hidden).length
+                };
+            });
             setQuestions(qs);
             if (qs.length>0) selectQuestion(qs[0]);
         } catch (error)
         {
-            console.error('Error fetching questions:', error);
+            console.error('Error loading question:', error);
             setFetchError('Failed to load questions. Click AI Generate to create one.');
         } finally {setFetchingQuestions(false);}
     };

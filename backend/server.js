@@ -30,7 +30,9 @@ import profileRoutes from './routes/profile.js';
 import verificationRoutes from './routes/verification.js';
 import aiCallingRoutes from './routes/aiCalling.js';
 import quizRoutes from './routes/quiz.js';
+import contestRoutes from './routes/contest.js';
 import {setupSocketHandlers} from './socket/handlers.js';
+import {setupContestSocketHandlers} from './socket/contestHandlers.js';
 import {timeoutMiddleware, aiTimeoutMiddleware} from './middleware/timeout.js';
 import {apiRateLimiter, authRateLimiter, aiRateLimiter, codeExecutionRateLimiter} from './middleware/rateLimit.js';
 import {requestLoggingMiddleware, errorLoggingMiddleware} from './middleware/logger.js';
@@ -193,6 +195,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/verification', verificationRoutes);
 app.use('/api/ai-calling', aiCallingRoutes);
 app.use('/api/quiz', quizRoutes);
+app.use('/api/contest', contestRoutes);
 
 // Setup API versioning (enhanced version routes for future backwards compatibility)
 try
@@ -269,6 +272,7 @@ app.use((err, req, res, next) =>
 
 // Setup Socket.IO handlers
 setupSocketHandlers(io);
+setupContestSocketHandlers(io);
 
 const PORT=process.env.PORT||5000;
 httpServer.listen(PORT, () =>

@@ -30,10 +30,14 @@ import QuizDashboard from './pages/QuizDashboard'
 import QuizHost from './pages/QuizHost'
 import QuizPlay from './pages/QuizPlay'
 import QuizResults from './pages/QuizResults'
+import ContestDashboard from './pages/ContestDashboard'
+import ContestHost from './pages/ContestHost'
+import ContestPlay from './pages/ContestPlay'
+import ContestResults from './pages/ContestResults'
 import './App.css'
 
 // Pages that render their own navbar (dashboards)
-const HIDE_NAVBAR_PATHS=['/candidate-dashboard', '/company-dashboard', '/admin-scoring', '/candidate-results', '/candidate-analytics', '/candidate-profile', '/resume-verification', '/quiz'];
+const HIDE_NAVBAR_PATHS=['/candidate-dashboard', '/company-dashboard', '/admin-scoring', '/candidate-results', '/candidate-analytics', '/candidate-profile', '/resume-verification', '/quiz', '/contest'];
 
 function AppLayout()
 {
@@ -75,6 +79,11 @@ function AppLayout()
                     <Route path="/quiz/join" element={<QuizDashboard />} />
                     <Route path="/quiz/play" element={<QuizPlay />} />
                     <Route path="/quiz/results/:quizId" element={<QuizResults />} />
+                    <Route path="/contest/dashboard" element={<ContestDashboard />} />
+                    <Route path="/contest/host/:contestId" element={<ContestHost />} />
+                    <Route path="/contest/join" element={<ContestDashboard />} />
+                    <Route path="/contest/play" element={<ContestPlay />} />
+                    <Route path="/contest/results/:contestId" element={<ContestResults />} />
                 </Routes>
             </div>
         </div>
