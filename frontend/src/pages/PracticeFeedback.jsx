@@ -1,5 +1,11 @@
 import {useState, useEffect} from 'react';
 import {useParams, useNavigate} from 'react-router-dom';
+import
+{
+    BarChart3, Monitor, MessageSquare, Brain, Star,
+    CheckCircle, XCircle, BookOpen, FileText, Search,
+    Home, RefreshCw, TrendingUp
+} from 'lucide-react';
 import './PracticeFeedback.css';
 
 const API_URL=import.meta.env.VITE_API_URL||'http://localhost:5000';
@@ -23,10 +29,24 @@ function PracticeFeedback()
             const response=await fetch(`${API_URL}/api/practice/finish`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
                 body: JSON.stringify({sessionId}),
             });
             const data=await response.json();
-            setFeedback(data.finalReport);
+            const payload=data.data||data;
+            const fb=payload.feedback||payload.finalReport||payload;
+            // Normalize score fields: backend sends scores.technical (0-10) → convert to percentage
+            if (fb&&fb.scores&&!fb.technicalScore)
+            {
+                fb.technicalScore=Math.round((fb.scores.technical||0)*10);
+                fb.communicationScore=Math.round((fb.scores.communication||0)*10);
+                fb.problemSolvingScore=Math.round((fb.scores.problemSolving||0)*10);
+                fb.confidenceScore=Math.round((fb.scores.confidence||0)*10);
+                fb.overallScore=Math.round(fb.overallScore||0);
+                fb.detailedFeedback=fb.summary||fb.detailedFeedback||'';
+                fb.questionsReview=fb.questionsReview||[];
+            }
+            setFeedback(fb);
         } catch (error)
         {
             console.error('Error loading feedback:', error);
@@ -68,7 +88,7 @@ function PracticeFeedback()
     {
         return (
             <div className="practice-feedback error-screen">
-                <h2>❌ Error Loading Feedback</h2>
+                <h2><XCircle size={22} /> Error Loading Feedback</h2>
                 <p>Unable to load your feedback report.</p>
                 <button onClick={() => navigate('/')}>Go Home</button>
             </div>
@@ -79,7 +99,7 @@ function PracticeFeedback()
         <div className="practice-feedback">
             {/* Header */}
             <div className="feedback-header">
-                <h1>📊 Interview Performance Report</h1>
+                <h1><BarChart3 size={24} /> Performance Report</h1>
                 <p>Session ID: {sessionId}</p>
             </div>
 
@@ -101,11 +121,11 @@ function PracticeFeedback()
 
             {/* Score Breakdown */}
             <div className="score-breakdown">
-                <h2>📈 Score Breakdown</h2>
+                <h2><TrendingUp size={20} /> Score Breakdown</h2>
                 <div className="score-grid">
                     <div className="score-item">
                         <div className="score-item-header">
-                            <span className="score-icon">💻</span>
+                            <span className="score-icon"><Monitor size={18} /></span>
                             <span className="score-title">Technical Knowledge</span>
                         </div>
                         <div className="score-bar">
@@ -120,7 +140,7 @@ function PracticeFeedback()
 
                     <div className="score-item">
                         <div className="score-item-header">
-                            <span className="score-icon">💬</span>
+                            <span className="score-icon"><MessageSquare size={18} /></span>
                             <span className="score-title">Communication</span>
                         </div>
                         <div className="score-bar">
@@ -135,7 +155,7 @@ function PracticeFeedback()
 
                     <div className="score-item">
                         <div className="score-item-header">
-                            <span className="score-icon">🧩</span>
+                            <span className="score-icon"><Brain size={18} /></span>
                             <span className="score-title">Problem Solving</span>
                         </div>
                         <div className="score-bar">
@@ -150,7 +170,7 @@ function PracticeFeedback()
 
                     <div className="score-item">
                         <div className="score-item-header">
-                            <span className="score-icon">✨</span>
+                            <span className="score-icon"><Star size={18} /></span>
                             <span className="score-title">Confidence</span>
                         </div>
                         <div className="score-bar">
@@ -168,7 +188,7 @@ function PracticeFeedback()
             {/* Strengths and Weaknesses */}
             <div className="feedback-sections">
                 <div className="feedback-section strengths">
-                    <h3>✅ Key Strengths</h3>
+                    <h3><CheckCircle size={18} /> Key Strengths</h3>
                     <ul>
                         {feedback.strengths.map((strength, i) => (
                             <li key={i}>{strength}</li>
@@ -177,7 +197,7 @@ function PracticeFeedback()
                 </div>
 
                 <div className="feedback-section weaknesses">
-                    <h3>📈 Areas for Improvement</h3>
+                    <h3><TrendingUp size={18} /> Areas for Improvement</h3>
                     <ul>
                         {feedback.weaknesses.map((weakness, i) => (
                             <li key={i}>{weakness}</li>
@@ -189,7 +209,7 @@ function PracticeFeedback()
             {/* Suggested Topics */}
             {feedback.suggestedTopics&&feedback.suggestedTopics.length>0&&(
                 <div className="suggested-topics">
-                    <h3>📚 Recommended Study Topics</h3>
+                    <h3><BookOpen size={18} /> Recommended Study Topics</h3>
                     <div className="topics-grid">
                         {feedback.suggestedTopics.map((topic, i) => (
                             <div key={i} className="topic-tag">{topic}</div>
@@ -200,14 +220,14 @@ function PracticeFeedback()
 
             {/* Detailed Feedback */}
             <div className="detailed-feedback">
-                <h3>📝 Detailed Feedback</h3>
+                <h3><FileText size={18} /> Detailed Feedback</h3>
                 <p>{feedback.detailedFeedback}</p>
             </div>
 
             {/* Questions Review */}
             {feedback.questionsReview&&feedback.questionsReview.length>0&&(
                 <div className="questions-review">
-                    <h3>🔍 Question-by-Question Review</h3>
+                    <h3><Search size={18} /> Question-by-Question Review</h3>
                     {feedback.questionsReview.map((review, i) => (
                         <div key={i} className="question-review-card">
                             <div className="question-review-header">
@@ -236,13 +256,13 @@ function PracticeFeedback()
                     className="btn-secondary"
                     onClick={() => navigate('/')}
                 >
-                    🏠 Go Home
+                    <Home size={16} /> Go Home
                 </button>
                 <button
                     className="btn-primary"
                     onClick={() => navigate('/practice-setup')}
                 >
-                    🔄 Practice Again
+                    <RefreshCw size={16} /> Practice Again
                 </button>
             </div>
         </div>

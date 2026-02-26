@@ -65,10 +65,18 @@
 .feedback-header h1 {
   margin: 0 0 10px 0;
   font-size: 2.5rem;
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--accent-primary) 0%,
+    var(--accent-secondary) 100%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
 .feedback-header p {
@@ -113,7 +121,11 @@
 }
 
 .score-circle-large.excellent {
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--accent-primary) 0%,
+    var(--accent-secondary) 100%
+  );
 }
 
 .score-circle-large.good {
@@ -182,6 +194,9 @@
   margin: 0 0 25px 0;
   color: var(--text-primary);
   font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .score-grid {
@@ -203,9 +218,9 @@
 }
 
 .score-icon {
-  font-size: 1.5rem;
   color: var(--accent-primary);
-}
+  display: flex;
+  align-items: center;
 }
 
 .score-title {
@@ -234,7 +249,11 @@
 }
 
 .score-fill.excellent {
-  background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  background: linear-gradient(
+    90deg,
+    var(--accent-primary) 0%,
+    var(--accent-secondary) 100%
+  );
 }
 
 .score-fill.good {
@@ -269,6 +288,9 @@
   margin: 0 0 15px 0;
   color: var(--text-primary);
   font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .feedback-section ul {
@@ -304,6 +326,9 @@
   margin: 0 0 20px 0;
   color: var(--text-primary);
   font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .topics-grid {
@@ -335,6 +360,9 @@
   margin: 0 0 15px 0;
   color: var(--text-primary);
   font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .detailed-feedback p {
@@ -358,6 +386,9 @@
   margin: 0 0 20px 0;
   color: var(--text-primary);
   font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .question-review-card {
@@ -420,13 +451,20 @@
   font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   transition:
     transform 0.2s,
     box-shadow 0.2s;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--accent-primary) 0%,
+    var(--accent-secondary) 100%
+  );
   color: var(--bg-primary);
 }
 

@@ -2,6 +2,11 @@ import {useState, useEffect} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {getRandomQuestions, executeCode, submitCode, interviewChat} from '../services/api';
 import CodeEditor from '../components/CodeEditor';
+import
+{
+    Bot, Home, Lightbulb, Play, CheckCircle, XCircle, AlertTriangle,
+    ChevronLeft, ChevronRight, Send
+} from 'lucide-react';
 import './PracticeMode.css';
 
 function PracticeMode()
@@ -84,9 +89,9 @@ function PracticeMode()
             });
 
             const results=response.data;
-            const summary=`✓ Test Results: ${results.passed}/${results.total} passed\n\n`+
+            const summary=`Test Results: ${results.passed}/${results.total} passed\n\n`+
                 results.results.map((r, i) =>
-                    `Test ${i+1}: ${r.passed? '✅ Passed':'❌ Failed'} - ${r.runtime}`
+                    `Test ${i+1}: ${r.passed? 'Passed':'Failed'} - ${r.runtime}`
                 ).join('\n');
 
             setOutput(summary);
@@ -94,11 +99,11 @@ function PracticeMode()
             // Generate AI feedback
             if (results.passed===results.total)
             {
-                setFeedback('🎉 Excellent! All test cases passed. Great job!');
+                setFeedback('All test cases passed. Great job!');
                 addAIMessage("Perfect! You solved it correctly. Let's move to the next question.");
             } else
             {
-                setFeedback(`⚠️ ${results.passed}/${results.total} test cases passed. Review the failed cases.`);
+                setFeedback(`${results.passed}/${results.total} test cases passed. Review the failed cases.`);
                 addAIMessage("Good attempt! Some test cases failed. Think about edge cases and try again.");
             }
         } catch (error)
@@ -178,14 +183,14 @@ function PracticeMode()
             {/* Header */}
             <div className="practice-header">
                 <div>
-                    <h2>🤖 AI Practice Interview</h2>
+                    <h2><Bot size={20} /> Practice Interview</h2>
                     <span className="question-counter">
                         Question {currentQuestionIndex+1} of {questions.length}
                     </span>
                 </div>
                 <div>
                     <button className="btn btn-secondary" onClick={() => navigate('/')}>
-                        🏠 Home
+                        <Home size={16} /> Home
                     </button>
                 </div>
             </div>
@@ -194,7 +199,7 @@ function PracticeMode()
                 {/* AI Chat Panel */}
                 <div className="ai-panel card">
                     <div className="ai-header">
-                        <div className="ai-avatar">🤖</div>
+                        <div className="ai-avatar"><Bot size={24} /></div>
                         <div>
                             <h3>AI Interviewer</h3>
                             <p>I'm here to help you practice!</p>
@@ -251,28 +256,28 @@ function PracticeMode()
                         </div>
 
                         {feedback&&(
-                            <div className={`alert ${feedback.includes('🎉')? 'alert-success':'alert-warning'}`}>
+                            <div className={`alert ${feedback.includes('passed. Great')? 'alert-success':'alert-warning'}`}>
                                 {feedback}
                             </div>
                         )}
 
                         <div className="question-actions">
                             <button className="btn btn-secondary" onClick={() => setShowHint(!showHint)}>
-                                💡 {showHint? 'Hide':'Show'} Hint
+                                <Lightbulb size={14} /> {showHint? 'Hide':'Show'} Hint
                             </button>
                             <button className="btn btn-secondary" onClick={handlePreviousQuestion}
                                 disabled={currentQuestionIndex===0}>
-                                ← Previous
+                                <ChevronLeft size={14} /> Previous
                             </button>
                             <button className="btn btn-primary" onClick={handleNextQuestion}
                                 disabled={currentQuestionIndex===questions.length-1}>
-                                Next →
+                                Next <ChevronRight size={14} />
                             </button>
                         </div>
 
                         {showHint&&(
                             <div className="hint alert alert-info" style={{marginTop: '12px', background: '#dbeafe', color: '#1e40af'}}>
-                                💡 Try using a hash map to store values for O(n) time complexity.
+                                <Lightbulb size={14} /> Try using a hash map to store values for O(n) time complexity.
                             </div>
                         )}
                     </div>
@@ -292,10 +297,10 @@ function PracticeMode()
 
                             <div className="editor-actions">
                                 <button className="btn btn-secondary" onClick={handleRunCode} disabled={loading}>
-                                    ▶️ Run
+                                    <Play size={14} /> Run
                                 </button>
                                 <button className="btn btn-success" onClick={handleSubmitCode} disabled={loading}>
-                                    ✓ Submit
+                                    <CheckCircle size={14} /> Submit
                                 </button>
                             </div>
                         </div>

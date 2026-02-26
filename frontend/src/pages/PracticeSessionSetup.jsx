@@ -1,5 +1,12 @@
 import {useState} from 'react';
 import {useNavigate} from 'react-router-dom';
+import
+{
+    Palette, Server, Layers, BarChart3, Wrench, Smartphone,
+    Monitor, MessageSquare, Code, Building2,
+    Zap, Target, Terminal, ArrowRight, Check,
+    ChevronRight
+} from 'lucide-react';
 import './PracticeSessionSetup.css';
 
 function PracticeSessionSetup()
@@ -9,24 +16,24 @@ function PracticeSessionSetup()
         role: '',
         difficulty: 'medium',
         interviewType: 'technical',
-        mode: 'quick', // quick, real, coding
+        mode: 'quick',
         duration: 20,
     });
 
     const roles=[
-        {id: 'frontend', name: 'Frontend Developer', icon: '🎨'},
-        {id: 'backend', name: 'Backend Developer', icon: '⚙️'},
-        {id: 'fullstack', name: 'Full Stack Developer', icon: '🚀'},
-        {id: 'data-science', name: 'Data Scientist', icon: '📊'},
-        {id: 'devops', name: 'DevOps Engineer', icon: '🔧'},
-        {id: 'mobile', name: 'Mobile Developer', icon: '📱'},
+        {id: 'frontend', name: 'Frontend Developer', icon: Palette},
+        {id: 'backend', name: 'Backend Developer', icon: Server},
+        {id: 'fullstack', name: 'Full Stack Developer', icon: Layers},
+        {id: 'data-science', name: 'Data Scientist', icon: BarChart3},
+        {id: 'devops', name: 'DevOps Engineer', icon: Wrench},
+        {id: 'mobile', name: 'Mobile Developer', icon: Smartphone},
     ];
 
     const interviewTypes=[
-        {id: 'technical', name: 'Technical Interview', desc: 'Technical concepts and problem solving', icon: '💻'},
-        {id: 'behavioral', name: 'Behavioral Interview', desc: 'Behavioral questions and soft skills', icon: '💬'},
-        {id: 'coding', name: 'Coding Round', desc: 'Live coding challenges', icon: '⌨️'},
-        {id: 'system-design', name: 'System Design', desc: 'Architecture and design discussions', icon: '🏗️'},
+        {id: 'technical', name: 'Technical Interview', desc: 'Concepts, architecture and problem solving', icon: Monitor},
+        {id: 'behavioral', name: 'Behavioral Interview', desc: 'Situational questions and communication', icon: MessageSquare},
+        {id: 'coding', name: 'Coding Round', desc: 'Live coding with test cases', icon: Code},
+        {id: 'system-design', name: 'System Design', desc: 'Architecture and scalability discussions', icon: Building2},
     ];
 
     const modes=[
@@ -36,15 +43,15 @@ function PracticeSessionSetup()
             desc: '5 questions, 10-15 min',
             features: ['Fast feedback', 'No strict scoring', 'Basic evaluation'],
             duration: 15,
-            icon: '⚡',
+            icon: Zap,
         },
         {
             id: 'real',
-            name: 'Real Interview Simulation',
+            name: 'Full Simulation',
             desc: '10-15 questions, 30-40 min',
             features: ['Timed session', 'Adaptive difficulty', 'Detailed scorecard', 'Follow-up questions'],
             duration: 35,
-            icon: '🎯',
+            icon: Target,
         },
         {
             id: 'coding',
@@ -52,7 +59,7 @@ function PracticeSessionSetup()
             desc: '2-3 problems, 45-60 min',
             features: ['Code editor', 'Run & test', 'Time complexity analysis', 'Code quality review'],
             duration: 50,
-            icon: '👨‍💻',
+            icon: Terminal,
         },
     ];
 
@@ -83,54 +90,62 @@ function PracticeSessionSetup()
         <div className="practice-setup">
             <div className="setup-container">
                 <div className="setup-header">
-                    <h1>🎯 AI Interview Practice</h1>
-                    <p>Practice with AI-powered interviews tailored to your needs</p>
+                    <h1>Interview Practice</h1>
+                    <p>Sharpen your skills with mock interviews tailored to your target role</p>
                 </div>
 
                 {/* Step 1: Select Role */}
                 <section className="setup-section">
-                    <h2>1️⃣ Select Your Target Role</h2>
+                    <div className="section-step"><span className="step-number">1</span><h2>Select Your Target Role</h2></div>
                     <div className="role-grid">
-                        {roles.map(role => (
-                            <div
-                                key={role.id}
-                                className={`role-card ${config.role===role.id? 'selected':''}`}
-                                onClick={() => setConfig({...config, role: role.id})}
-                            >
-                                <div className="role-icon">{role.icon}</div>
-                                <div className="role-name">{role.name}</div>
-                            </div>
-                        ))}
+                        {roles.map(r =>
+                        {
+                            const Icon=r.icon;
+                            return (
+                                <div
+                                    key={r.id}
+                                    className={`role-card ${config.role===r.id? 'selected':''}`}
+                                    onClick={() => setConfig({...config, role: r.id})}
+                                >
+                                    <div className="role-icon"><Icon size={28} /></div>
+                                    <div className="role-name">{r.name}</div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </section>
 
                 {/* Step 2: Select Interview Type */}
                 <section className="setup-section">
-                    <h2>2️⃣ Choose Interview Type</h2>
+                    <div className="section-step"><span className="step-number">2</span><h2>Choose Interview Type</h2></div>
                     <div className="type-grid">
-                        {interviewTypes.map(type => (
-                            <div
-                                key={type.id}
-                                className={`type-card ${config.interviewType===type.id? 'selected':''}`}
-                                onClick={() => setConfig({...config, interviewType: type.id})}
-                            >
-                                <div className="type-icon">{type.icon}</div>
-                                <h3>{type.name}</h3>
-                                <p>{type.desc}</p>
-                            </div>
-                        ))}
+                        {interviewTypes.map(type =>
+                        {
+                            const Icon=type.icon;
+                            return (
+                                <div
+                                    key={type.id}
+                                    className={`type-card ${config.interviewType===type.id? 'selected':''}`}
+                                    onClick={() => setConfig({...config, interviewType: type.id})}
+                                >
+                                    <div className="type-icon"><Icon size={26} /></div>
+                                    <h3>{type.name}</h3>
+                                    <p>{type.desc}</p>
+                                </div>
+                            );
+                        })}
                     </div>
                 </section>
 
                 {/* Step 3: Select Difficulty */}
                 <section className="setup-section">
-                    <h2>3️⃣ Select Difficulty Level</h2>
+                    <div className="section-step"><span className="step-number">3</span><h2>Select Difficulty Level</h2></div>
                     <div className="difficulty-selector">
                         <button
                             className={`difficulty-btn easy ${config.difficulty==='easy'? 'selected':''}`}
                             onClick={() => setConfig({...config, difficulty: 'easy'})}
                         >
-                            <span className="diff-icon">😊</span>
+                            <span className="diff-indicator diff-easy-indicator"></span>
                             <span className="diff-name">Easy</span>
                             <span className="diff-desc">Entry level questions</span>
                         </button>
@@ -138,7 +153,7 @@ function PracticeSessionSetup()
                             className={`difficulty-btn medium ${config.difficulty==='medium'? 'selected':''}`}
                             onClick={() => setConfig({...config, difficulty: 'medium'})}
                         >
-                            <span className="diff-icon">😐</span>
+                            <span className="diff-indicator diff-medium-indicator"></span>
                             <span className="diff-name">Medium</span>
                             <span className="diff-desc">Intermediate concepts</span>
                         </button>
@@ -146,7 +161,7 @@ function PracticeSessionSetup()
                             className={`difficulty-btn hard ${config.difficulty==='hard'? 'selected':''}`}
                             onClick={() => setConfig({...config, difficulty: 'hard'})}
                         >
-                            <span className="diff-icon">😤</span>
+                            <span className="diff-indicator diff-hard-indicator"></span>
                             <span className="diff-name">Hard</span>
                             <span className="diff-desc">Advanced challenges</span>
                         </button>
@@ -155,24 +170,28 @@ function PracticeSessionSetup()
 
                 {/* Step 4: Select Mode */}
                 <section className="setup-section">
-                    <h2>4️⃣ Choose Practice Mode</h2>
+                    <div className="section-step"><span className="step-number">4</span><h2>Choose Practice Mode</h2></div>
                     <div className="mode-grid">
-                        {modes.map(mode => (
-                            <div
-                                key={mode.id}
-                                className={`mode-card ${config.mode===mode.id? 'selected':''}`}
-                                onClick={() => setConfig({...config, mode: mode.id, duration: mode.duration})}
-                            >
-                                <div className="mode-icon">{mode.icon}</div>
-                                <h3>{mode.name}</h3>
-                                <p className="mode-desc">{mode.desc}</p>
-                                <ul className="mode-features">
-                                    {mode.features.map((feature, i) => (
-                                        <li key={i}>✓ {feature}</li>
-                                    ))}
-                                </ul>
-                            </div>
-                        ))}
+                        {modes.map(m =>
+                        {
+                            const Icon=m.icon;
+                            return (
+                                <div
+                                    key={m.id}
+                                    className={`mode-card ${config.mode===m.id? 'selected':''}`}
+                                    onClick={() => setConfig({...config, mode: m.id, duration: m.duration})}
+                                >
+                                    <div className="mode-icon"><Icon size={28} /></div>
+                                    <h3>{m.name}</h3>
+                                    <p className="mode-desc">{m.desc}</p>
+                                    <ul className="mode-features">
+                                        {m.features.map((feature, i) => (
+                                            <li key={i}><Check size={14} /> {feature}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            );
+                        })}
                     </div>
                 </section>
 
@@ -208,7 +227,7 @@ function PracticeSessionSetup()
                         onClick={handleStartPractice}
                         disabled={!config.role}
                     >
-                        🚀 Start Practice Interview
+                        Start Practice <ArrowRight size={20} />
                     </button>
                 </section>
             </div>

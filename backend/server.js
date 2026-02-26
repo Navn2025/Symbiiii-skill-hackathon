@@ -127,6 +127,9 @@ app.use('/api/coding-practice/', codeExecutionRateLimiter);
 // AI generation endpoints need longer timeout (120s) as they call Groq + validate test cases
 app.use('/api/coding-practice/generate', aiTimeoutMiddleware);
 app.use('/api/coding-practice/hint', aiTimeoutMiddleware);
+app.use('/api/coding-practice/detect', aiTimeoutMiddleware);
+app.use('/api/coding-practice/analyze', aiTimeoutMiddleware);
+app.use('/api/coding-practice/prompt', aiTimeoutMiddleware);
 
 // General API rate limiting
 app.use('/api/', apiRateLimiter);

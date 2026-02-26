@@ -1,5 +1,11 @@
 import {useState, useEffect, useRef} from 'react';
 import {useParams, useSearchParams, useNavigate} from 'react-router-dom';
+import
+{
+    Target, Clock, Bot, Lightbulb, FileText, CheckCircle, XCircle,
+    ArrowRight, Flag, Play, Loader2, Lock, FlaskConical, AlertTriangle,
+    MessageSquare, BarChart3, TrendingUp, HelpCircle, Send
+} from 'lucide-react';
 import './PracticeInterviewRoom.css';
 
 const API_URL=import.meta.env.VITE_API_URL||'http://localhost:5000';
@@ -31,6 +37,7 @@ function PracticeInterviewRoom()
     const [greeting, setGreeting]=useState('');
     const [transitionMessage, setTransitionMessage]=useState('');
     const [showGreeting, setShowGreeting]=useState(true);
+    const [sessionError, setSessionError]=useState('');
 
     useEffect(() =>
     {
@@ -87,7 +94,8 @@ function PracticeInterviewRoom()
                 throw new Error(err.error||`Server error ${response.status}`);
             }
             const data=await response.json();
-            setGreeting(data.greeting||'Welcome to your practice interview!');
+            const payload=data.data||data;
+            setGreeting(payload.greeting||'Welcome to your practice interview!');
 
             // Set timer based on mode
             if (mode==='real')
@@ -103,6 +111,7 @@ function PracticeInterviewRoom()
         } catch (error)
         {
             console.error('Error starting session:', error);
+            setSessionError(error.message||'Failed to start session. Please log in and try again.');
         }
     };
 
@@ -134,11 +143,12 @@ function PracticeInterviewRoom()
                 throw new Error(err.error||`Server error ${response.status}`);
             }
             const data=await response.json();
+            const payload=data.data||data;
 
-            setCurrentQuestion(data.question);
-            setTotalQuestions(data.totalQuestions);
-            setQuestionNumber(data.question.questionNumber);
-            setTransitionMessage(data.transitionMessage||'');
+            setCurrentQuestion(payload.question);
+            setTotalQuestions(payload.totalQuestions);
+            setQuestionNumber(payload.question.questionNumber);
+            setTransitionMessage(payload.transitionMessage||'');
 
             // Reset state for new question
             setTestResults(null);
@@ -201,8 +211,9 @@ function PracticeInterviewRoom()
                 throw new Error(err.error||`Server error ${response.status}`);
             }
             const data=await response.json();
+            const payload=data.data||data;
 
-            setEvaluation(data.evaluation);
+            setEvaluation(payload.evaluation);
             setShowEvaluation(true);
         } catch (error)
         {
@@ -300,24 +311,38 @@ function PracticeInterviewRoom()
     }
 
     // Greeting screen
-    if (showGreeting&&greeting&&!currentQuestion)
+    if (showGreeting&&!currentQuestion)
     {
         return (
             <div className="practice-interview-room">
                 <div className="greeting-screen">
                     <div className="greeting-card">
-                        <div className="ai-avatar">🤖</div>
+                        <div className="ai-avatar"><Bot size={48} /></div>
                         <h2>AI Interviewer</h2>
-                        <div className="greeting-message">
-                            <p>{greeting}</p>
-                        </div>
-                        <button
-                            className="start-btn"
-                            onClick={loadNextQuestion}
-                            disabled={loading}
-                        >
-                            {loading? '⏳ Loading...':'✅ I\'m Ready, Let\'s Start!'}
-                        </button>
+                        {sessionError? (
+                            <>
+                                <div className="session-error">
+                                    <AlertTriangle size={18} />
+                                    <p>{sessionError}</p>
+                                </div>
+                                <button className="start-btn" onClick={() => {setSessionError(''); startSession();}}>
+                                    Retry
+                                </button>
+                            </>
+                        ):(
+                            <>
+                                <div className="greeting-message">
+                                    <p>{greeting||'Setting up your interview...'}</p>
+                                </div>
+                                <button
+                                    className="start-btn"
+                                    onClick={loadNextQuestion}
+                                    disabled={loading||!greeting}
+                                >
+                                    {loading? <><Loader2 size={18} className="btn-spin" /> Preparing...</>:<><CheckCircle size={18} /> I'm Ready, Let's Start</>}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
@@ -329,7 +354,7 @@ function PracticeInterviewRoom()
             {/* Header */}
             <div className="practice-header">
                 <div className="header-left">
-                    <h2>🎯 AI Interview Practice</h2>
+                    <h2><Target size={20} /> Interview Practice</h2>
                     <div className="session-info">
                         <span className="badge">{role.replace('-', ' ')}</span>
                         <span className={`badge badge-${difficulty}`}>{difficulty}</span>
@@ -339,7 +364,7 @@ function PracticeInterviewRoom()
                 <div className="header-right">
                     {timeRemaining!==null&&(
                         <div className={`timer ${timeRemaining<300? 'warning':''}`}>
-                            <span className="timer-icon">⏱️</span>
+                            <Clock size={16} />
                             <span className="timer-value">{formatTime(timeRemaining)}</span>
                         </div>
                     )}
@@ -355,7 +380,7 @@ function PracticeInterviewRoom()
                 <div className="question-panel">
                     {transitionMessage&&(
                         <div className="ai-message">
-                            <span className="ai-icon">🤖</span>
+                            <span className="ai-icon"><Bot size={16} /></span>
                             <p>{transitionMessage}</p>
                         </div>
                     )}
@@ -372,7 +397,7 @@ function PracticeInterviewRoom()
 
                         {currentQuestion?.hints&&currentQuestion.hints.length>0&&(
                             <div className="hints-section">
-                                <h4>💡 Hints</h4>
+                                <h4><Lightbulb size={16} /> Hints</h4>
                                 <ul>
                                     {currentQuestion.hints.map((hint, i) => (
                                         <li key={i}>{hint}</li>
@@ -383,7 +408,7 @@ function PracticeInterviewRoom()
 
                         {currentQuestion?.expectedPoints&&currentQuestion.expectedPoints.length>0&&!showEvaluation&&(
                             <div className="expected-points">
-                                <h4>📝 Key Points to Cover</h4>
+                                <h4><FileText size={16} /> Key Points to Cover</h4>
                                 <ul>
                                     {currentQuestion.expectedPoints.map((point, i) => (
                                         <li key={i}>{point}</li>
@@ -443,7 +468,7 @@ function PracticeInterviewRoom()
                     {/* Test Cases Display for Coding Questions */}
                     {currentQuestion?.testCases&&!showEvaluation&&(
                         <div className="test-cases-section">
-                            <h4>🧪 Test Cases</h4>
+                            <h4><FlaskConical size={16} /> Test Cases</h4>
                             <div className="test-cases-list">
                                 {currentQuestion.testCases.filter(tc => !tc.hidden).map((testCase, i) => (
                                     <div key={i} className="test-case-item">
@@ -456,7 +481,7 @@ function PracticeInterviewRoom()
                                 ))}
                                 {currentQuestion.testCases.some(tc => tc.hidden)&&(
                                     <div className="hidden-tests-info">
-                                        🔒 {currentQuestion.testCases.filter(tc => tc.hidden).length} hidden test case(s)
+                                        <Lock size={14} /> {currentQuestion.testCases.filter(tc => tc.hidden).length} hidden test case(s)
                                     </div>
                                 )}
                             </div>
@@ -468,17 +493,17 @@ function PracticeInterviewRoom()
                         <div className={`test-results ${testResults.error? 'error':''}`}>
                             {testResults.error? (
                                 <div className="error-message">
-                                    ❌ Error: {testResults.error}
+                                    <XCircle size={16} /> Error: {testResults.error}
                                 </div>
                             ):(
                                 <div>
                                     <div className="results-summary">
-                                        {testResults.passed===testResults.total? '✅':'⚠️'}
+                                        {testResults.passed===testResults.total? <CheckCircle size={16} />:<AlertTriangle size={16} />}
                                         {' '}Passed {testResults.passed}/{testResults.total} tests
                                     </div>
                                     {testResults.details&&testResults.details.map((result, i) => (
                                         <div key={i} className={`test-result-item ${result.passed? 'passed':'failed'}`}>
-                                            Test {i+1}: {result.passed? '✅ Passed':'❌ Failed'}
+                                            Test {i+1}: {result.passed? <><CheckCircle size={14} /> Passed</>:<><XCircle size={14} /> Failed</>}
                                             {!result.passed&&result.error&&(
                                                 <div className="error-detail">{result.error}</div>
                                             )}
@@ -497,7 +522,7 @@ function PracticeInterviewRoom()
                                     onClick={handleRunTests}
                                     disabled={loading||!answer.trim()}
                                 >
-                                    {loading? '⏳ Running...':'▶️ Run Tests'}
+                                    {loading? <><Loader2 size={14} className="btn-spin" /> Running...</>:<><Play size={14} /> Run Tests</>}
                                 </button>
                             )}
                             <button
@@ -505,7 +530,7 @@ function PracticeInterviewRoom()
                                 onClick={handleSubmitAnswer}
                                 disabled={loading||!answer.trim()}
                             >
-                                {loading? '⏳ Evaluating...':'✅ Submit Answer'}
+                                {loading? <><Loader2 size={14} className="btn-spin" /> Evaluating...</>:<><Send size={14} /> Submit Answer</>}
                             </button>
                         </div>
                     )}
@@ -514,7 +539,7 @@ function PracticeInterviewRoom()
                     {showEvaluation&&evaluation&&(
                         <div className="evaluation-results" ref={evaluationRef}>
                             <div className="eval-header">
-                                <h3>📊 Evaluation</h3>
+                                <h3><BarChart3 size={18} /> Evaluation</h3>
                                 <div className="score-circle">
                                     <span className="score-value">{evaluation.score}</span>
                                     <span className="score-max">/10</span>
@@ -523,13 +548,13 @@ function PracticeInterviewRoom()
 
                             <div className="eval-content">
                                 <div className="eval-section">
-                                    <h4>💬 Feedback</h4>
+                                    <h4><MessageSquare size={16} /> Feedback</h4>
                                     <p>{evaluation.feedback}</p>
                                 </div>
 
                                 {evaluation.strengths&&evaluation.strengths.length>0&&(
                                     <div className="eval-section strengths">
-                                        <h4>✅ Strengths</h4>
+                                        <h4><CheckCircle size={16} /> Strengths</h4>
                                         <ul>
                                             {evaluation.strengths.map((s, i) => (
                                                 <li key={i}>{s}</li>
@@ -540,7 +565,7 @@ function PracticeInterviewRoom()
 
                                 {evaluation.improvements&&evaluation.improvements.length>0&&(
                                     <div className="eval-section improvements">
-                                        <h4>📈 Areas for Improvement</h4>
+                                        <h4><TrendingUp size={16} /> Areas for Improvement</h4>
                                         <ul>
                                             {evaluation.improvements.map((imp, i) => (
                                                 <li key={i}>{imp}</li>
@@ -551,7 +576,7 @@ function PracticeInterviewRoom()
 
                                 {evaluation.followUp&&(
                                     <div className="eval-section follow-up">
-                                        <h4>🤔 Follow-up Question</h4>
+                                        <h4><HelpCircle size={16} /> Follow-up Question</h4>
                                         <p>{evaluation.followUp}</p>
                                     </div>
                                 )}
@@ -562,7 +587,7 @@ function PracticeInterviewRoom()
                                     className="next-btn"
                                     onClick={handleNextQuestion}
                                 >
-                                    {questionNumber>=totalQuestions? '🏁 Finish Interview':'➡️ Next Question'}
+                                    {questionNumber>=totalQuestions? <><Flag size={16} /> Finish Interview</>:<>Next Question <ArrowRight size={16} /></>}
                                 </button>
                             </div>
                         </div>

@@ -1233,3 +1233,436 @@
   border-color: #58a6ff;
   color: #58a6ff;
 }
+
+/* ═══════════════════════════════════════════ */
+/* ── Toolbar Detect & Analyze Buttons ────── */
+/* ═══════════════════════════════════════════ */
+.cp-toolbar-detect-btn,
+.cp-toolbar-analyze-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #c9d1d9;
+  background: #21262d;
+}
+.cp-toolbar-detect-btn:hover {
+  border-color: #f59e0b;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+.cp-toolbar-analyze-btn:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+}
+.cp-toolbar-detect-btn:disabled,
+.cp-toolbar-analyze-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════ */
+/* ── Spinner animation ───────────────────── */
+/* ═══════════════════════════════════════════ */
+.cp-spin {
+  animation: cp-spin-anim 1s linear infinite;
+}
+@keyframes cp-spin-anim {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ═══════════════════════════════════════════ */
+/* ── AI Prompt Tab ───────────────────────── */
+/* ═══════════════════════════════════════════ */
+.cp-prompt-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  height: 100%;
+  overflow-y: auto;
+}
+.cp-prompt-input-area {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+.cp-prompt-textarea {
+  flex: 1;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #c9d1d9;
+  font-family: "Segoe UI", sans-serif;
+  font-size: 0.82rem;
+  padding: 0.6rem 0.75rem;
+  resize: vertical;
+  min-height: 48px;
+  max-height: 120px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.cp-prompt-textarea:focus {
+  border-color: #58a6ff;
+}
+.cp-prompt-textarea::placeholder {
+  color: #484f58;
+}
+.cp-prompt-send-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.55rem 1rem;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.cp-prompt-send-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+.cp-prompt-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cp-prompt-response {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.cp-prompt-response-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  background: #21262d;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #a78bfa;
+  border-bottom: 1px solid #30363d;
+}
+.cp-prompt-response-body {
+  padding: 0.75rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.cp-prompt-text {
+  color: #c9d1d9;
+  font-size: 0.8rem;
+  font-family: "Segoe UI", sans-serif;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.6;
+  margin: 0;
+}
+.cp-prompt-hints {
+  padding: 0.5rem;
+}
+.cp-prompt-hints-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #8b949e;
+  font-size: 0.78rem;
+  margin-bottom: 0.5rem;
+}
+.cp-prompt-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.cp-prompt-suggestion {
+  padding: 0.35rem 0.7rem;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 16px;
+  color: #8b949e;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cp-prompt-suggestion:hover {
+  border-color: #58a6ff;
+  color: #58a6ff;
+  background: rgba(88, 166, 255, 0.06);
+}
+
+/* ═══════════════════════════════════════════ */
+/* ── AI Detection Tab ────────────────────── */
+/* ═══════════════════════════════════════════ */
+.cp-detect-panel,
+.cp-analysis-panel {
+  padding: 0.75rem;
+  height: 100%;
+  overflow-y: auto;
+}
+.cp-detect-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: #8b949e;
+  font-size: 0.82rem;
+}
+.cp-detect-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: #484f58;
+  text-align: center;
+}
+.cp-detect-empty p {
+  font-size: 0.8rem;
+  color: #8b949e;
+  max-width: 280px;
+  line-height: 1.5;
+}
+.cp-detect-results {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.cp-detect-score-section {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 0.75rem;
+  background: #161b22;
+  border-radius: 10px;
+  border: 1px solid #30363d;
+}
+.cp-detect-gauge {
+  flex-shrink: 0;
+}
+.cp-detect-score-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 3px solid var(--score-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+}
+.cp-detect-score-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #e6edf3;
+}
+.cp-detect-score-label {
+  font-size: 0.6rem;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.cp-detect-verdict-box {
+  border-left: 3px solid;
+  padding-left: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.cp-detect-verdict {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #e6edf3;
+}
+.cp-detect-confidence {
+  font-size: 0.72rem;
+  color: #8b949e;
+}
+.cp-detect-details {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+.cp-detect-details h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: #c9d1d9;
+  margin: 0 0 0.6rem 0;
+}
+.cp-detect-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.cp-detect-detail-label {
+  width: 130px;
+  font-size: 0.72rem;
+  color: #8b949e;
+  flex-shrink: 0;
+}
+.cp-detect-bar-track {
+  flex: 1;
+  height: 6px;
+  background: #21262d;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.cp-detect-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+.cp-detect-detail-value {
+  width: 36px;
+  text-align: right;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #c9d1d9;
+}
+.cp-detect-suggestions,
+.cp-analysis-list {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+.cp-detect-suggestions h4,
+.cp-analysis-list h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: #c9d1d9;
+  margin: 0 0 0.5rem 0;
+}
+.cp-detect-suggestions ul,
+.cp-analysis-list ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  list-style: disc;
+}
+.cp-detect-suggestions li,
+.cp-analysis-list li {
+  font-size: 0.75rem;
+  color: #8b949e;
+  margin-bottom: 0.3rem;
+  line-height: 1.5;
+}
+.cp-detect-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #f87171;
+  font-size: 0.8rem;
+}
+
+/* ═══════════════════════════════════════════ */
+/* ── AI Analysis Tab ─────────────────────── */
+/* ═══════════════════════════════════════════ */
+.cp-analysis-results {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.cp-analysis-header {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 0.75rem;
+  background: #161b22;
+  border-radius: 10px;
+  border: 1px solid #30363d;
+}
+.cp-analysis-score-ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 3px solid var(--ring-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.3);
+}
+.cp-analysis-score-num {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #e6edf3;
+}
+.cp-analysis-score-lbl {
+  font-size: 0.65rem;
+  color: #8b949e;
+}
+.cp-analysis-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.cp-analysis-metric {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: #c9d1d9;
+}
+.cp-analysis-metric strong {
+  color: #8b949e;
+}
+.cp-analysis-bars {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.cp-analysis-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.cp-analysis-bar-label {
+  width: 90px;
+  font-size: 0.72rem;
+  color: #8b949e;
+  flex-shrink: 0;
+}
+.cp-analysis-strengths h4 {
+  color: #22c55e;
+}
+.cp-analysis-weaknesses h4 {
+  color: #f87171;
+}
+.cp-analysis-suggestions h4 {
+  color: #f59e0b;
+}
+.cp-analysis-smells h4 {
+  color: #f97316;
+}

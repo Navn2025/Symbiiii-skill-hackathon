@@ -5,7 +5,8 @@ import
 {
     Play, Send, ChevronDown, ChevronRight, CheckCircle, XCircle,
     Terminal, FlaskConical, Clock, Code2, FileText, RotateCcw, Maximize2, Minimize2,
-    Sparkles, Lightbulb, Loader2, Filter, Eye, EyeOff, AlertCircle, Trophy
+    Sparkles, Lightbulb, Loader2, Filter, Eye, EyeOff, AlertCircle, Trophy,
+    Shield, BarChart3, MessageSquare, Search, Zap, TrendingUp, TrendingDown
 } from 'lucide-react';
 import './CodingPractice.css';
 
@@ -44,6 +45,19 @@ function CodingPractice({embedded})
     const [submitStatus, setSubmitStatus]=useState(null); // 'accepted' | 'wrong' | null
     const [fetchingQuestions, setFetchingQuestions]=useState(true);
     const [fetchError, setFetchError]=useState('');
+
+    // AI Prompt
+    const [promptText, setPromptText]=useState('');
+    const [promptResponse, setPromptResponse]=useState('');
+    const [promptLoading, setPromptLoading]=useState(false);
+
+    // AI Code Detection
+    const [detection, setDetection]=useState(null);
+    const [detectLoading, setDetectLoading]=useState(false);
+
+    // AI Code Analysis
+    const [analysis, setAnalysis]=useState(null);
+    const [analysisLoading, setAnalysisLoading]=useState(false);
 
     useEffect(() => {fetchQuestions();}, []);
 
@@ -225,6 +239,63 @@ function CodingPractice({embedded})
     const toggleAiTopic=(topic) =>
     {
         setAiTopics(prev => prev.includes(topic)? prev.filter(t => t!==topic):[...prev, topic]);
+    };
+
+    // ── AI Prompt (ask AI for help) ──
+    const handlePrompt=async () =>
+    {
+        if (!promptText.trim()) return;
+        setPromptLoading(true);
+        setPromptResponse('');
+        try
+        {
+            const response=await api.post('/coding-practice/prompt', {
+                prompt: promptText, language, currentCode: code,
+                title: selectedQuestion?.title, description: selectedQuestion?.description
+            });
+            setPromptResponse(response.data.response||'No response.');
+            setActiveTab('prompt');
+        } catch (error)
+        {
+            setPromptResponse('Error: '+(error.response?.data?.error||'Failed to get AI response'));
+        } finally {setPromptLoading(false);}
+    };
+
+    // ── AI Code Detection ──
+    const handleDetect=async () =>
+    {
+        if (!code||code.trim().length<20) {setDetection({error: 'Write at least 20 characters of code first.'}); setActiveTab('detect'); return;}
+        setDetectLoading(true);
+        setDetection(null);
+        setActiveTab('detect');
+        try
+        {
+            const response=await api.post('/coding-practice/detect', {code, language});
+            setDetection(response.data.detection);
+        } catch (error)
+        {
+            setDetection({error: error.response?.data?.error||'Detection failed'});
+        } finally {setDetectLoading(false);}
+    };
+
+    // ── AI Code Analysis ──
+    const handleAnalyze=async () =>
+    {
+        if (!code||code.trim().length<10) {setAnalysis({error: 'Write some code first.'}); setActiveTab('analysis'); return;}
+        setAnalysisLoading(true);
+        setAnalysis(null);
+        setActiveTab('analysis');
+        try
+        {
+            const response=await api.post('/coding-practice/analyze', {
+                code, language,
+                title: selectedQuestion?.title, description: selectedQuestion?.description
+            });
+            setAnalysis(response.data.analysis);
+        } catch (error)
+        {
+            setAnalysis({error: error.response?.data?.error||'Analysis failed'});
+        } finally {setAnalysisLoading(false);}
     };
 
     const difficultyColor=(d) =>
@@ -450,6 +521,12 @@ function CodingPractice({embedded})
                                     <button className="cp-toolbar-ai-btn" onClick={() => {setSidebarCollapsed(false); setShowAIPanel(true);}} title="Generate AI Question">
                                         <Sparkles size={14} /> AI Generate
                                     </button>
+                                    <button className="cp-toolbar-detect-btn" onClick={handleDetect} disabled={detectLoading} title="Check if code is AI-generated">
+                                        <Shield size={14} /> {detectLoading? '...':'Detect AI'}
+                                    </button>
+                                    <button className="cp-toolbar-analyze-btn" onClick={handleAnalyze} disabled={analysisLoading} title="Analyze code quality">
+                                        <BarChart3 size={14} /> {analysisLoading? '...':'Analyze'}
+                                    </button>
                                     <button className="cp-ide-run-btn" onClick={handleRunCode} disabled={loading||submitting}>
                                         {loading? <Loader2 size={14} className="cp-spin" />:<Play size={14} />} {loading? 'Running...':'Run'}
                                     </button>
@@ -471,11 +548,26 @@ function CodingPractice({embedded})
                                             <Terminal size={13} /> Output
                                         </button>
                                         <button className={`cp-ide-tab ${activeTab==='tests'? 'active':''}`} onClick={() => setActiveTab('tests')}>
-                                            <FlaskConical size={13} /> Test Results
+                                            <FlaskConical size={13} /> Tests
                                             {testResults&&(
                                                 <span className={`cp-ide-tab-badge ${testResults.allPassed? 'pass':'fail'}`}>
                                                     {passedCount}/{totalTests}
                                                 </span>
+                                            )}
+                                        </button>
+                                        <button className={`cp-ide-tab ${activeTab==='prompt'? 'active':''}`} onClick={() => setActiveTab('prompt')}>
+                                            <MessageSquare size={13} /> AI Prompt
+                                        </button>
+                                        <button className={`cp-ide-tab ${activeTab==='detect'? 'active':''}`} onClick={() => setActiveTab('detect')}>
+                                            <Shield size={13} /> Detection
+                                            {detection&&!detection.error&&(
+                                                <span className="cp-ide-tab-badge" style={{background: detection.color||'#888'}}>{detection.finalScore}%</span>
+                                            )}
+                                        </button>
+                                        <button className={`cp-ide-tab ${activeTab==='analysis'? 'active':''}`} onClick={() => setActiveTab('analysis')}>
+                                            <BarChart3 size={13} /> Analysis
+                                            {analysis&&!analysis.error&&(
+                                                <span className="cp-ide-tab-badge" style={{background: analysis.overallScore>=70? '#22c55e':analysis.overallScore>=40? '#f59e0b':'#ef4444'}}>{analysis.overallScore}</span>
                                             )}
                                         </button>
                                     </div>
@@ -577,6 +669,210 @@ function CodingPractice({embedded})
                                                         </div>
                                                     )}
                                                 </>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* AI Prompt Tab */}
+                                    {activeTab==='prompt'&&(
+                                        <div className="cp-prompt-panel">
+                                            <div className="cp-prompt-input-area">
+                                                <textarea
+                                                    className="cp-prompt-textarea"
+                                                    value={promptText}
+                                                    onChange={e => setPromptText(e.target.value)}
+                                                    placeholder="Ask about your code... e.g. 'How can I optimize this?' or 'Explain the time complexity'"
+                                                    rows={3}
+                                                    onKeyDown={e => {if (e.key==='Enter'&&!e.shiftKey) {e.preventDefault(); handlePrompt();} }}
+                                                />
+                                                <button className="cp-prompt-send-btn" onClick={handlePrompt} disabled={promptLoading||!promptText.trim()}>
+                                                    {promptLoading? <Loader2 size={16} className="cp-spin" />:<Send size={16} />}
+                                                    {promptLoading? 'Thinking...':'Ask AI'}
+                                                </button>
+                                            </div>
+                                            {promptResponse&&(
+                                                <div className="cp-prompt-response">
+                                                    <div className="cp-prompt-response-header">
+                                                        <Sparkles size={14} /> AI Response
+                                                    </div>
+                                                    <div className="cp-prompt-response-body">
+                                                        <pre className="cp-prompt-text">{promptResponse}</pre>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {!promptResponse&&!promptLoading&&(
+                                                <div className="cp-prompt-hints">
+                                                    <p className="cp-prompt-hints-title"><Lightbulb size={14} /> Try asking:</p>
+                                                    <div className="cp-prompt-suggestions">
+                                                        {['How can I optimize this solution?', 'Explain the time complexity', 'What edge cases should I handle?', 'Suggest a different approach'].map(s => (
+                                                            <button key={s} className="cp-prompt-suggestion" onClick={() => {setPromptText(s);}}>{s}</button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* AI Detection Tab */}
+                                    {activeTab==='detect'&&(
+                                        <div className="cp-detect-panel">
+                                            {detectLoading&&(
+                                                <div className="cp-detect-loading">
+                                                    <Loader2 size={24} className="cp-spin" />
+                                                    <span>Analyzing code patterns...</span>
+                                                </div>
+                                            )}
+                                            {!detection&&!detectLoading&&(
+                                                <div className="cp-detect-empty">
+                                                    <Shield size={32} />
+                                                    <p>Click <strong>"Detect AI"</strong> in the toolbar to check if your code appears AI-generated.</p>
+                                                </div>
+                                            )}
+                                            {detection&&!detection.error&&(
+                                                <div className="cp-detect-results">
+                                                    <div className="cp-detect-score-section">
+                                                        <div className="cp-detect-gauge" style={{'--score-color': detection.color||'#888'}}>
+                                                            <div className="cp-detect-score-circle">
+                                                                <span className="cp-detect-score-value">{detection.finalScore}%</span>
+                                                                <span className="cp-detect-score-label">AI Score</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="cp-detect-verdict-box" style={{borderColor: detection.color||'#888'}}>
+                                                            <span className="cp-detect-verdict">{detection.verdict}</span>
+                                                            <span className="cp-detect-confidence">Confidence: {detection.confidence}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {detection.details&&(
+                                                        <div className="cp-detect-details">
+                                                            <h4><Search size={14} /> Analysis Breakdown</h4>
+                                                            {detection.details.heuristic!==undefined&&(
+                                                                <div className="cp-detect-detail-row">
+                                                                    <span className="cp-detect-detail-label">Heuristic Analysis</span>
+                                                                    <div className="cp-detect-bar-track">
+                                                                        <div className="cp-detect-bar-fill" style={{width: `${detection.details.heuristic}%`, background: detection.details.heuristic>60? '#ef4444':'#22c55e'}} />
+                                                                    </div>
+                                                                    <span className="cp-detect-detail-value">{detection.details.heuristic}%</span>
+                                                                </div>
+                                                            )}
+                                                            {detection.details.behavior!==undefined&&(
+                                                                <div className="cp-detect-detail-row">
+                                                                    <span className="cp-detect-detail-label">Behavior Analysis</span>
+                                                                    <div className="cp-detect-bar-track">
+                                                                        <div className="cp-detect-bar-fill" style={{width: `${detection.details.behavior}%`, background: detection.details.behavior>60? '#ef4444':'#22c55e'}} />
+                                                                    </div>
+                                                                    <span className="cp-detect-detail-value">{detection.details.behavior}%</span>
+                                                                </div>
+                                                            )}
+                                                            {detection.details.aiAnalysis!==undefined&&(
+                                                                <div className="cp-detect-detail-row">
+                                                                    <span className="cp-detect-detail-label">AI Pattern Detection</span>
+                                                                    <div className="cp-detect-bar-track">
+                                                                        <div className="cp-detect-bar-fill" style={{width: `${detection.details.aiAnalysis}%`, background: detection.details.aiAnalysis>60? '#ef4444':'#22c55e'}} />
+                                                                    </div>
+                                                                    <span className="cp-detect-detail-value">{detection.details.aiAnalysis}%</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {detection.suggestions&&detection.suggestions.length>0&&(
+                                                        <div className="cp-detect-suggestions">
+                                                            <h4><Lightbulb size={14} /> Suggestions</h4>
+                                                            <ul>
+                                                                {detection.suggestions.map((s, i) => <li key={i}>{s}</li>)}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {detection&&detection.error&&(
+                                                <div className="cp-detect-error">
+                                                    <AlertCircle size={16} /> {detection.error}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* AI Analysis Tab */}
+                                    {activeTab==='analysis'&&(
+                                        <div className="cp-analysis-panel">
+                                            {analysisLoading&&(
+                                                <div className="cp-detect-loading">
+                                                    <Loader2 size={24} className="cp-spin" />
+                                                    <span>Analyzing code quality...</span>
+                                                </div>
+                                            )}
+                                            {!analysis&&!analysisLoading&&(
+                                                <div className="cp-detect-empty">
+                                                    <BarChart3 size={32} />
+                                                    <p>Click <strong>"Analyze"</strong> in the toolbar to get a detailed code quality analysis.</p>
+                                                </div>
+                                            )}
+                                            {analysis&&!analysis.error&&(
+                                                <div className="cp-analysis-results">
+                                                    <div className="cp-analysis-header">
+                                                        <div className="cp-analysis-score-ring" style={{'--ring-color': analysis.overallScore>=70? '#22c55e':analysis.overallScore>=40? '#f59e0b':'#ef4444'}}>
+                                                            <span className="cp-analysis-score-num">{analysis.overallScore}</span>
+                                                            <span className="cp-analysis-score-lbl">/100</span>
+                                                        </div>
+                                                        <div className="cp-analysis-metrics">
+                                                            <div className="cp-analysis-metric">
+                                                                <Zap size={14} /> <strong>Time:</strong> {analysis.timeComplexity||'N/A'}
+                                                            </div>
+                                                            <div className="cp-analysis-metric">
+                                                                <Search size={14} /> <strong>Space:</strong> {analysis.spaceComplexity||'N/A'}
+                                                            </div>
+                                                            {analysis.approach&&(
+                                                                <div className="cp-analysis-metric">
+                                                                    <Code2 size={14} /> <strong>Approach:</strong> {analysis.approach}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="cp-analysis-bars">
+                                                        {[{label: 'Readability', val: analysis.readability}, {label: 'Efficiency', val: analysis.efficiency}, {label: 'Correctness', val: analysis.correctness}].map(m => (
+                                                            <div key={m.label} className="cp-analysis-bar-row">
+                                                                <span className="cp-analysis-bar-label">{m.label}</span>
+                                                                <div className="cp-detect-bar-track">
+                                                                    <div className="cp-detect-bar-fill" style={{width: `${m.val||0}%`, background: (m.val||0)>=70? '#22c55e':(m.val||0)>=40? '#f59e0b':'#ef4444'}} />
+                                                                </div>
+                                                                <span className="cp-detect-detail-value">{m.val||0}%</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    {analysis.strengths&&analysis.strengths.length>0&&(
+                                                        <div className="cp-analysis-list cp-analysis-strengths">
+                                                            <h4><TrendingUp size={14} /> Strengths</h4>
+                                                            <ul>{analysis.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
+                                                        </div>
+                                                    )}
+                                                    {analysis.weaknesses&&analysis.weaknesses.length>0&&(
+                                                        <div className="cp-analysis-list cp-analysis-weaknesses">
+                                                            <h4><TrendingDown size={14} /> Weaknesses</h4>
+                                                            <ul>{analysis.weaknesses.map((s, i) => <li key={i}>{s}</li>)}</ul>
+                                                        </div>
+                                                    )}
+                                                    {analysis.suggestions&&analysis.suggestions.length>0&&(
+                                                        <div className="cp-analysis-list cp-analysis-suggestions">
+                                                            <h4><Lightbulb size={14} /> Suggestions</h4>
+                                                            <ul>{analysis.suggestions.map((s, i) => <li key={i}>{s}</li>)}</ul>
+                                                        </div>
+                                                    )}
+                                                    {analysis.codeSmells&&analysis.codeSmells.length>0&&(
+                                                        <div className="cp-analysis-list cp-analysis-smells">
+                                                            <h4><AlertCircle size={14} /> Code Smells</h4>
+                                                            <ul>{analysis.codeSmells.map((s, i) => <li key={i}>{s}</li>)}</ul>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {analysis&&analysis.error&&(
+                                                <div className="cp-detect-error">
+                                                    <AlertCircle size={16} /> {analysis.error}
+                                                </div>
                                             )}
                                         </div>
                                     )}

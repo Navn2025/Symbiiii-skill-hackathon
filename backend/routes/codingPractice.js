@@ -3,6 +3,7 @@ import axios from 'axios';
 import {verifyAuth, verifyAuthOptional} from '../middleware/auth.js';
 import testRunner from '../services/testRunner.js';
 import questionBank from '../services/questionBank.js';
+import aiDetector from '../services/aiDetector.js';
 
 const router=express.Router();
 const GROQ_TIMEOUT=30000;
@@ -363,6 +364,137 @@ Give a helpful hint WITHOUT revealing the full solution. Be concise (2-3 sentenc
     {
         console.error('Hint error:', error.message);
         res.json({success: true, hint: 'Think about which data structure would optimize your solution. Consider edge cases carefully.'});
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+// POST /detect – AI code detection (is code AI-generated?)
+// ═══════════════════════════════════════════════════════
+router.post('/detect', verifyAuthOptional, async (req, res) =>
+{
+    const {code, language}=req.body;
+    if (!code||code.trim().length<20) return res.status(400).json({success: false, error: 'Code must be at least 20 characters for detection.'});
+
+    try
+    {
+        const result=await aiDetector.detectAIGenerated(code, language||'javascript', {});
+        res.json({success: true, detection: result});
+    } catch (error)
+    {
+        console.error('AI detection error:', error.message);
+        res.status(500).json({success: false, error: 'AI detection failed: '+error.message});
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+// POST /analyze – AI code analysis (quality, complexity, suggestions)
+// ═══════════════════════════════════════════════════════
+router.post('/analyze', verifyAuthOptional, async (req, res) =>
+{
+    const {code, language, title, description}=req.body;
+    if (!code||code.trim().length<10) return res.status(400).json({success: false, error: 'Code is too short to analyze.'});
+
+    try
+    {
+        if (!process.env.GROQ_API_KEY) return res.status(500).json({success: false, error: 'AI service not configured.'});
+
+        const prompt=`Analyze this ${language||'code'} solution${title? ` for "${title}"`:''}.
+${description? `Problem: ${description}\n`:''}
+CODE:
+\`\`\`${language||'code'}
+${code}
+\`\`\`
+
+Provide a comprehensive analysis. Return ONLY valid JSON:
+{
+  "overallScore": <0-100>,
+  "timeComplexity": "O(?)",
+  "spaceComplexity": "O(?)",
+  "approach": "Brief description of the algorithm/approach used",
+  "strengths": ["strength 1", "strength 2"],
+  "weaknesses": ["weakness 1"],
+  "suggestions": ["suggestion 1", "suggestion 2"],
+  "codeSmells": ["smell 1"],
+  "edgeCases": ["edge case that may fail"],
+  "readability": <0-100>,
+  "efficiency": <0-100>,
+  "correctness": <0-100>
+}`;
+
+        const completion=await axios.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            {
+                messages: [
+                    {role: 'system', content: 'You are an expert code reviewer. Analyze code thoroughly and return only valid JSON. Be specific and practical.'},
+                    {role: 'user', content: prompt}
+                ],
+                model: 'llama-3.3-70b-versatile',
+                temperature: 0.2,
+                max_tokens: 1000,
+            },
+            {
+                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`},
+                timeout: GROQ_TIMEOUT,
+            }
+        );
+
+        let text=completion.data.choices[0]?.message?.content||'{}';
+        text=text.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        let analysis;
+        try {analysis=JSON.parse(text);}
+        catch (e) {analysis={overallScore: 50, approach: 'Could not parse analysis', strengths: [], weaknesses: [], suggestions: ['Try again'], timeComplexity: 'Unknown', spaceComplexity: 'Unknown'};}
+        res.json({success: true, analysis});
+    } catch (error)
+    {
+        console.error('Code analysis error:', error.message);
+        res.status(500).json({success: false, error: 'Code analysis failed: '+error.message});
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+// POST /prompt – AI coding assistant (generate code from prompt)
+// ═══════════════════════════════════════════════════════
+router.post('/prompt', verifyAuthOptional, async (req, res) =>
+{
+    const {prompt, language, title, description, currentCode}=req.body;
+    if (!prompt||prompt.trim().length<5) return res.status(400).json({success: false, error: 'Prompt must be at least 5 characters.'});
+
+    try
+    {
+        if (!process.env.GROQ_API_KEY) return res.status(500).json({success: false, error: 'AI service not configured.'});
+
+        const systemPrompt=`You are an expert coding assistant. Help the user with their coding problem.
+${title? `Problem: ${title}`:''} ${description? `\nDescription: ${description}`:''}
+Language: ${language||'javascript'}
+${currentCode? `\nUser's current code:\n\`\`\`\n${currentCode}\n\`\`\``:''}\n
+The user's request: ${prompt}
+
+Provide a helpful response. If they ask for code, include working code. If they ask for explanation, explain clearly.
+Use markdown formatting. Keep it concise but thorough.`;
+
+        const completion=await axios.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            {
+                messages: [
+                    {role: 'system', content: 'You are an expert programming assistant. Provide clear, working solutions. Use markdown with code blocks.'},
+                    {role: 'user', content: systemPrompt}
+                ],
+                model: 'llama-3.3-70b-versatile',
+                temperature: 0.3,
+                max_tokens: 1500,
+            },
+            {
+                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`},
+                timeout: GROQ_TIMEOUT,
+            }
+        );
+
+        const response=completion.data.choices[0]?.message?.content||'No response generated.';
+        res.json({success: true, response});
+    } catch (error)
+    {
+        console.error('AI prompt error:', error.message);
+        res.status(500).json({success: false, error: 'AI prompt failed: '+error.message});
     }
 });
 
