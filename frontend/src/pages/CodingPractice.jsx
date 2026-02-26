@@ -12,7 +12,7 @@ import './CodingPractice.css';
 const AI_TOPICS=['Arrays', 'Strings', 'Linked Lists', 'Trees', 'Graphs', 'Dynamic Programming',
     'Sorting', 'Searching', 'Hash Tables', 'Stacks & Queues', 'Recursion', 'Math', 'Greedy', 'Backtracking'];
 
-function CodingPractice()
+function CodingPractice({embedded})
 {
     const [questions, setQuestions]=useState([]);
     const [selectedQuestion, setSelectedQuestion]=useState(null);
@@ -245,7 +245,7 @@ function CodingPractice()
     const totalTests=testResults? testResults.totalTests:0;
 
     return (
-        <div className="cp-ide">
+        <div className={`cp-ide ${embedded? 'cp-ide-embedded':''}`}>
             {/* ── Sidebar ── */}
             <div className={`cp-ide-sidebar ${sidebarCollapsed? 'collapsed':''}`}>
                 <div className="cp-ide-sidebar-header">

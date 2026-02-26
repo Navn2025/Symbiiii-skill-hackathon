@@ -12,6 +12,13 @@
   overflow: hidden;
 }
 
+/* Embedded mode – used inside CandidateDashboard */
+.cp-ide.cp-ide-embedded {
+  height: calc(100vh - 60px);
+  border-radius: 8px;
+  margin: -2rem 0 0 0;
+}
+
 /* ── Sidebar ── */
 .cp-ide-sidebar {
   background: #161b22;

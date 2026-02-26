@@ -927,6 +927,12 @@
 }
 
 /* ── Coding Practice Tab ─────────────────────────────────────────── */
+.cdt-coding-wrapper {
+  margin: -2rem 0 -4rem 0;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+}
+
 .cdt-coding-layout {
   display: flex;
   height: calc(100vh - 65px);

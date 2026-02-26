@@ -11,6 +11,7 @@ import
 } from 'lucide-react';
 import api, {getMyInterviews} from '../services/api';
 import CodeEditor from '../components/CodeEditor';
+import CodingPractice from './CodingPractice';
 import './CandidateDashboard.css';
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1218,130 +1219,13 @@ function PracticeTab({user})
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   CODING PRACTICE TAB
+   CODING PRACTICE TAB – uses the full-featured standalone component
    ═══════════════════════════════════════════════════════════════════ */
 function CodingTab()
 {
-  const [questions, setQuestions]=useState([]);
-  const [selectedQuestion, setSelectedQuestion]=useState(null);
-  const [code, setCode]=useState('');
-  const [language, setLanguage]=useState('javascript');
-  const [output, setOutput]=useState('');
-  const [loading, setLoading]=useState(false);
-  const [testResults, setTestResults]=useState(null);
-
-  useEffect(() => {fetchQuestions();}, []);
-
-  const fetchQuestions=async () =>
-  {
-    try
-    {
-      const res=await api.get('/coding-practice/questions');
-      const qs=res.data.questions||[];
-      setQuestions(qs);
-      if (qs.length) selectQuestion(qs[0]);
-    } catch
-    {
-      const mock=[{id: 1, title: 'Two Sum', difficulty: 'Easy', description: 'Given an array of integers nums and an integer target, return indices of the two numbers that add up to target.', exampleInput: '[2, 7, 11, 15], target = 9', exampleOutput: '[0, 1]', testCases: []}];
-      setQuestions(mock);
-      selectQuestion(mock[0]);
-    }
-  };
-
-  const getStarter=(q, lang) =>
-  {
-    const s={
-      javascript: `// ${q.title}\nfunction solution() {\n  // Write your code here\n}\nsolution();`,
-      python: `# ${q.title}\ndef solution():\n    pass\nsolution()`,
-      java: `// ${q.title}\npublic class Solution {\n    public static void main(String[] args) {\n    }\n}`
-    };
-    return s[lang]||s.javascript;
-  };
-
-  const selectQuestion=(q) => {setSelectedQuestion(q); setCode(getStarter(q, language)); setOutput(''); setTestResults(null);};
-
-  const handleRun=async () =>
-  {
-    setLoading(true); setOutput('Running...');
-    try
-    {
-      const res=await api.post('/coding-practice/run', {code, language, questionId: selectedQuestion.id});
-      setOutput(res.data.output||'Executed successfully'); setTestResults(res.data.testResults);
-    } catch (e) {setOutput('Error: '+(e.response?.data?.error||'Failed'));}
-    finally {setLoading(false);}
-  };
-
-  const handleSubmit=async () =>
-  {
-    setLoading(true);
-    try
-    {
-      const res=await api.post('/coding-practice/submit', {code, language, questionId: selectedQuestion.id});
-      setTestResults(res.data.testResults);
-      setOutput(res.data.allPassed? '✅ All test cases passed!':'❌ Some test cases failed.');
-    } catch (e) {setOutput('Error: '+(e.response?.data?.error||'Failed'));}
-    finally {setLoading(false);}
-  };
-
   return (
-    <div className="cdt-coding-layout">
-      {/* Sidebar */}
-      <div className="cdt-coding-sidebar">
-        <h3>Problems</h3>
-        {questions.map(q => (
-          <div key={q.id} className={`cdt-q-item ${selectedQuestion?.id===q.id? 'active':''}`} onClick={() => selectQuestion(q)}>
-            <span className="cdt-q-title">{q.title}</span>
-            <span className={`cdt-q-diff ${q.difficulty.toLowerCase()}`}>{q.difficulty}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Main */}
-      <div className="cdt-coding-main">
-        {selectedQuestion&&(
-          <>
-            <div className="cdt-q-details">
-              <h2>{selectedQuestion.title} <span className={`cdt-q-diff-badge ${selectedQuestion.difficulty.toLowerCase()}`}>{selectedQuestion.difficulty}</span></h2>
-              <p>{selectedQuestion.description}</p>
-              <div className="cdt-q-example">
-                <h4>Example:</h4>
-                <div className="cdt-q-example-box">
-                  <div><strong>Input:</strong> {selectedQuestion.exampleInput}</div>
-                  <div><strong>Output:</strong> {selectedQuestion.exampleOutput}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="cdt-code-section">
-              <div className="cdt-code-header">
-                <select value={language} onChange={(e) => {setLanguage(e.target.value); setCode(getStarter(selectedQuestion, e.target.value));}}>
-                  <option value="javascript">JavaScript</option>
-                  <option value="python">Python</option>
-                  <option value="java">Java</option>
-                </select>
-                <div className="cdt-code-actions">
-                  <button onClick={handleRun} disabled={loading}><Play size={14} /> {loading? 'Running...':'Run'}</button>
-                  <button className="cdt-submit-btn" onClick={handleSubmit} disabled={loading}><Upload size={14} /> Submit</button>
-                </div>
-              </div>
-              <CodeEditor code={code} setCode={setCode} language={language} />
-              <div className="cdt-output">
-                <h4>Output:</h4>
-                <pre>{output||'Run your code to see results...'}</pre>
-                {testResults&&(
-                  <div className="cdt-test-results">
-                    {testResults.map((r, i) => (
-                      <div key={i} className={`cdt-test-case ${r.passed? 'passed':'failed'}`}>
-                        Test {i+1}: {r.passed? '✅ Passed':'❌ Failed'}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+    <div className="cdt-coding-wrapper">
+      <CodingPractice embedded />
     </div>
   );
 }
