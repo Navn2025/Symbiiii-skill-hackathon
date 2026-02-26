@@ -24,6 +24,7 @@ const TABS=[
   {key: 'jobs', label: 'Jobs', icon: <Briefcase size={16} />},
   {key: 'profile', label: 'Profile', icon: <UserCheck size={16} />},
   {key: 'quiz', label: 'Live Quiz', icon: <Trophy size={16} />},
+  {key: 'contest', label: 'Coding Contest', icon: <Terminal size={16} />},
   {key: 'recruiter', label: 'Recruiter Interview', icon: <Video size={16} />},
   {key: 'practice', label: 'Practice', icon: <Dumbbell size={16} />},
   {key: 'coding', label: 'Coding Practice', icon: <Code size={16} />},
@@ -127,6 +128,7 @@ function CandidateDashboard()
           {activeTab==='dashboard'&&<DashboardTab user={user} initials={initials} setActiveTab={setActiveTab} />}
           {activeTab==='jobs'&&<JobsTab user={user} />}
           {activeTab==='quiz'&&<LiveQuizTab user={user} />}
+          {activeTab==='contest'&&<LiveContestTab user={user} />}
           {activeTab==='recruiter'&&<RecruiterInterviewTab user={user} />}
           {activeTab==='practice'&&<PracticeTab user={user} />}
           {activeTab==='coding'&&<CodingTab />}
@@ -1409,6 +1411,128 @@ export default CandidateDashboard;
 /* ═══════════════════════════════════════════════════════════════════
    LIVE QUIZ TAB — Auto-shows all available quizzes to students
    ═══════════════════════════════════════════════════════════════════ */
+function LiveContestTab({user})
+{
+  const navigate=useNavigate();
+  const API_URL=import.meta.env.VITE_API_URL||'http://localhost:5000';
+  const [contests, setContests]=useState([]);
+  const [loading, setLoading]=useState(true);
+  const [joinCode, setJoinCode]=useState('');
+  const [playerName, setPlayerName]=useState(user?.username||'');
+
+  const fetchContests=useCallback(async () =>
+  {
+    try
+    {
+      const res=await fetch(`${API_URL}/api/contest/browse`, {credentials: 'include'});
+      if (res.ok) {const data=await res.json(); setContests(data.contests||[]);}
+    } catch (e) {console.error('Fetch contests error:', e);}
+    finally {setLoading(false);}
+  }, [API_URL]);
+
+  useEffect(() =>
+  {
+    fetchContests();
+    const interval=setInterval(fetchContests, 8000);
+    return () => clearInterval(interval);
+  }, [fetchContests]);
+
+  const handleJoinByCode=() =>
+  {
+    if (!joinCode.trim()) return;
+    navigate(`/contest/join?code=${joinCode.trim().toUpperCase()}`);
+  };
+
+  const handleJoinContest=(code) =>
+  {
+    const name=playerName||user?.username||'Student';
+    navigate(`/contest/play?code=${code}&name=${encodeURIComponent(name)}`);
+  };
+
+  const difficultyColor={easy: '#22c55e', medium: '#f59e0b', hard: '#ef4444'};
+  const statusLabel={waiting: 'Open to Join', active: 'Live Now'};
+
+  return (
+    <div className="cd-container cd-tab-content">
+      <div className="cd-welcome">
+        <h1>Coding Contests</h1>
+        <p>Join a live coding contest — solve challenges and compete with others in real-time</p>
+      </div>
+
+      {/* Join by code */}
+      <div className="cdt-section" style={{marginBottom: '1.5rem'}}>
+        <div style={{display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap'}}>
+          <input
+            type="text"
+            placeholder="Enter contest code (e.g. ABC123)"
+            value={joinCode}
+            onChange={e => setJoinCode(e.target.value.toUpperCase())}
+            onKeyDown={e => e.key==='Enter'&&handleJoinByCode()}
+            style={{padding: '10px 14px', background: 'var(--bg-secondary, #161b27)', border: '1px solid var(--border-color, #2a2d3e)', borderRadius: '8px', color: '#e2e8f0', fontSize: '0.9rem', minWidth: '200px', fontFamily: 'monospace', letterSpacing: '2px'}}
+            maxLength={6}
+          />
+          <button
+            onClick={handleJoinByCode}
+            style={{padding: '10px 20px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem'}}
+            disabled={!joinCode.trim()}
+          >
+            Join by Code
+          </button>
+        </div>
+      </div>
+
+      {/* Available contests */}
+      <div className="cdt-section">
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+          <h2>Available Contests</h2>
+          <button onClick={fetchContests} style={{padding: '6px 14px', background: 'var(--bg-secondary, #161b27)', border: '1px solid var(--border-color, #2a2d3e)', borderRadius: '6px', color: '#94a3b8', cursor: 'pointer', fontSize: '0.8rem'}}>
+            {loading? 'Loading...':'🔄 Refresh'}
+          </button>
+        </div>
+
+        {loading? (
+          <div style={{textAlign: 'center', padding: '40px', color: 'var(--text-muted, #64748b)'}}>Loading contests...</div>
+        ):contests.length===0? (
+          <div style={{textAlign: 'center', padding: '50px 20px', color: 'var(--text-muted, #64748b)'}}>
+            <Terminal size={48} style={{marginBottom: '16px', opacity: 0.3}} />
+            <h3 style={{color: 'var(--text-secondary, #94a3b8)', margin: '0 0 8px'}}>No live coding contests right now</h3>
+            <p style={{margin: 0, fontSize: '0.9rem'}}>Coding contests will appear here automatically when a host starts one.<br />You can also join directly with a contest code.</p>
+          </div>
+        ):(
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px'}}>
+            {contests.map(c => (
+              <div key={c.id} style={{background: 'var(--bg-secondary, #161b27)', border: '1px solid var(--border-color, #2a2d3e)', borderRadius: '14px', padding: '20px', transition: 'border-color 0.2s'}} onMouseEnter={e => e.currentTarget.style.borderColor='#10b981'} onMouseLeave={e => e.currentTarget.style.borderColor='var(--border-color, #2a2d3e)'}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+                  <span style={{fontSize: '0.75rem', fontFamily: 'monospace', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '3px 8px', borderRadius: '4px'}}>#{c.code}</span>
+                  <span style={{fontSize: '0.7rem', padding: '3px 8px', borderRadius: '12px', fontWeight: 600, textTransform: 'uppercase', background: c.status==='waiting'? 'rgba(59,130,246,0.15)':'rgba(34,197,94,0.15)', color: c.status==='waiting'? '#93c5fd':'#86efac'}}>
+                    {statusLabel[c.status]||c.status}
+                  </span>
+                </div>
+                <h3 style={{fontSize: '1.05rem', fontWeight: 600, marginBottom: '4px', color: '#f1f5f9'}}>{c.title}</h3>
+                <p style={{fontSize: '0.82rem', color: '#64748b', marginBottom: '12px'}}>{c.topic}</p>
+                <div style={{display: 'flex', gap: '12px', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '14px', flexWrap: 'wrap'}}>
+                  <span style={{color: difficultyColor[c.difficulty]}}>● {c.difficulty}</span>
+                  <span>💻 {c.challengeCount} challenges</span>
+                  <span>👥 {c.participantCount} joined</span>
+                  <span>⏱ {c.duration} min</span>
+                </div>
+                <button
+                  onClick={() => handleJoinContest(c.code)}
+                  style={{width: '100%', padding: '10px', background: c.status==='waiting'? '#10b981':'#22c55e', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem', transition: 'opacity 0.2s'}}
+                  onMouseEnter={e => e.target.style.opacity='0.85'}
+                  onMouseLeave={e => e.target.style.opacity='1'}
+                >
+                  {c.status==='active'? '🔴 Join Live Contest':'💻 Join Contest'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function LiveQuizTab({user})
 {
   const navigate=useNavigate();
