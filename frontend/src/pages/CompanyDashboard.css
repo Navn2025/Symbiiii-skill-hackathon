@@ -1387,3 +1387,557 @@ a/* ── Company Dashboard ─────────────────
     transform: rotate(360deg);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ATS SCORING & CANDIDATE MANAGEMENT
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Modal Large ───────────────────────────────────────────────── */
+.cmpd-modal-lg {
+  max-width: 720px;
+}
+.cmpd-modal-section-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #667eea;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+}
+.cmpd-form-hint {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-tertiary, #666);
+  margin-top: 4px;
+}
+.cmpd-checkbox-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.cmpd-checkbox-label input[type="checkbox"] {
+  accent-color: #667eea;
+  width: 16px;
+  height: 16px;
+}
+
+/* ── ATS Action Bar ────────────────────────────────────────────── */
+.ats-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-primary, #2a2a3a);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.ats-action-left,
+.ats-action-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.ats-select {
+  padding: 0.45rem 0.75rem;
+  background: var(--bg-input, #111);
+  border: 1px solid var(--border-primary, #2a2a3a);
+  border-radius: var(--radius-md, 8px);
+  color: var(--text-primary, #fff);
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.ats-select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+.ats-threshold-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #aaa);
+}
+.ats-threshold-input {
+  width: 58px;
+  padding: 0.4rem 0.5rem;
+  background: var(--bg-input, #111);
+  border: 1px solid var(--border-primary, #2a2a3a);
+  border-radius: var(--radius-md, 8px);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  text-align: center;
+  font-family: inherit;
+}
+.ats-threshold-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+.ats-btn {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  border-radius: 8px;
+}
+
+/* ── Responsive Table ──────────────────────────────────────────── */
+.cmpd-table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 10px;
+  border: 1px solid var(--border-primary, #2a2a3a);
+}
+.cmpd-table-responsive::-webkit-scrollbar {
+  height: 6px;
+}
+.cmpd-table-responsive::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+/* ── ATS Table ─────────────────────────────────────────────────── */
+.ats-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+.ats-table th {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary, #777);
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--border-primary, #2a2a3a);
+  white-space: nowrap;
+}
+.ats-table td {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.84rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+}
+.ats-table tbody tr {
+  transition: background 0.15s;
+}
+.ats-table tbody tr:hover {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+/* Row highlights */
+.ats-row-ineligible {
+  background: rgba(239, 68, 68, 0.05) !important;
+  opacity: 0.7;
+}
+.ats-row-ineligible:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+  opacity: 0.85;
+}
+.ats-row-good {
+  background: rgba(34, 197, 94, 0.04) !important;
+}
+.ats-row-good:hover {
+  background: rgba(34, 197, 94, 0.07) !important;
+}
+
+/* ── ATS Score Cell (mini circle) ──────────────────────────────── */
+.ats-score-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ats-score-mini {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #667eea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+}
+
+/* ── Skill Match Progress Bar ──────────────────────────────────── */
+.ats-match-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ats-mini-bar {
+  width: 80px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ats-mini-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* ── CGPA Cell ─────────────────────────────────────────────────── */
+.ats-cgpa {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.ats-cgpa.high {
+  color: #22c55e;
+}
+.ats-cgpa.mid {
+  color: #eab308;
+}
+.ats-cgpa.low {
+  color: #ef4444;
+}
+
+/* ── Skills Chips in Table ─────────────────────────────────────── */
+.ats-skills-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 220px;
+}
+.ats-skill-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ats-skill-chip.matched {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+.ats-skill-chip.missing {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+.ats-skill-chip.more {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-tertiary, #888);
+}
+.ats-skill-chip.neutral {
+  background: rgba(99, 102, 241, 0.12);
+  color: #818cf8;
+}
+
+/* ── Ineligible Badge ──────────────────────────────────────────── */
+.ats-ineligible-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ── Status pill: not_eligible ─────────────────────────────────── */
+.cmpd-status-pill.not_eligible {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CANDIDATE DETAIL MODAL (ATS)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Score Overview ────────────────────────────────────────────── */
+.ats-score-overview {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 1.25rem 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-primary, #2a2a3a);
+}
+.ats-score-circle {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 4px solid #667eea;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ats-score-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-primary, #fff);
+  line-height: 1;
+}
+.ats-score-label {
+  font-size: 0.65rem;
+  color: var(--text-tertiary, #777);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+/* ── Score Details ─────────────────────────────────────────────── */
+.ats-score-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.ats-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.ats-detail-row label {
+  font-size: 0.78rem;
+  color: var(--text-secondary, #aaa);
+  min-width: 90px;
+  flex-shrink: 0;
+}
+.ats-progress-bar {
+  flex: 1;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.ats-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+.ats-detail-value {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  min-width: 50px;
+  text-align: right;
+}
+
+/* ── Eligibility ───────────────────────────────────────────────── */
+.ats-eligibility {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 99px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.ats-eligibility.eligible {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+.ats-eligibility.not-eligible {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* ── Eligibility Reasons ───────────────────────────────────────── */
+.ats-reasons {
+  margin: 0.75rem 0;
+  padding: 0.6rem 0.9rem;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: 8px;
+}
+.ats-reasons h4 {
+  font-size: 0.78rem;
+  color: #ef4444;
+  margin-bottom: 0.4rem;
+}
+.ats-reason-item {
+  font-size: 0.78rem;
+  color: var(--text-secondary, #bbb);
+  padding: 2px 0;
+}
+
+/* ── Skills Grid ───────────────────────────────────────────────── */
+.ats-skills-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.ats-skills-section h4 {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary, #bbb);
+  margin-bottom: 0.5rem;
+}
+.ats-skill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.ats-skill-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.ats-skill-tag.matched {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+.ats-skill-tag.missing {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+.ats-skill-tag.neutral {
+  background: rgba(99, 102, 241, 0.12);
+  color: #818cf8;
+}
+.ats-no-data {
+  font-size: 0.78rem;
+  color: var(--text-tertiary, #666);
+  font-style: italic;
+}
+
+/* ── Projects ──────────────────────────────────────────────────── */
+.ats-projects {
+  margin-bottom: 1rem;
+}
+.ats-projects h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 0.65rem;
+}
+.ats-project-card {
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-primary, #2a2a3a);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+.ats-project-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+.ats-project-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+}
+.ats-project-desc {
+  font-size: 0.78rem;
+  color: var(--text-secondary, #bbb);
+  line-height: 1.4;
+  margin: 0 0 0.4rem;
+}
+.ats-project-tech {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* ── Relevance Badge ───────────────────────────────────────────── */
+.ats-relevance {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.ats-relevance.high {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+.ats-relevance.mid {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+}
+.ats-relevance.low {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* ── All Skills Section ────────────────────────────────────────── */
+.ats-all-skills {
+  margin-bottom: 1rem;
+}
+.ats-all-skills h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ATS RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .cmpd-modal-lg {
+    max-width: 100%;
+    margin: 0 0.5rem;
+    padding: 1.25rem;
+  }
+  .ats-action-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .ats-action-left,
+  .ats-action-right {
+    justify-content: flex-start;
+  }
+  .ats-score-overview {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+  }
+  .ats-skills-grid {
+    grid-template-columns: 1fr;
+  }
+  .ats-detail-row {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .ats-detail-row label {
+    min-width: auto;
+    flex-basis: 100%;
+  }
+}
+@media (max-width: 600px) {
+  .cmpd-modal-lg {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+  .ats-score-circle {
+    width: 72px;
+    height: 72px;
+  }
+  .ats-score-value {
+    font-size: 1.3rem;
+  }
+  .ats-table {
+    min-width: 650px;
+  }
+  .ats-skills-cell {
+    max-width: 150px;
+  }
+  .ats-select,
+  .ats-threshold-input {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.6rem;
+  }
+  .ats-btn {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.7rem;
+  }
+}

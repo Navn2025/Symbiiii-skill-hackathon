@@ -29,9 +29,15 @@ function CompanyDashboard()
   const [activeTab, setActiveTab]=useState('overview');
   const [searchQuery, setSearchQuery]=useState('');
   const [showPostJobModal, setShowPostJobModal]=useState(false);
-  const [jobForm, setJobForm]=useState({title: '', department: '', location: 'Remote', type: 'Full-Time', description: '', requirements: ''});
+  const [jobForm, setJobForm]=useState({title: '', department: '', location: 'Remote', type: 'Full-Time', description: '', requirements: '', skills: '', minCGPA: '', requiredSkills: '', preferredSkills: '', minExperience: '', maxExperience: '', requiredEducation: '', autoShortlist: false, minATSScore: 60, salaryMin: '', salaryMax: ''});
   const [jobs, setJobs]=useState([]);
   const [candidates, setCandidates]=useState([]);
+  const [candidateSort, setCandidateSort]=useState('atsScore');
+  const [candidateFilter, setCandidateFilter]=useState('all');
+  const [shortlistThreshold, setShortlistThreshold]=useState(60);
+  const [shortlisting, setShortlisting]=useState(false);
+  const [rescoring, setRescoring]=useState(false);
+  const [selectedCandidate, setSelectedCandidate]=useState(null);
   const [quizzes, setQuizzes]=useState([]);
   const [loadingQuizzes, setLoadingQuizzes]=useState(false);
   const [showCreateQuiz, setShowCreateQuiz]=useState(false);
@@ -435,18 +441,6 @@ function CompanyDashboard()
     }
   };
 
-  const fetchApplicants=async (jobId) =>
-  {
-    try
-    {
-      const res=await api.get(`/jobs/${jobId}/applicants`);
-      setCandidates(res.data.applicants||[]);
-    } catch (err)
-    {
-      console.error('Fetch applicants error:', err);
-    }
-  };
-
   const fetchAllCandidatesByJob=async (jobsList) =>
   {
     setLoadingAllCandidates(true);
@@ -478,13 +472,39 @@ function CompanyDashboard()
     if (!jobForm.title||!jobForm.department) return;
     try
     {
+      const skillsArray=jobForm.skills ? jobForm.skills.split(',').map(s => s.trim()).filter(Boolean) : [];
+      const requiredSkillsArray=jobForm.requiredSkills ? jobForm.requiredSkills.split(',').map(s => s.trim()).filter(Boolean) : [];
+      const preferredSkillsArray=jobForm.preferredSkills ? jobForm.preferredSkills.split(',').map(s => s.trim()).filter(Boolean) : [];
+      const educationArray=jobForm.requiredEducation ? jobForm.requiredEducation.split(',').map(s => s.trim()).filter(Boolean) : [];
+
       const res=await api.post('/jobs', {
-        ...jobForm,
+        title: jobForm.title,
+        department: jobForm.department,
+        location: jobForm.location,
+        type: jobForm.type,
+        description: jobForm.description,
+        requirements: jobForm.requirements,
+        skills: skillsArray,
+        salary: {
+          min: jobForm.salaryMin ? parseInt(jobForm.salaryMin) : 0,
+          max: jobForm.salaryMax ? parseInt(jobForm.salaryMax) : 0,
+          currency: 'INR',
+        },
+        eligibilityCriteria: {
+          minCGPA: jobForm.minCGPA ? parseFloat(jobForm.minCGPA) : 0,
+          requiredSkills: requiredSkillsArray,
+          preferredSkills: preferredSkillsArray,
+          minExperience: jobForm.minExperience ? parseInt(jobForm.minExperience) : 0,
+          maxExperience: jobForm.maxExperience ? parseInt(jobForm.maxExperience) : 0,
+          requiredEducation: educationArray,
+          autoShortlist: jobForm.autoShortlist,
+          minATSScore: jobForm.minATSScore ? parseInt(jobForm.minATSScore) : 60,
+        },
         userId: user.id,
         companyName: user.companyName||user.username,
       });
       setJobs([res.data.job, ...jobs]);
-      setJobForm({title: '', department: '', location: 'Remote', type: 'Full-Time', description: '', requirements: ''});
+      setJobForm({title: '', department: '', location: 'Remote', type: 'Full-Time', description: '', requirements: '', skills: '', minCGPA: '', requiredSkills: '', preferredSkills: '', minExperience: '', maxExperience: '', requiredEducation: '', autoShortlist: false, minATSScore: 60, salaryMin: '', salaryMax: ''});
       setShowPostJobModal(false);
       // Refresh stats
       fetchCompanyData(user.id);
@@ -492,6 +512,59 @@ function CompanyDashboard()
     {
       alert(err.response?.data?.message||'Failed to post job');
     }
+  };
+
+  const handleBulkShortlist=async (jobId) =>
+  {
+    setShortlisting(true);
+    try
+    {
+      const res=await api.post(`/jobs/${jobId}/shortlist`, {minATSScore: shortlistThreshold, changedBy: user.id});
+      alert(res.data.message || 'Shortlisting complete');
+      fetchApplicants(jobId);
+    } catch (err)
+    {
+      alert(err.response?.data?.message||'Shortlisting failed');
+    } finally { setShortlisting(false); }
+  };
+
+  const handleRescore=async (jobId) =>
+  {
+    setRescoring(true);
+    try
+    {
+      const res=await api.post(`/jobs/${jobId}/rescore`);
+      alert(res.data.message || 'Re-scoring complete');
+      fetchApplicants(jobId);
+    } catch (err)
+    {
+      alert(err.response?.data?.message||'Re-scoring failed');
+    } finally { setRescoring(false); }
+  };
+
+  const fetchApplicants=async (jobId) =>
+  {
+    try
+    {
+      const res=await api.get(`/jobs/${jobId}/applicants`, {params: {sortBy: candidateSort, filterStatus: candidateFilter}});
+      setCandidates(res.data.applicants||[]);
+    } catch (err)
+    {
+      console.error('Fetch applicants error:', err);
+    }
+  };
+
+  const getScoreColor=(score) => {
+    if (score >= 80) return '#22c55e';
+    if (score >= 60) return '#f59e0b';
+    if (score >= 40) return '#f97316';
+    return '#ef4444';
+  };
+
+  const getScoreClass=(score) => {
+    if (score >= 80) return 'high';
+    if (score >= 60) return 'mid';
+    return 'low';
   };
 
   const timeAgo=(dateStr) =>
@@ -704,10 +777,10 @@ function CompanyDashboard()
             <>
               <div className="cmpd-welcome">
                 <div>
-                  <h1>Candidate Management</h1>
-                  <p>Job-wise listing of all applicants</p>
+                  <h1>Candidate Management & ATS Screening</h1>
+                  <p>View ATS scores, skill matching, and manage shortlisting</p>
                 </div>
-                <div className="cmpd-filter-row">
+                <div className="cmpd-filter-row" style={{flexWrap: 'wrap'}}>
                   <button className={`cmpd-filter-btn ${!selectedJobApplicants? 'active':''}`} onClick={() => {setSelectedJobApplicants(null); setCandidates([]); fetchAllCandidatesByJob(jobs);}}>All Jobs</button>
                   {jobs.map((j) => (
                     <button key={j.id||j._id} className={`cmpd-filter-btn ${selectedJobApplicants===(j.id||j._id)? 'active':''}`} onClick={() => {setSelectedJobApplicants(j.id||j._id); fetchApplicants(j.id||j._id);}}>
@@ -717,50 +790,127 @@ function CompanyDashboard()
                 </div>
               </div>
 
-              {/* Single-job view */}
+              {/* Single-job view with ATS */}
               {selectedJobApplicants? (
-                <div className="cmpd-table-card">
-                  <div className="cmpd-card-header" style={{padding: '12px 20px', borderBottom: '1px solid var(--border-color, #2a2a3a)'}}>
-                    <h3 style={{margin: 0}}><Users size={16} /> {jobs.find(j => (j.id||j._id)===selectedJobApplicants)?.title||'Job'} — {candidates.length} applicant{candidates.length!==1? 's':''}</h3>
+                <>
+                  {/* ATS Action Bar */}
+                  <div className="ats-action-bar">
+                    <div className="ats-action-left">
+                      <select className="ats-select" value={candidateSort} onChange={(e) => {setCandidateSort(e.target.value); setTimeout(() => fetchApplicants(selectedJobApplicants), 0);}}>
+                        <option value="atsScore">Sort: ATS Score</option>
+                        <option value="skillMatch">Sort: Skill Match</option>
+                        <option value="cgpa">Sort: CGPA</option>
+                        <option value="date">Sort: Date Applied</option>
+                      </select>
+                      <select className="ats-select" value={candidateFilter} onChange={(e) => {setCandidateFilter(e.target.value); setTimeout(() => fetchApplicants(selectedJobApplicants), 0);}}>
+                        <option value="all">All Status</option>
+                        <option value="applied">Applied</option>
+                        <option value="shortlisted">Shortlisted</option>
+                        <option value="not_eligible">Not Eligible</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="interview">Interview</option>
+                      </select>
+                    </div>
+                    <div className="ats-action-right">
+                      <div className="ats-threshold-group">
+                        <label>Threshold:</label>
+                        <input type="number" min="0" max="100" value={shortlistThreshold} onChange={(e) => setShortlistThreshold(parseInt(e.target.value) || 0)} className="ats-threshold-input" />
+                      </div>
+                      <button className="cmpd-btn-primary ats-btn" onClick={() => handleBulkShortlist(selectedJobApplicants)} disabled={shortlisting}>
+                        <CheckCircle2 size={14} /> {shortlisting ? 'Shortlisting...' : 'Bulk Shortlist'}
+                      </button>
+                      <button className="cmpd-btn-secondary ats-btn" onClick={() => handleRescore(selectedJobApplicants)} disabled={rescoring}>
+                        <RefreshCw size={14} /> {rescoring ? 'Rescoring...' : 'Re-score All'}
+                      </button>
+                    </div>
                   </div>
-                  <table className="cmpd-table">
-                    <thead>
-                      <tr><th>Candidate</th><th>Round</th><th>Score</th><th>Status</th><th>Applied</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody>
-                      {candidates.length===0? (
-                        <tr><td colSpan="6" style={{textAlign: 'center', padding: '30px', color: '#737373'}}>No applicants yet for this job</td></tr>
-                      ):candidates.map((c) => (
-                        <tr key={c.id}>
-                          <td>
-                            <div className="cmpd-cand-name">
-                              <div className="cmpd-cand-avatar">{(c.candidate?.name||'U').charAt(0).toUpperCase()}</div>
-                              <div>
-                                <div>{c.candidate?.name||'Unknown'}</div>
-                                <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>{c.candidate?.email||''}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td>{c.round||'Applied'}</td>
-                          <td>{c.score>0? <span className={`cmpd-score ${c.score>=80? 'high':c.score>=60? 'mid':'low'}`}>{c.score}%</span>:'—'}</td>
-                          <td><span className={`cmpd-status-pill ${c.status}`}>{(c.status||'').replace('-', ' ')}</span></td>
-                          <td style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>{c.appliedAt? new Date(c.appliedAt).toLocaleDateString():'—'}</td>
-                          <td>
-                            <div className="cmpd-actions-group">
-                              <button className="cmpd-action-btn" title="View Profile"><Eye size={14} /> View</button>
-                              {c.status!=='interview'&&c.status!=='rejected'&&(
-                                <button className="cmpd-action-btn cmpd-action-schedule" onClick={() => handleScheduleInterview(c, selectedJobApplicants, c.id)} disabled={schedulingCandidate===c.candidate?.id} title="Schedule Interview">
-                                  <Video size={14} /> {schedulingCandidate===c.candidate?.id? 'Scheduling...':'Schedule'}
-                                </button>
-                              )}
-                              {c.status==='interview'&&<span className="cmpd-interview-scheduled-badge">📅 Scheduled</span>}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+
+                  <div className="cmpd-table-card">
+                    <div className="cmpd-card-header" style={{padding: '12px 20px', borderBottom: '1px solid var(--border-color, #2a2a3a)'}}>
+                      <h3 style={{margin: 0}}><Users size={16} /> {jobs.find(j => (j.id||j._id)===selectedJobApplicants)?.title||'Job'} — {candidates.length} applicant{candidates.length!==1? 's':''}</h3>
+                    </div>
+                    <div className="cmpd-table-responsive">
+                      <table className="cmpd-table ats-table">
+                        <thead>
+                          <tr>
+                            <th>Candidate</th>
+                            <th>ATS Score</th>
+                            <th>Skill Match</th>
+                            <th>CGPA</th>
+                            <th>Skills</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {candidates.length===0? (
+                            <tr><td colSpan="7" style={{textAlign: 'center', padding: '30px', color: '#737373'}}>No applicants yet for this job</td></tr>
+                          ):candidates.map((c) => (
+                            <tr key={c.id} className={!c.eligible ? 'ats-row-ineligible' : c.atsScore >= 70 ? 'ats-row-good' : ''}>
+                              <td>
+                                <div className="cmpd-cand-name">
+                                  <div className="cmpd-cand-avatar" style={{background: getScoreColor(c.atsScore)}}>{(c.candidate?.name||'U').charAt(0).toUpperCase()}</div>
+                                  <div>
+                                    <div style={{fontWeight: 600}}>{c.candidate?.name||'Unknown'}</div>
+                                    <div style={{fontSize: '0.72rem', color: 'var(--text-muted)'}}>{c.candidate?.email||''}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <div className="ats-score-cell">
+                                  <div className="ats-score-mini" style={{borderColor: getScoreColor(c.atsScore)}}>
+                                    <span>{c.atsScore || 0}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <div className="ats-match-cell">
+                                  <div className="ats-mini-bar"><div className="ats-mini-fill" style={{width: `${c.skillMatchScore || 0}%`, background: getScoreColor(c.skillMatchScore)}}></div></div>
+                                  <span>{c.skillMatchScore || 0}%</span>
+                                </div>
+                              </td>
+                              <td>
+                                <span className={`ats-cgpa ${c.cgpa >= 8 ? 'high' : c.cgpa >= 6 ? 'mid' : c.cgpa > 0 ? 'low' : ''}`}>
+                                  {c.cgpa > 0 ? c.cgpa.toFixed(1) : '—'}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="ats-skills-cell">
+                                  {(c.matchedSkills || []).slice(0, 3).map((s, i) => (
+                                    <span key={i} className="ats-skill-chip matched">{s}</span>
+                                  ))}
+                                  {(c.missingSkills || []).slice(0, 2).map((s, i) => (
+                                    <span key={`m${i}`} className="ats-skill-chip missing">{s}</span>
+                                  ))}
+                                  {((c.matchedSkills?.length || 0) + (c.missingSkills?.length || 0)) > 5 && (
+                                    <span className="ats-skill-chip more">+{(c.matchedSkills?.length || 0) + (c.missingSkills?.length || 0) - 5}</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                                <span className={`cmpd-status-pill ${c.status}`}>
+                                  {(c.status||'').replace(/_/g, ' ')}
+                                </span>
+                                {!c.eligible && <div className="ats-ineligible-badge">Not Eligible</div>}
+                              </td>
+                              <td>
+                                <div className="cmpd-actions-group">
+                                  <button className="cmpd-action-btn" title="View Details" onClick={() => setSelectedCandidate(c)}><Eye size={14} /> Details</button>
+                                  {c.status!=='interview'&&c.status!=='rejected'&&c.eligible&&(
+                                    <button className="cmpd-action-btn cmpd-action-schedule" onClick={() => handleScheduleInterview(c, selectedJobApplicants, c.id)} disabled={schedulingCandidate===c.candidate?.id} title="Schedule Interview">
+                                      <Video size={14} /> {schedulingCandidate===c.candidate?.id? '...':'Schedule'}
+                                    </button>
+                                  )}
+                                  {c.status==='interview'&&<span className="cmpd-interview-scheduled-badge">📅 Scheduled</span>}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
               ):(
                 /* Job-wise view (All Jobs selected) */
                 <div className="cmpd-jobwise-candidates">
@@ -780,23 +930,23 @@ function CompanyDashboard()
                       </div>
                       <div className="cmpd-jobwise-cards">
                         {data.applicants.map((c) => (
-                          <div className="cmpd-jobwise-card" key={c.id}>
+                          <div className="cmpd-jobwise-card" key={c.id} onClick={() => setSelectedCandidate(c)} style={{cursor: 'pointer'}}>
                             <div className="cmpd-cand-name">
-                              <div className="cmpd-cand-avatar">{(c.candidate?.name||'U').charAt(0).toUpperCase()}</div>
+                              <div className="cmpd-cand-avatar" style={{background: getScoreColor(c.atsScore || c.score)}}>{(c.candidate?.name||'U').charAt(0).toUpperCase()}</div>
                               <div>
                                 <div style={{fontWeight: 600}}>{c.candidate?.name||'Unknown'}</div>
                                 <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>{c.candidate?.email||''}</div>
                               </div>
                             </div>
                             <div className="cmpd-jobwise-meta">
-                              <span className={`cmpd-status-pill ${c.status}`}>{(c.status||'').replace('-', ' ')}</span>
-                              {c.score>0&&<span className={`cmpd-score ${c.score>=80? 'high':c.score>=60? 'mid':'low'}`}>{c.score}%</span>}
-                              <span style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>{c.round||'Applied'}</span>
+                              <span className={`cmpd-status-pill ${c.status}`}>{(c.status||'').replace(/_/g, ' ')}</span>
+                              {(c.atsScore || c.score) > 0 && <span className={`cmpd-score ${getScoreClass(c.atsScore || c.score)}`}>{c.atsScore || c.score}%</span>}
+                              {c.skillMatchScore > 0 && <span style={{fontSize: '0.72rem', color: getScoreColor(c.skillMatchScore)}}>{c.skillMatchScore}% match</span>}
                             </div>
                             <div className="cmpd-actions-group" style={{marginTop: '8px'}}>
-                              <button className="cmpd-action-btn" title="View"><Eye size={14} /> View</button>
-                              {c.status!=='interview'&&c.status!=='rejected'&&(
-                                <button className="cmpd-action-btn cmpd-action-schedule" onClick={() => handleScheduleInterview(c, jobId, c.id)} disabled={schedulingCandidate===c.candidate?.id}>
+                              <button className="cmpd-action-btn" title="View" onClick={(e) => {e.stopPropagation(); setSelectedCandidate(c);}}><Eye size={14} /> Details</button>
+                              {c.status!=='interview'&&c.status!=='rejected'&&c.eligible!==false&&(
+                                <button className="cmpd-action-btn cmpd-action-schedule" onClick={(e) => {e.stopPropagation(); handleScheduleInterview(c, jobId, c.id);}} disabled={schedulingCandidate===c.candidate?.id}>
                                   <Video size={14} /> Schedule
                                 </button>
                               )}
@@ -1070,12 +1220,12 @@ function CompanyDashboard()
 
               {/* Create Contest Wizard Modal */}
               {showCreateContest&&(
-                <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999}} onClick={e => { if (e.target===e.currentTarget && !creatingContest && !generatingContestAI) resetContestWizard(); }}>
+                <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999}} onClick={e => {if (e.target===e.currentTarget&&!creatingContest&&!generatingContestAI) resetContestWizard();}}>
                   <div style={{background: 'var(--bg-secondary, #1a1a2e)', border: '1px solid var(--border-color, #2a2a3a)', borderRadius: '16px', padding: '28px', width: '94%', maxWidth: contestWizardStep===3? '720px':'520px', maxHeight: '88vh', overflowY: 'auto', transition: 'max-width 0.3s'}}>
 
                     {/* Step indicator */}
                     <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px'}}>
-                      {[1,2,3].map(s => (
+                      {[1, 2, 3].map(s => (
                         <div key={s} style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
                           <div style={{width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700, background: contestWizardStep>=s? '#10b981':'var(--bg-primary, #0f0f1a)', color: contestWizardStep>=s? '#fff':'#64748b', border: `2px solid ${contestWizardStep>=s? '#10b981':'#334155'}`, transition: 'all 0.3s'}}>{contestWizardStep>s? '✓':s}</div>
                           <span style={{fontSize: '0.78rem', color: contestWizardStep===s? '#e2e8f0':'#64748b', fontWeight: contestWizardStep===s? 600:400}}>{s===1? 'Details':s===2? 'Challenges':'Review'}</span>
@@ -1148,7 +1298,7 @@ function CompanyDashboard()
                           <div
                             onClick={!generatingContestAI? handleContestAIGenerate:undefined}
                             style={{background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.1))', border: '2px solid rgba(16,185,129,0.3)', borderRadius: '14px', padding: '24px', cursor: generatingContestAI? 'wait':'pointer', textAlign: 'center', transition: 'all 0.2s'}}
-                            onMouseEnter={e => { if (!generatingContestAI) e.currentTarget.style.borderColor='#10b981'; }}
+                            onMouseEnter={e => {if (!generatingContestAI) e.currentTarget.style.borderColor='#10b981';}}
                             onMouseLeave={e => e.currentTarget.style.borderColor='rgba(16,185,129,0.3)'}
                           >
                             {generatingContestAI? (
@@ -1168,7 +1318,7 @@ function CompanyDashboard()
 
                           {/* Manual / Contest Dashboard Card */}
                           <div
-                            onClick={() => { resetContestWizard(); navigate('/contest/dashboard'); }}
+                            onClick={() => {resetContestWizard(); navigate('/contest/dashboard');}}
                             style={{background: 'var(--bg-primary, #0f0f1a)', border: '2px solid var(--border-color, #2a2a3a)', borderRadius: '14px', padding: '24px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s'}}
                             onMouseEnter={e => e.currentTarget.style.borderColor='#10b981'}
                             onMouseLeave={e => e.currentTarget.style.borderColor='var(--border-color, #2a2a3a)'}
@@ -1211,14 +1361,14 @@ function CompanyDashboard()
                                 <span style={{fontSize: '0.82rem', color: '#10b981', fontWeight: 600, flexShrink: 0}}>#{i+1}</span>
                                 <div style={{flex: 1}}>
                                   <p style={{fontSize: '0.92rem', color: '#e2e8f0', margin: '0 0 4px', fontWeight: 600}}>{c.title}</p>
-                                  <p style={{fontSize: '0.8rem', color: '#94a3b8', margin: 0}}>{c.description?.slice(0, 150) || ''}...</p>
+                                  <p style={{fontSize: '0.8rem', color: '#94a3b8', margin: 0}}>{c.description?.slice(0, 150)||''}...</p>
                                 </div>
                                 <button onClick={() => removeChallenge(i)} style={{background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', flexShrink: 0, padding: '2px'}}><Trash2 size={14} /></button>
                               </div>
                               <div style={{display: 'flex', gap: '12px', marginTop: '10px', marginLeft: '24px', fontSize: '0.75rem', color: '#64748b'}}>
                                 <span style={{color: c.difficulty==='easy'? '#22c55e':c.difficulty==='hard'? '#ef4444':'#f59e0b'}}>● {c.difficulty}</span>
-                                <span>📊 {c.points || 100} pts</span>
-                                <span>🧪 {c.testCases?.length || 0} test cases</span>
+                                <span>📊 {c.points||100} pts</span>
+                                <span>🧪 {c.testCases?.length||0} test cases</span>
                               </div>
                             </div>
                           ))}
@@ -1267,7 +1417,7 @@ function CompanyDashboard()
                       {c.status==='draft'&&(
                         <>
                           <button className="cmpd-btn-secondary cmpd-btn-sm" onClick={() => navigate('/contest/dashboard')}><Settings size={14} /> Edit</button>
-                          {c.challengeCount>0&&<button className="cmpd-btn-primary cmpd-btn-sm" style={{background: '#10b981'}} onClick={async () => { try { await fetch(`${API_URL}/api/contest/${c.id}/publish`, {method:'POST',credentials:'include'}); fetchCompanyContests(); } catch {} }}>Publish</button>}
+                          {c.challengeCount>0&&<button className="cmpd-btn-primary cmpd-btn-sm" style={{background: '#10b981'}} onClick={async () => {try {await fetch(`${API_URL}/api/contest/${c.id}/publish`, {method: 'POST', credentials: 'include'}); fetchCompanyContests();} catch {} }}>Publish</button>}
                         </>
                       )}
                       {c.status==='waiting'&&(
@@ -1536,18 +1686,21 @@ function CompanyDashboard()
       {/* ── Post Job Modal ─────────────────────────────────── */}
       {showPostJobModal&&(
         <div className="cmpd-modal-overlay" onClick={() => setShowPostJobModal(false)}>
-          <div className="cmpd-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="cmpd-modal cmpd-modal-lg" onClick={(e) => e.stopPropagation()}>
             <h2>Post New Job</h2>
-            <p className="cmpd-modal-sub">Fill in the details to create a new job listing</p>
+            <p className="cmpd-modal-sub">Fill in the details and set eligibility criteria for ATS screening</p>
+
+            {/* Basic Info */}
+            <div className="cmpd-modal-section-title">Basic Information</div>
 
             <div className="cmpd-form-group">
-              <label>Job Title</label>
+              <label>Job Title *</label>
               <input value={jobForm.title} onChange={(e) => setJobForm({...jobForm, title: e.target.value})} placeholder="e.g. Senior React Developer" />
             </div>
 
             <div className="cmpd-form-row">
               <div className="cmpd-form-group">
-                <label>Department</label>
+                <label>Department *</label>
                 <input value={jobForm.department} onChange={(e) => setJobForm({...jobForm, department: e.target.value})} placeholder="e.g. Engineering" />
               </div>
               <div className="cmpd-form-group">
@@ -1560,30 +1713,203 @@ function CompanyDashboard()
               </div>
             </div>
 
-            <div className="cmpd-form-group">
-              <label>Job Type</label>
-              <select value={jobForm.type} onChange={(e) => setJobForm({...jobForm, type: e.target.value})}>
-                <option>Full-Time</option>
-                <option>Part-Time</option>
-                <option>Contract</option>
-                <option>Internship</option>
-              </select>
+            <div className="cmpd-form-row">
+              <div className="cmpd-form-group">
+                <label>Job Type</label>
+                <select value={jobForm.type} onChange={(e) => setJobForm({...jobForm, type: e.target.value})}>
+                  <option>Full-Time</option>
+                  <option>Part-Time</option>
+                  <option>Contract</option>
+                  <option>Internship</option>
+                </select>
+              </div>
+              <div className="cmpd-form-group">
+                <label>Skills (comma separated)</label>
+                <input value={jobForm.skills} onChange={(e) => setJobForm({...jobForm, skills: e.target.value})} placeholder="React, Node.js, Python, AWS" />
+              </div>
+            </div>
+
+            <div className="cmpd-form-row">
+              <div className="cmpd-form-group">
+                <label>Salary Min (INR)</label>
+                <input type="number" value={jobForm.salaryMin} onChange={(e) => setJobForm({...jobForm, salaryMin: e.target.value})} placeholder="e.g. 500000" />
+              </div>
+              <div className="cmpd-form-group">
+                <label>Salary Max (INR)</label>
+                <input type="number" value={jobForm.salaryMax} onChange={(e) => setJobForm({...jobForm, salaryMax: e.target.value})} placeholder="e.g. 1500000" />
+              </div>
             </div>
 
             <div className="cmpd-form-group">
               <label>Description</label>
-              <textarea value={jobForm.description} onChange={(e) => setJobForm({...jobForm, description: e.target.value})} placeholder="Job description..." rows={4}></textarea>
+              <textarea value={jobForm.description} onChange={(e) => setJobForm({...jobForm, description: e.target.value})} placeholder="Job description..." rows={3}></textarea>
             </div>
 
             <div className="cmpd-form-group">
               <label>Requirements</label>
-              <textarea value={jobForm.requirements} onChange={(e) => setJobForm({...jobForm, requirements: e.target.value})} placeholder="Key requirements..." rows={3}></textarea>
+              <textarea value={jobForm.requirements} onChange={(e) => setJobForm({...jobForm, requirements: e.target.value})} placeholder="Key requirements..." rows={2}></textarea>
+            </div>
+
+            {/* Eligibility Criteria */}
+            <div className="cmpd-modal-section-title" style={{marginTop: '16px'}}>
+              <Target size={16} /> Eligibility & ATS Criteria
+            </div>
+
+            <div className="cmpd-form-row">
+              <div className="cmpd-form-group">
+                <label>Minimum CGPA (out of 10)</label>
+                <input type="number" step="0.1" min="0" max="10" value={jobForm.minCGPA} onChange={(e) => setJobForm({...jobForm, minCGPA: e.target.value})} placeholder="e.g. 7.0" />
+              </div>
+              <div className="cmpd-form-group">
+                <label>Min Experience (years)</label>
+                <input type="number" min="0" value={jobForm.minExperience} onChange={(e) => setJobForm({...jobForm, minExperience: e.target.value})} placeholder="e.g. 2" />
+              </div>
+              <div className="cmpd-form-group">
+                <label>Max Experience (years)</label>
+                <input type="number" min="0" value={jobForm.maxExperience} onChange={(e) => setJobForm({...jobForm, maxExperience: e.target.value})} placeholder="e.g. 5" />
+              </div>
+            </div>
+
+            <div className="cmpd-form-group">
+              <label>Required Skills (must-have, comma separated)</label>
+              <input value={jobForm.requiredSkills} onChange={(e) => setJobForm({...jobForm, requiredSkills: e.target.value})} placeholder="React, JavaScript, TypeScript" />
+              <span className="cmpd-form-hint">Candidates without these skills will be marked as not eligible</span>
+            </div>
+
+            <div className="cmpd-form-group">
+              <label>Preferred Skills (nice-to-have, comma separated)</label>
+              <input value={jobForm.preferredSkills} onChange={(e) => setJobForm({...jobForm, preferredSkills: e.target.value})} placeholder="GraphQL, Docker, AWS" />
+            </div>
+
+            <div className="cmpd-form-group">
+              <label>Required Education (comma separated)</label>
+              <input value={jobForm.requiredEducation} onChange={(e) => setJobForm({...jobForm, requiredEducation: e.target.value})} placeholder="B.Tech, Bachelor's, M.Tech" />
+            </div>
+
+            <div className="cmpd-form-row" style={{alignItems: 'center'}}>
+              <div className="cmpd-form-group" style={{flex: 1}}>
+                <label>Min ATS Score for Auto-Shortlisting</label>
+                <input type="number" min="0" max="100" value={jobForm.minATSScore} onChange={(e) => setJobForm({...jobForm, minATSScore: e.target.value})} placeholder="60" />
+              </div>
+              <label className="cmpd-checkbox-label" style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '18px', cursor: 'pointer'}}>
+                <input type="checkbox" checked={jobForm.autoShortlist} onChange={(e) => setJobForm({...jobForm, autoShortlist: e.target.checked})} />
+                <span>Auto-shortlist eligible candidates</span>
+              </label>
             </div>
 
             <div className="cmpd-modal-actions">
               <button className="cmpd-btn-secondary" onClick={() => setShowPostJobModal(false)}>Cancel</button>
               <button className="cmpd-btn-primary" onClick={handlePostJob}>Post Job</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Candidate Detail Modal ─────────────────────────────── */}
+      {selectedCandidate&&(
+        <div className="cmpd-modal-overlay" onClick={() => setSelectedCandidate(null)}>
+          <div className="cmpd-modal cmpd-modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+              <div>
+                <h2>{selectedCandidate.candidate?.name || 'Candidate'}</h2>
+                <p className="cmpd-modal-sub">{selectedCandidate.candidate?.email}</p>
+              </div>
+              <button className="cmpd-icon-btn" onClick={() => setSelectedCandidate(null)}><X size={18} /></button>
+            </div>
+
+            {/* ATS Score Overview */}
+            <div className="ats-score-overview">
+              <div className="ats-score-circle" style={{borderColor: getScoreColor(selectedCandidate.atsScore)}}>
+                <span className="ats-score-value">{selectedCandidate.atsScore || 0}</span>
+                <span className="ats-score-label">ATS Score</span>
+              </div>
+              <div className="ats-score-details">
+                <div className="ats-detail-row">
+                  <span>Skill Match</span>
+                  <div className="ats-progress-bar"><div className="ats-progress-fill" style={{width: `${selectedCandidate.skillMatchScore || 0}%`, background: getScoreColor(selectedCandidate.skillMatchScore)}}></div></div>
+                  <span className="ats-detail-value">{selectedCandidate.skillMatchScore || 0}%</span>
+                </div>
+                <div className="ats-detail-row">
+                  <span>CGPA</span>
+                  <span className="ats-detail-value">{selectedCandidate.cgpa || 'N/A'}</span>
+                </div>
+                <div className="ats-detail-row">
+                  <span>Experience</span>
+                  <span className="ats-detail-value">{selectedCandidate.experienceYears || 0} yrs</span>
+                </div>
+                <div className="ats-detail-row">
+                  <span>Eligibility</span>
+                  <span className={`ats-eligibility ${selectedCandidate.eligible ? 'eligible' : 'not-eligible'}`}>
+                    {selectedCandidate.eligible ? '✓ Eligible' : '✗ Not Eligible'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Eligibility Reasons */}
+            {selectedCandidate.eligibilityReasons?.length > 0 && (
+              <div className="ats-reasons">
+                <h4>Eligibility Issues</h4>
+                {selectedCandidate.eligibilityReasons.map((r, i) => (
+                  <div key={i} className="ats-reason-item">⚠ {r}</div>
+                ))}
+              </div>
+            )}
+
+            {/* Matched & Missing Skills */}
+            <div className="ats-skills-grid">
+              <div className="ats-skills-section">
+                <h4><CheckCircle2 size={14} /> Matched Skills ({selectedCandidate.matchedSkills?.length || 0})</h4>
+                <div className="ats-skill-tags">
+                  {(selectedCandidate.matchedSkills || []).map((s, i) => (
+                    <span key={i} className="ats-skill-tag matched">{s}</span>
+                  ))}
+                  {(!selectedCandidate.matchedSkills || selectedCandidate.matchedSkills.length === 0) && <span className="ats-no-data">No matched skills</span>}
+                </div>
+              </div>
+              <div className="ats-skills-section">
+                <h4><XCircle size={14} /> Missing Skills ({selectedCandidate.missingSkills?.length || 0})</h4>
+                <div className="ats-skill-tags">
+                  {(selectedCandidate.missingSkills || []).map((s, i) => (
+                    <span key={i} className="ats-skill-tag missing">{s}</span>
+                  ))}
+                  {(!selectedCandidate.missingSkills || selectedCandidate.missingSkills.length === 0) && <span className="ats-no-data">All skills matched!</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* Projects */}
+            {selectedCandidate.projectDetails?.length > 0 && (
+              <div className="ats-projects">
+                <h4>Projects ({selectedCandidate.projectDetails.length})</h4>
+                {selectedCandidate.projectDetails.map((p, i) => (
+                  <div key={i} className="ats-project-card">
+                    <div className="ats-project-header">
+                      <span className="ats-project-name">{p.name || `Project ${i + 1}`}</span>
+                      {p.relevanceScore > 0 && <span className={`ats-relevance ${getScoreClass(p.relevanceScore)}`}>{p.relevanceScore}% relevant</span>}
+                    </div>
+                    {p.description && <p className="ats-project-desc">{p.description.slice(0, 200)}</p>}
+                    {p.technologies?.length > 0 && (
+                      <div className="ats-project-tech">
+                        {p.technologies.map((t, j) => <span key={j} className="ats-skill-tag matched">{t}</span>)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Candidate Skills */}
+            {selectedCandidate.candidate?.skills?.length > 0 && (
+              <div className="ats-all-skills">
+                <h4>All Candidate Skills</h4>
+                <div className="ats-skill-tags">
+                  {selectedCandidate.candidate.skills.map((s, i) => (
+                    <span key={i} className="ats-skill-tag neutral">{s}</span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

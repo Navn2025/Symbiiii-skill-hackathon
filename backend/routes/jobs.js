@@ -4,6 +4,7 @@ import Application from '../models/Application.js';
 import User from '../models/User.js';
 import {verifyAuth, verifyAuthOptional, verifyRole} from '../middleware/auth.js';
 import {APIResponse} from '../middleware/response.js';
+import {parseResume, extractCGPA, extractProjects, calculateJobMatchScore, extractSkills} from '../services/resumeParser.js';
 
 const router=express.Router();
 
@@ -16,7 +17,7 @@ router.post('/', verifyAuth, async (req, res) =>
 {
   try
   {
-    const {title, department, location, type, description, requirements, skills, userId, companyName}=req.body;
+    const {title, department, location, type, description, requirements, skills, userId, companyName, salary, eligibilityCriteria}=req.body;
 
     if (!title||!department)
     {
@@ -43,9 +44,11 @@ router.post('/', verifyAuth, async (req, res) =>
       description: description||'',
       requirements: requirements||'',
       skills: skills||[],
+      salary: salary || {min: 0, max: 0, currency: 'INR'},
       postedBy: userId,
       companyName: companyName||user.companyName||user.username,
       status: 'active',
+      eligibilityCriteria: eligibilityCriteria || {},
     });
 
     console.log(`[JOBS] ✅ Job posted: "${title}" by ${user.username}`);
@@ -61,8 +64,10 @@ router.post('/', verifyAuth, async (req, res) =>
         description: job.description,
         requirements: job.requirements,
         skills: job.skills,
+        salary: job.salary,
         companyName: job.companyName,
         status: job.status,
+        eligibilityCriteria: job.eligibilityCriteria,
         applicantCount: 0,
         createdAt: job.createdAt,
       },
@@ -96,8 +101,10 @@ router.get('/company/:userId', verifyAuth, async (req, res) =>
           description: job.description,
           requirements: job.requirements,
           skills: job.skills,
+          salary: job.salary,
           companyName: job.companyName,
           status: job.status,
+          eligibilityCriteria: job.eligibilityCriteria,
           applicantCount,
           createdAt: job.createdAt,
         };
@@ -145,8 +152,10 @@ router.get('/browse', verifyAuthOptional, async (req, res) =>
       description: job.description,
       requirements: job.requirements,
       skills: job.skills,
+      salary: job.salary,
       companyName: job.companyName,
       status: job.status,
+      eligibilityCriteria: job.eligibilityCriteria,
       applicantCount: job.applicantCount||0,
       createdAt: job.createdAt,
     }));
@@ -177,8 +186,10 @@ router.get('/:jobId', verifyAuthOptional, async (req, res) =>
       description: job.description,
       requirements: job.requirements,
       skills: job.skills,
+      salary: job.salary,
       companyName: job.companyName,
       status: job.status,
+      eligibilityCriteria: job.eligibilityCriteria,
       applicantCount,
       createdAt: job.createdAt,
     });
@@ -193,7 +204,7 @@ router.put('/:jobId', verifyAuth, async (req, res) =>
 {
   try
   {
-    const {status, title, department, location, type, description, requirements}=req.body;
+    const {status, title, department, location, type, description, requirements, skills, salary, eligibilityCriteria}=req.body;
     const update={};
     if (status) update.status=status;
     if (title) update.title=title;
@@ -202,6 +213,9 @@ router.put('/:jobId', verifyAuth, async (req, res) =>
     if (type) update.type=type;
     if (description!==undefined) update.description=description;
     if (requirements!==undefined) update.requirements=requirements;
+    if (skills) update.skills=skills;
+    if (salary) update.salary=salary;
+    if (eligibilityCriteria) update.eligibilityCriteria=eligibilityCriteria;
 
     const job=await Job.findByIdAndUpdate(req.params.jobId, update, {new: true});
     if (!job) return res.status(404).json({message: 'Job not found'});
@@ -255,25 +269,146 @@ router.post('/:jobId/apply', verifyAuth, async (req, res) =>
       return res.status(400).json({message: 'You have already applied to this job'});
     }
 
+    // ── ATS Scoring on Apply ──
+    const candidate=await User.findById(candidateId);
+    let atsData={atsScore: 0, skillMatchScore: 0, matchedSkills: [], missingSkills: [], eligible: true, eligibilityReasons: [], cgpa: 0, experienceYears: 0, projectDetails: [], resumeParsed: null};
+
+    if (candidate) {
+      // Parse resume if available
+      const resumeText=candidate.resumeText || '';
+      let resumeResult=candidate.resumeParsed || null;
+      
+      if (resumeText && !resumeResult) {
+        resumeResult=parseResume(resumeText);
+      }
+
+      // Also try to build skills from user.skills if no resume
+      if (!resumeResult || !resumeResult.success) {
+        const candidateSkills=candidate.skills || [];
+        resumeResult={
+          success: true,
+          skills: {technical: candidateSkills, soft: [], all: candidateSkills, categorized: {}},
+          experience: {years: 0, range: null, seniority: null},
+          education: [],
+          atsScore: 0,
+        };
+      }
+
+      // Extract CGPA from resume text or education
+      let cgpa=0;
+      if (resumeText) {
+        const cgpaResult=extractCGPA(resumeText);
+        cgpa=cgpaResult.cgpa;
+      }
+      // Also check user education for grade
+      if (!cgpa && candidate.education?.length > 0) {
+        for (const edu of candidate.education) {
+          if (edu.grade) {
+            const gradeNum=parseFloat(edu.grade);
+            if (!isNaN(gradeNum) && gradeNum > 0 && gradeNum <= 10) {
+              cgpa=gradeNum;
+              break;
+            }
+          }
+        }
+      }
+
+      // Extract projects from resume or user profile
+      let projectDetails=[];
+      if (resumeText) {
+        projectDetails=extractProjects(resumeText);
+      }
+      if (projectDetails.length === 0 && candidate.projects?.length > 0) {
+        projectDetails=candidate.projects.map(p => ({
+          name: p.name || '',
+          description: p.description || '',
+          technologies: Array.isArray(p.technologies) ? p.technologies : [],
+          relevanceScore: 0,
+        }));
+        // Calculate relevance for profile projects
+        for (const p of projectDetails) {
+          const fullText=`${p.name} ${p.description} ${p.technologies.join(' ')}`;
+          const skills=extractSkills(fullText);
+          p.technologies=skills.technical.length > 0 ? skills.technical : p.technologies;
+          p.relevanceScore=Math.min(p.technologies.length * 15 + (p.description?.length > 30 ? 15 : 0), 100);
+        }
+      }
+
+      // Calculate job match score
+      const matchResult=calculateJobMatchScore({
+        resumeResult,
+        job,
+        candidateCGPA: cgpa,
+      });
+
+      atsData={
+        atsScore: matchResult.atsScore,
+        skillMatchScore: matchResult.skillMatchScore,
+        matchedSkills: matchResult.matchedSkills,
+        missingSkills: matchResult.missingSkills,
+        eligible: matchResult.eligible,
+        eligibilityReasons: matchResult.eligibilityReasons,
+        cgpa,
+        experienceYears: matchResult.experienceYears || resumeResult?.experience?.years || 0,
+        projectDetails: projectDetails.slice(0, 5),
+        resumeParsed: resumeResult?.success ? {
+          skills: resumeResult.skills,
+          experience: resumeResult.experience,
+          education: resumeResult.education,
+        } : null,
+      };
+    }
+
+    // Determine initial status based on eligibility & auto-shortlisting
+    let initialStatus='applied';
+    let initialRound='Applied';
+    if (!atsData.eligible) {
+      initialStatus='not_eligible';
+      initialRound='Not Eligible';
+    } else if (job.eligibilityCriteria?.autoShortlist && atsData.atsScore >= (job.eligibilityCriteria?.minATSScore || 60)) {
+      initialStatus='shortlisted';
+      initialRound='Auto-Shortlisted';
+    }
+
     const application=await Application.create({
       job: jobId,
       candidate: candidateId,
       coverLetter: coverLetter||'',
-      status: 'applied',
-      round: 'Applied',
+      status: initialStatus,
+      round: initialRound,
+      score: atsData.atsScore,
+      atsScore: atsData.atsScore,
+      skillMatchScore: atsData.skillMatchScore,
+      matchedSkills: atsData.matchedSkills,
+      missingSkills: atsData.missingSkills,
+      cgpa: atsData.cgpa,
+      experienceYears: atsData.experienceYears,
+      eligible: atsData.eligible,
+      eligibilityReasons: atsData.eligibilityReasons,
+      projectDetails: atsData.projectDetails,
+      resumeParsed: atsData.resumeParsed,
+      shortlistedAt: initialStatus === 'shortlisted' ? new Date() : undefined,
     });
 
     // Increment applicant count
     await Job.findByIdAndUpdate(jobId, {$inc: {applicantCount: 1}});
 
-    console.log(`[JOBS] ✅ Application submitted for job "${job.title}" by candidate ${candidateId}`);
+    console.log(`[JOBS] ✅ Application submitted for job "${job.title}" by candidate ${candidateId} (ATS: ${atsData.atsScore}, Eligible: ${atsData.eligible})`);
 
     return res.status(201).json({
-      message: 'Application submitted successfully',
+      message: atsData.eligible
+        ? (initialStatus === 'shortlisted' ? 'Application submitted & auto-shortlisted!' : 'Application submitted successfully')
+        : 'Application submitted — does not meet minimum criteria',
       application: {
         id: application._id,
         jobId: application.job,
         status: application.status,
+        atsScore: atsData.atsScore,
+        skillMatchScore: atsData.skillMatchScore,
+        matchedSkills: atsData.matchedSkills,
+        missingSkills: atsData.missingSkills,
+        eligible: atsData.eligible,
+        eligibilityReasons: atsData.eligibilityReasons,
         createdAt: application.createdAt,
       },
     });
@@ -321,14 +456,31 @@ router.get('/applications/:candidateId', verifyAuth, async (req, res) =>
   }
 });
 
-// Get applicants for a job (company-side)
+// Get applicants for a job (company-side) — with ATS data
 router.get('/:jobId/applicants', verifyAuth, async (req, res) =>
 {
   try
   {
-    const applications=await Application.find({job: req.params.jobId})
-      .populate('candidate', 'username email skills bio createdAt')
-      .sort({createdAt: -1})
+    const {sortBy='atsScore', filterStatus, minScore}=req.query;
+    
+    const query={job: req.params.jobId};
+    if (filterStatus && filterStatus !== 'all') {
+      query.status=filterStatus;
+    }
+    if (minScore) {
+      query.atsScore={$gte: parseInt(minScore)};
+    }
+
+    const sortOptions={};
+    if (sortBy === 'atsScore') sortOptions.atsScore=-1;
+    else if (sortBy === 'skillMatch') sortOptions.skillMatchScore=-1;
+    else if (sortBy === 'cgpa') sortOptions.cgpa=-1;
+    else if (sortBy === 'date') sortOptions.createdAt=-1;
+    else sortOptions.atsScore=-1;
+
+    const applications=await Application.find(query)
+      .populate('candidate', 'username email skills bio createdAt fullName education experience projects resumeText')
+      .sort(sortOptions)
       .lean();
 
     const result=applications.map((app) => ({
@@ -336,19 +488,141 @@ router.get('/:jobId/applicants', verifyAuth, async (req, res) =>
       status: app.status,
       round: app.round,
       score: app.score,
+      atsScore: app.atsScore || 0,
+      skillMatchScore: app.skillMatchScore || 0,
+      matchedSkills: app.matchedSkills || [],
+      missingSkills: app.missingSkills || [],
+      cgpa: app.cgpa || 0,
+      experienceYears: app.experienceYears || 0,
+      eligible: app.eligible !== false,
+      eligibilityReasons: app.eligibilityReasons || [],
+      projectDetails: app.projectDetails || [],
       appliedAt: app.createdAt,
+      shortlistedAt: app.shortlistedAt,
       candidate: app.candidate? {
         id: app.candidate._id,
-        name: app.candidate.username,
+        name: app.candidate.fullName || app.candidate.username,
         email: app.candidate.email,
         skills: app.candidate.skills,
         bio: app.candidate.bio,
+        education: app.candidate.education,
+        experience: app.candidate.experience,
+        projects: app.candidate.projects,
       }:null,
     }));
 
     return res.json({applicants: result});
   } catch (err)
   {
+    return res.status(500).json({message: `Server error: ${err.message}`});
+  }
+});
+
+// Bulk shortlist applicants by ATS threshold
+router.post('/:jobId/shortlist', verifyAuth, async (req, res) =>
+{
+  try
+  {
+    const {jobId}=req.params;
+    const {minATSScore=60, changedBy}=req.body;
+
+    const job=await Job.findById(jobId);
+    if (!job) return res.status(404).json({message: 'Job not found'});
+
+    // Find eligible applications above threshold
+    const applications=await Application.find({
+      job: jobId,
+      status: 'applied',
+      eligible: true,
+      atsScore: {$gte: minATSScore},
+    });
+
+    let shortlistedCount=0;
+    for (const app of applications) {
+      app.status='shortlisted';
+      app.round='Shortlisted';
+      app.shortlistedAt=new Date();
+      app.statusHistory.push({
+        status: 'shortlisted',
+        changedAt: new Date(),
+        changedBy: changedBy || null,
+        note: `Auto-shortlisted (ATS Score: ${app.atsScore} >= ${minATSScore})`,
+      });
+      await app.save();
+      shortlistedCount++;
+    }
+
+    console.log(`[JOBS] ✅ Bulk shortlisted ${shortlistedCount} applicants for job "${job.title}" (threshold: ${minATSScore})`);
+
+    return res.json({
+      message: `${shortlistedCount} applicant(s) shortlisted`,
+      shortlistedCount,
+      threshold: minATSScore,
+    });
+  } catch (err) {
+    return res.status(500).json({message: `Server error: ${err.message}`});
+  }
+});
+
+// Re-score all applicants for a job (useful after criteria change)
+router.post('/:jobId/rescore', verifyAuth, async (req, res) =>
+{
+  try
+  {
+    const {jobId}=req.params;
+    const job=await Job.findById(jobId);
+    if (!job) return res.status(404).json({message: 'Job not found'});
+
+    const applications=await Application.find({job: jobId}).populate('candidate', 'resumeText skills education projects resumeParsed');
+    let rescored=0;
+
+    for (const app of applications) {
+      const candidate=app.candidate;
+      if (!candidate) continue;
+
+      const resumeText=candidate.resumeText || '';
+      let resumeResult=candidate.resumeParsed || null;
+      if (resumeText && !resumeResult) {
+        resumeResult=parseResume(resumeText);
+      }
+      if (!resumeResult || !resumeResult.success) {
+        resumeResult={
+          success: true,
+          skills: {technical: candidate.skills || [], soft: [], all: candidate.skills || [], categorized: {}},
+          experience: {years: 0},
+          education: [],
+          atsScore: 0,
+        };
+      }
+
+      let cgpa=0;
+      if (resumeText) cgpa=extractCGPA(resumeText).cgpa;
+      if (!cgpa && candidate.education?.length > 0) {
+        for (const edu of candidate.education) {
+          if (edu.grade) {
+            const g=parseFloat(edu.grade);
+            if (!isNaN(g) && g > 0 && g <= 10) { cgpa=g; break; }
+          }
+        }
+      }
+
+      const matchResult=calculateJobMatchScore({resumeResult, job, candidateCGPA: cgpa});
+      
+      app.atsScore=matchResult.atsScore;
+      app.skillMatchScore=matchResult.skillMatchScore;
+      app.matchedSkills=matchResult.matchedSkills;
+      app.missingSkills=matchResult.missingSkills;
+      app.eligible=matchResult.eligible;
+      app.eligibilityReasons=matchResult.eligibilityReasons;
+      app.cgpa=cgpa;
+      app.experienceYears=matchResult.experienceYears;
+      app.score=matchResult.atsScore;
+      await app.save();
+      rescored++;
+    }
+
+    return res.json({message: `Re-scored ${rescored} applications`, rescored});
+  } catch (err) {
     return res.status(500).json({message: `Server error: ${err.message}`});
   }
 });

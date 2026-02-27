@@ -57,6 +57,18 @@ const jobSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+
+  // ── ATS / Eligibility Criteria ──
+  eligibilityCriteria: {
+    minCGPA: { type: Number, default: 0 },
+    requiredSkills: [{ type: String }],      // must-have skills
+    preferredSkills: [{ type: String }],     // nice-to-have skills
+    minExperience: { type: Number, default: 0 },  // years
+    maxExperience: { type: Number, default: 0 },
+    requiredEducation: [{ type: String }],   // e.g. ['B.Tech', "Bachelor's"]
+    autoShortlist: { type: Boolean, default: false },
+    minATSScore: { type: Number, default: 0 },    // 0–100 threshold
+  },
 }, {
   timestamps: true,
 });

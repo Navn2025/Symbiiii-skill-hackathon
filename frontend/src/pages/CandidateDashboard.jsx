@@ -540,6 +540,32 @@ function JobsTab({user})
                     </div>
                   </div>
                   {job.description&&<p className="jt-job-desc">{job.description.slice(0, 150)}{job.description.length>150? '...':''}</p>}
+                  
+                  {/* Eligibility Criteria Display */}
+                  {(job.eligibilityCriteria?.minCGPA > 0 || job.eligibilityCriteria?.requiredSkills?.length > 0 || job.eligibilityCriteria?.minExperience > 0) && (
+                    <div className="jt-criteria-strip">
+                      {job.eligibilityCriteria.minCGPA > 0 && (
+                        <span className="jt-criteria-tag cgpa">Min CGPA: {job.eligibilityCriteria.minCGPA}</span>
+                      )}
+                      {job.eligibilityCriteria.minExperience > 0 && (
+                        <span className="jt-criteria-tag exp">
+                          {job.eligibilityCriteria.minExperience}{job.eligibilityCriteria.maxExperience ? `-${job.eligibilityCriteria.maxExperience}` : '+'} yrs
+                        </span>
+                      )}
+                      {job.eligibilityCriteria.requiredSkills?.length > 0 && (
+                        <span className="jt-criteria-tag skills">
+                          Required: {job.eligibilityCriteria.requiredSkills.slice(0, 3).join(', ')}{job.eligibilityCriteria.requiredSkills.length > 3 ? ` +${job.eligibilityCriteria.requiredSkills.length - 3}` : ''}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {job.salary?.max > 0 && (
+                    <div className="jt-salary-strip">
+                      ₹{(job.salary.min/100000).toFixed(1)}L – ₹{(job.salary.max/100000).toFixed(1)}L
+                    </div>
+                  )}
+
                   <div className="jt-job-card-footer">
                     <span className="jt-applicants"><Users size={13} /> {job.applicantCount||0} applicants</span>
                     {appliedIds.has(job.id)? (
@@ -583,6 +609,13 @@ function JobsTab({user})
                         <span><Building2 size={12} /> {app.job?.companyName}</span>
                         <span><MapPin size={12} /> {app.job?.location}</span>
                       </div>
+                      {app.score > 0 && (
+                        <div className="jt-kanban-ats">
+                          <span className={`jt-ats-badge ${app.score >= 70 ? 'good' : app.score >= 40 ? 'mid' : 'low'}`}>
+                            ATS: {app.score}%
+                          </span>
+                        </div>
+                      )}
                       {app.job?.skills?.length>0&&(
                         <div className="jt-kanban-skills">
                           {app.job.skills.slice(0, 3).map((s, i) => <span key={i} className="jt-skill-chip small">{s}</span>)}
@@ -590,7 +623,7 @@ function JobsTab({user})
                       )}
                       <div className="jt-kanban-card-footer">
                         <span className="jt-kanban-date">{timeAgo(app.appliedAt)}</span>
-                        <span className="jt-kanban-status" style={{color: col.color}}>{app.status}</span>
+                        <span className="jt-kanban-status" style={{color: col.color}}>{(app.status||'').replace(/_/g, ' ')}</span>
                       </div>
                     </div>
                   ))
