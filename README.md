@@ -1,6 +1,6 @@
-# HireSpec — AI-Powered Recruitment & Interview Platform
+#  AI POWERED INTERSHIP AND PLACEMENT TRACKING PLATFORM
 
-> A full-stack intelligent hiring platform built for **IIT Gandhinagar** that automates the entire recruitment pipeline — from job posting and ATS screening to AI-driven interviews, live quizzes, coding contests, and proctored assessments.
+> A full-stack intelligent hiring platform built for **Symbiosis University Indore** that automates the entire recruitment pipeline — from job posting and ATS screening to AI-driven interviews, live quizzes, coding contests, and proctored assessments.
 
 ---
 
